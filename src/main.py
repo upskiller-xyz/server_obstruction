@@ -39,15 +39,25 @@ class ServerApplication:
         from src.server.services.logging import StructuredLogger
         from src.server.enums import LogLevel
         from src.server.controllers.base_controller import ServerController
+        from src.server.services.raytracing_service import RaytraceServiceFactory
+        from src.server.controllers.raytracing_controller import RaytraceController
 
         # Logger
         self._logger = StructuredLogger("Server", LogLevel.INFO)
 
-        # TODO: Initialize your services here and add them to the services dict
-        # Example:
-        # my_service = MyService()
-        # services = {"my_service": my_service}
-        services = {}
+        # Raytracing service (using Factory Pattern)
+        self._raytrace_service = RaytraceServiceFactory.create_default_service(self._logger)
+
+        # Raytracing controller
+        self._raytrace_controller = RaytraceController(
+            raytrace_service=self._raytrace_service,
+            logger=self._logger
+        )
+
+        # Services for base controller
+        services = {
+            "raytrace_service": self._raytrace_service
+        }
 
         # Controller
         self._controller = ServerController(
@@ -61,11 +71,45 @@ class ServerApplication:
     def _setup_routes(self) -> None:
         """Setup Flask routes"""
         self._app.add_url_rule("/", "get_status", self._get_status, methods=["GET"])
+        self._app.add_url_rule("/raytrace", "raytrace", self._raytrace, methods=["POST"])
         self._app.add_url_rule("/route_example", "route_example", self._route_example, methods=["POST"])
 
     def _get_status(self) -> Dict[str, Any]:
         """Get server status endpoint"""
         return jsonify(self._controller.get_status())
+
+    def _raytrace(self) -> Dict[str, Any]:
+        """Raytrace obstruction angle calculation endpoint"""
+        try:
+            # Get JSON data from request
+            if not request.is_json:
+                raise BadRequest("Content-Type must be application/json")
+
+            request_data = request.get_json()
+
+            if not request_data:
+                raise BadRequest("Request body cannot be empty")
+
+            # Delegate to raytracing controller
+            result = self._raytrace_controller.calculate_obstruction(request_data)
+
+            # Check for errors
+            if result.get("status") == "error":
+                return jsonify(result), HTTPStatus.BAD_REQUEST.value
+
+            return jsonify(result)
+
+        except BadRequest as e:
+            return jsonify({
+                "status": "error",
+                "error": str(e)
+            }), HTTPStatus.BAD_REQUEST.value
+        except Exception as e:
+            self._logger.error(f"Raytrace endpoint failed: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "error": f"Internal server error: {str(e)}"
+            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
 
     def _route_example(self) -> Dict[str, Any]:
         """Run prediction endpoint"""
