@@ -18,26 +18,28 @@ class TestOrthographicProjectionCalculator:
         """Test plane creation for forward-facing window"""
         window = Window(
             center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            normal=Vector3D(x=1.0, y=0.0, z=0.0)  # Viewing direction +X
         )
         plane = self.calculator.create_projection_plane(window)
 
         # Plane origin should be at window center
         assert plane.origin == window.center
 
-        # Normal should match window normal
-        assert abs(plane.normal.x - 1.0) < 1e-10
+        # Plane's geometric normal should be perpendicular to viewing direction (which is +X)
+        # Since viewing is +X and world up is +Y, plane normal should be ±Z
+        assert abs(plane.normal.x) < 1e-10
         assert abs(plane.normal.y) < 1e-10
-        assert abs(plane.normal.z) < 1e-10
+        assert abs(abs(plane.normal.z) - 1.0) < 1e-10  # Should be +1 or -1
 
-        # V-axis should point up (vertical)
-        assert abs(plane.v_axis.y) > 0.9  # Mostly vertical
+        # V-axis should point up (world up)
+        assert abs(plane.v_axis.x) < 1e-10
+        assert abs(plane.v_axis.y - 1.0) < 1e-10
+        assert abs(plane.v_axis.z) < 1e-10
 
-        # U-axis should be perpendicular to both normal and v-axis
-        u_dot_normal = (plane.u_axis.x * plane.normal.x +
-                       plane.u_axis.y * plane.normal.y +
-                       plane.u_axis.z * plane.normal.z)
-        assert abs(u_dot_normal) < 1e-10
+        # U-axis should be the horizontal component of viewing direction (+X)
+        assert abs(plane.u_axis.x - 1.0) < 1e-10
+        assert abs(plane.u_axis.y) < 1e-10
+        assert abs(plane.u_axis.z) < 1e-10
 
     def test_create_projection_plane_upward_facing(self):
         """Test plane creation for upward-facing window"""
@@ -90,16 +92,20 @@ class TestOrthographicProjectionCalculator:
         """Test projecting a point that lies on the plane"""
         window = Window(
             center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=0.0, y=0.0, z=1.0)
+            normal=Vector3D(x=1.0, y=0.0, z=0.0)  # Viewing direction +X
         )
         plane = self.calculator.create_projection_plane(window)
 
-        # Point on the plane
+        # Point to project: (1, 1, 0)
+        # Since u_axis is (1,0,0) and v_axis is (0,1,0), and origin is (0,0,0):
+        # relative = (1, 1, 0)
+        # u = dot(relative, u_axis) = 1*1 + 1*0 + 0*0 = 1
+        # v = dot(relative, v_axis) = 1*0 + 1*1 + 0*0 = 1
         point = Point3D(x=1.0, y=1.0, z=0.0)
         projected = self.calculator.project_point(point, plane)
 
         assert projected.original == point
-        assert abs(projected.u - 1.0) < 1e-10 or abs(projected.u + 1.0) < 1e-10
+        assert abs(projected.u - 1.0) < 1e-10
         assert abs(projected.v - 1.0) < 1e-10
 
     def test_project_point_origin(self):

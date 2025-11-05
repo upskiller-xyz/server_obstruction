@@ -130,9 +130,14 @@ To get a local copy up and running follow these simple steps.
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-### 🎯 Interactive Demo with PyTorch Models
+### 📚 Documentation
 
-**Start here!** For hands-on examples with PyTorch model loading and feature extraction, see the **[Playground Notebook](example/demo.ipynb)**:
+- **[Coordinate System & Calculations](docs/coordinate_system_and_calculations.md)** - Detailed explanation of the 3D coordinate system, viewing directions, projection plane, and obstruction angle calculation methodology
+- **[API Reference](docs/api.md)** - REST API endpoints and request/response formats
+
+### 🎯 Interactive Demo
+
+**Start here!** For hands-on examples and visualizations, see the **[Playground Notebook](example/demo.ipynb)**:
 
 ```bash
 # Install Jupyter and start the demo

@@ -55,7 +55,7 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
     Orthographic projection calculator
 
     Projects 3D geometry onto a vertical plane using orthographic projection.
-    The plane is perpendicular to the window's normal direction.
+    The plane is vertical and contains the window's viewing direction.
     """
 
     def create_projection_plane(self, window: Window) -> ProjectionPlane:
@@ -64,37 +64,51 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
 
         The plane:
         - Passes through the window center point
-        - Is perpendicular to the window normal
-        - Has a vertical v-axis (pointing up in world space)
-        - Has a horizontal u-axis (perpendicular to both normal and v-axis)
+        - CONTAINS the window direction vector (viewing direction lies in the plane)
+        - Is vertical (contains the world up vector)
+        - The plane's geometric normal is perpendicular to both the viewing direction and world up
         """
-        # World up vector
+        # World up vector (vertical direction)
         world_up = Vector3D(x=0.0, y=1.0, z=0.0)
-        normal_arr = window.normal.to_array()
+        direction_arr = window.normal.to_array()  # Window viewing direction
         world_up_arr = world_up.to_array()
 
-        # Calculate horizontal axis (u) - perpendicular to normal and world_up
-        u_axis_arr = np.cross(world_up_arr, normal_arr)
-        u_axis_mag = np.linalg.norm(u_axis_arr)
+        # The plane contains both the viewing direction and world up
+        # So the plane's geometric normal is perpendicular to both
+        plane_normal_arr = np.cross(direction_arr, world_up_arr)
+        plane_normal_mag = np.linalg.norm(plane_normal_arr)
 
-        if u_axis_mag < 1e-6:
-            # Normal is parallel to world up, use a different reference
-            world_forward = Vector3D(x=0.0, y=0.0, z=1.0)
-            u_axis_arr = np.cross(world_forward.to_array(), normal_arr)
+        if plane_normal_mag < 1e-6:
+            # Direction is parallel to world up (looking straight up/down)
+            # Use a different reference for the plane normal
+            world_forward = Vector3D(x=1.0, y=0.0, z=0.0)
+            plane_normal_arr = np.cross(direction_arr, world_forward.to_array())
 
-        u_axis_arr = u_axis_arr / np.linalg.norm(u_axis_arr)
+        plane_normal_arr = plane_normal_arr / np.linalg.norm(plane_normal_arr)
+        plane_normal = Vector3D.from_array(plane_normal_arr)
+
+        # The viewing direction is the u-axis (horizontal on the projection plane)
+        # Project the viewing direction onto the horizontal plane (remove vertical component)
+        direction_horizontal = direction_arr.copy()
+        direction_horizontal[1] = 0.0  # Remove Y component
+        direction_horizontal_mag = np.linalg.norm(direction_horizontal)
+
+        if direction_horizontal_mag > 1e-6:
+            u_axis_arr = direction_horizontal / direction_horizontal_mag
+        else:
+            # Viewing straight up/down, use a default horizontal direction
+            u_axis_arr = np.array([1.0, 0.0, 0.0])
+
         u_axis = Vector3D.from_array(u_axis_arr)
 
-        # Calculate vertical axis (v) - perpendicular to normal and u_axis
-        v_axis_arr = np.cross(normal_arr, u_axis_arr)
-        v_axis_arr = v_axis_arr / np.linalg.norm(v_axis_arr)
-        v_axis = Vector3D.from_array(v_axis_arr)
+        # The vertical axis is always world up
+        v_axis = world_up
 
         return ProjectionPlane(
             origin=window.center,
             u_axis=u_axis,
             v_axis=v_axis,
-            normal=window.normal
+            normal=plane_normal  # Geometric normal to the plane
         )
 
     def project_point(self, point: Point3D, plane: ProjectionPlane) -> ProjectedPoint:

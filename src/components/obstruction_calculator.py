@@ -72,6 +72,89 @@ class MaxHeightObstructionCalculator(IObstructionCalculator):
                 projected_point_count=0
             )
 
+        # Filter points: check if mesh triangles intersect the projection plane
+        if window_center is not None and window_normal is not None:
+            from src.components.geometry import Mesh
+
+            window_arr = window_center.to_array()
+            normal_arr = window_normal.to_array()
+
+            # Calculate plane normal (perpendicular to view direction and world up)
+            world_up_arr = np.array([0.0, 1.0, 0.0])
+            plane_normal_arr = np.cross(normal_arr, world_up_arr)
+            plane_normal_mag = np.linalg.norm(plane_normal_arr)
+
+            if plane_normal_mag < 1e-6:
+                # Looking straight up/down
+                world_forward_arr = np.array([1.0, 0.0, 0.0])
+                plane_normal_arr = np.cross(normal_arr, world_forward_arr)
+
+            plane_normal_arr = plane_normal_arr / np.linalg.norm(plane_normal_arr)
+
+            import logging
+            logger = logging.getLogger(__name__)
+
+            # Check each triangle to see if it crosses the plane
+            # A triangle crosses the plane if its vertices are on different sides
+            valid_points = []
+
+            # Group projected points by triangles (every 3 points = 1 triangle)
+            for i in range(0, len(projected_points), 3):
+                if i + 2 >= len(projected_points):
+                    break
+
+                triangle_points = projected_points[i:i+3]
+
+                # Calculate signed distances from vertices to plane
+                signed_distances = []
+                all_in_front = True
+
+                for proj_point in triangle_points:
+                    point_arr = proj_point.original.to_array()
+                    point_to_window = point_arr - window_arr
+
+                    # Distance along viewing direction
+                    dist_along_view = float(np.dot(point_to_window, normal_arr))
+
+                    # Signed distance to plane
+                    dist_to_plane = float(np.dot(point_to_window, plane_normal_arr))
+                    signed_distances.append(dist_to_plane)
+
+                    if dist_along_view <= 1e-6:
+                        all_in_front = False
+                        break
+
+                # Skip if any vertex is behind the window
+                if not all_in_front:
+                    continue
+
+                # Check if triangle crosses the plane (vertices on different sides)
+                # or if any vertex is very close to the plane
+                min_dist = min(signed_distances)
+                max_dist = max(signed_distances)
+
+                # Triangle intersects plane if min and max have different signs
+                # or if any vertex is within threshold of plane
+                PLANE_THRESHOLD = 0.1
+
+                if (min_dist < PLANE_THRESHOLD and max_dist > -PLANE_THRESHOLD):
+                    # Triangle intersects or is very close to the plane
+                    valid_points.extend(triangle_points)
+                    logger.debug(f"Triangle vertices at distances {signed_distances}: INTERSECTS PLANE")
+                else:
+                    logger.debug(f"Triangle vertices at distances {signed_distances}: DOES NOT INTERSECT")
+
+            # If no valid points (mesh doesn't intersect plane), return zero angle
+            if not valid_points:
+                return RaytraceResult(
+                    obstruction_angle_degrees=0.0,
+                    obstruction_angle_radians=0.0,
+                    highest_point=None,
+                    projected_point_count=len(projected_points)
+                )
+
+            projected_points = valid_points
+
         # Find the highest point on the projection (maximum v coordinate)
         highest_projected = max(projected_points, key=lambda p: p.height)
         highest_3d = highest_projected.original
@@ -90,10 +173,26 @@ class MaxHeightObstructionCalculator(IObstructionCalculator):
                     projected_point_count=len(projected_points)
                 )
 
-            # Horizontal distance along viewing direction
-            # Project the vector (point - center) onto the normal direction
-            point_vec = highest_3d.to_array() - window_center.to_array()
-            horizontal_distance = abs(float(np.dot(point_vec, window_normal.to_array())))
+            # Horizontal distance: project onto horizontal plane (XZ plane)
+            # Use only the horizontal component of the viewing direction
+            normal_arr = window_normal.to_array()
+            normal_horizontal = normal_arr.copy()
+            normal_horizontal[1] = 0.0  # Remove Y component
+            normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+
+            if normal_horizontal_mag < 1e-6:
+                # Viewing straight up or down, use direct horizontal distance
+                point_vec = highest_3d.to_array() - window_center.to_array()
+                point_horizontal = point_vec.copy()
+                point_horizontal[1] = 0.0
+                horizontal_distance = float(np.linalg.norm(point_horizontal))
+            else:
+                # Normalize horizontal viewing direction
+                normal_horizontal = normal_horizontal / normal_horizontal_mag
+
+                # Project point vector onto horizontal viewing direction
+                point_vec = highest_3d.to_array() - window_center.to_array()
+                horizontal_distance = abs(float(np.dot(point_vec, normal_horizontal)))
 
             # Handle case where point is directly above (infinite angle)
             if horizontal_distance < 1e-6:
@@ -162,6 +261,64 @@ class WorstCaseObstructionCalculator(IObstructionCalculator):
                 projected_point_count=0
             )
 
+        # Filter points: check if mesh triangles intersect the projection plane
+        if window_center is not None and window_normal is not None:
+            window_arr = window_center.to_array()
+            normal_arr = window_normal.to_array()
+
+            # Calculate plane normal
+            world_up_arr = np.array([0.0, 1.0, 0.0])
+            plane_normal_arr = np.cross(normal_arr, world_up_arr)
+            plane_normal_mag = np.linalg.norm(plane_normal_arr)
+
+            if plane_normal_mag < 1e-6:
+                world_forward_arr = np.array([1.0, 0.0, 0.0])
+                plane_normal_arr = np.cross(normal_arr, world_forward_arr)
+
+            plane_normal_arr = plane_normal_arr / np.linalg.norm(plane_normal_arr)
+
+            valid_points = []
+            PLANE_THRESHOLD = 0.1
+
+            # Check each triangle
+            for i in range(0, len(projected_points), 3):
+                if i + 2 >= len(projected_points):
+                    break
+
+                triangle_points = projected_points[i:i+3]
+                signed_distances = []
+                all_in_front = True
+
+                for proj_point in triangle_points:
+                    point_arr = proj_point.original.to_array()
+                    point_to_window = point_arr - window_arr
+                    dist_along_view = float(np.dot(point_to_window, normal_arr))
+                    dist_to_plane = float(np.dot(point_to_window, plane_normal_arr))
+                    signed_distances.append(dist_to_plane)
+
+                    if dist_along_view <= 1e-6:
+                        all_in_front = False
+                        break
+
+                if not all_in_front:
+                    continue
+
+                min_dist = min(signed_distances)
+                max_dist = max(signed_distances)
+
+                if (min_dist < PLANE_THRESHOLD and max_dist > -PLANE_THRESHOLD):
+                    valid_points.extend(triangle_points)
+
+            if not valid_points:
+                return RaytraceResult(
+                    obstruction_angle_degrees=0.0,
+                    obstruction_angle_radians=0.0,
+                    highest_point=None,
+                    projected_point_count=len(projected_points)
+                )
+
+            projected_points = valid_points
+
         max_angle = 0.0
         worst_point = projected_points[0]
 
@@ -175,9 +332,23 @@ class WorstCaseObstructionCalculator(IObstructionCalculator):
                 if vertical_distance <= 0:
                     continue
 
-                # Calculate horizontal distance along viewing direction
-                point_vec = point_3d.to_array() - window_center.to_array()
-                horizontal_distance = abs(float(np.dot(point_vec, window_normal.to_array())))
+                # Calculate horizontal distance using horizontal component of viewing direction
+                normal_arr = window_normal.to_array()
+                normal_horizontal = normal_arr.copy()
+                normal_horizontal[1] = 0.0  # Remove Y component
+                normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+
+                if normal_horizontal_mag < 1e-6:
+                    # Viewing straight up or down, use direct horizontal distance
+                    point_vec = point_3d.to_array() - window_center.to_array()
+                    point_horizontal = point_vec.copy()
+                    point_horizontal[1] = 0.0
+                    horizontal_distance = float(np.linalg.norm(point_horizontal))
+                else:
+                    # Normalize horizontal viewing direction and project
+                    normal_horizontal = normal_horizontal / normal_horizontal_mag
+                    point_vec = point_3d.to_array() - window_center.to_array()
+                    horizontal_distance = abs(float(np.dot(point_vec, normal_horizontal)))
 
                 # Calculate angle for this point
                 if horizontal_distance < 1e-6:
