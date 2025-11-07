@@ -128,6 +128,93 @@ class RaytraceController:
             except (TypeError, ValueError):
                 raise ValueError(f"Field '{field}' must be a number")
 
+    def calculate_zenith_angle(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle zenith angle calculation request
+
+        Args:
+            request_data: Dictionary containing:
+                - x, y, z: window center coordinates
+                - rad_x, rad_y: window normal angles
+                - mesh: list of vertex coordinates
+
+        Returns:
+            Dictionary with zenith angle results or error
+        """
+        try:
+            # Validate required fields
+            self._validate_request(request_data)
+
+            # Parse request into domain model
+            request = RaytraceRequest.from_dict(request_data)
+
+            # Delegate to service layer
+            result = self._raytrace_service.calculate_zenith_angle(request)
+
+            # Format response
+            return {
+                "status": "success",
+                "data": result.to_dict()
+            }
+
+        except ValueError as e:
+            self._logger.warning(f"Invalid request data: {str(e)}")
+            return {
+                "status": "error",
+                "error": f"Invalid request: {str(e)}"
+            }
+        except Exception as e:
+            self._logger.error(f"Zenith angle calculation failed: {str(e)}")
+            return {
+                "status": "error",
+                "error": f"Calculation failed: {str(e)}"
+            }
+
+    def calculate_both_angles(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle obstruction calculation request (both horizon and zenith angles)
+
+        Args:
+            request_data: Dictionary containing:
+                - x, y, z: window center coordinates
+                - rad_x, rad_y: window normal angles
+                - mesh: list of vertex coordinates
+
+        Returns:
+            Dictionary with both horizon and zenith angle results or error
+        """
+        try:
+            # Validate required fields
+            self._validate_request(request_data)
+
+            # Parse request into domain model
+            request = RaytraceRequest.from_dict(request_data)
+
+            # Delegate to service layer
+            results = self._raytrace_service.calculate_both_angles(request)
+
+            # Format response
+            return {
+                "status": "success",
+                "data": {
+                    "horizon": results["horizon"].to_dict(),
+                    "zenith": results["zenith"].to_dict()
+                }
+            }
+
+        except ValueError as e:
+            self._logger.warning(f"Invalid request data: {str(e)}")
+            return {
+                "status": "error",
+                "error": f"Invalid request: {str(e)}"
+            }
+        except Exception as e:
+            self._logger.error(f"Both angles calculation failed: {str(e)}")
+            return {
+                "status": "error",
+                "error": f"Calculation failed: {str(e)}"
+            }
+
     def get_status(self) -> Dict[str, Any]:
         """Get controller status"""
         return {

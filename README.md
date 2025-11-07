@@ -146,57 +146,104 @@ poetry run jupyter notebook example/demo.ipynb
 
 ### 🔧 API Endpoints
 
-The server provides REST API endpoints for model predictions:
+The server provides REST API endpoints for horizon and zenith angle calculations:
 
 #### Health Check
-Check if the server is running and model is loaded:
+Check if the server is running:
 
 ```python
 import requests
 
-response = requests.get("http://localhost:8000/")
+response = requests.get("http://localhost:8081/")
 print(response.json())
-# Output: {"status": "ready", "model_loaded": true, "timestamp": "2024-01-01T00:00:00Z"}
+# Output: {"status": "ready", "timestamp": "2025-01-01T00:00:00Z"}
 ```
 
-#### Image Prediction
-Submit an image for model prediction:
+#### Horizon Angle Calculation
+Calculate the angle from the horizontal plane upward to the highest obstruction:
 
 ```python
 import requests
 
-# Send image file for prediction
-with open("input_image.jpg", "rb") as f:
-    files = {"file": f}
-    response = requests.post("http://localhost:8000/run", files=files)
+payload = {
+    "x": 0.0,          # Window center X coordinate
+    "y": 3.0,          # Window center Y coordinate
+    "z": 0.0,          # Window center Z coordinate
+    "rad_x": 0.0,      # Pitch angle (up/down rotation)
+    "rad_y": 0.0,      # Yaw angle (left/right rotation)
+    "mesh": [          # Triangle mesh vertices
+        [10.0, 0.0, -5.0],
+        [10.0, 5.0, -5.0],
+        [10.0, 0.0, 5.0],
+        [10.0, 0.0, 5.0],
+        [10.0, 5.0, -5.0],
+        [10.0, 5.0, 5.0]
+    ]
+}
 
+response = requests.post("http://localhost:8081/horizon_angle", json=payload)
 result = response.json()
-print(f"Prediction result: {result}")
+print(f"Horizon angle: {result['data']['obstruction_angle_degrees']:.2f}°")
+# Output: Horizon angle: 11.31°
 ```
 
-#### Example with OpenCV preprocessing:
+#### Zenith Angle Calculation
+Calculate the angle from vertical (90°) downward to the lowest overhead obstruction:
 
 ```python
-import cv2
 import requests
-import numpy as np
-from io import BytesIO
 
-# Load and preprocess image
-image = cv2.imread("input.jpg")
-image = cv2.resize(image, (480, 640))  # Resize to model input size
+payload = {
+    "x": 0.0,
+    "y": 3.0,
+    "z": 0.0,
+    "rad_x": 0.0,
+    "rad_y": 0.0,
+    "mesh": [
+        [10.0, 0.0, -5.0],
+        [10.0, 5.0, -5.0],
+        [10.0, 0.0, 5.0],
+        [10.0, 0.0, 5.0],
+        [10.0, 5.0, -5.0],
+        [10.0, 5.0, 5.0]
+    ]
+}
 
-# Convert to bytes
-_, buffer = cv2.imencode('.jpg', image)
-image_bytes = BytesIO(buffer)
+response = requests.post("http://localhost:8081/zenith_angle", json=payload)
+result = response.json()
+print(f"Zenith angle: {result['data']['obstruction_angle_degrees']:.2f}°")
+# Output: Zenith angle: 78.69°
+```
 
-# Send prediction request
-files = {"file": ("image.jpg", image_bytes, "image/jpeg")}
-response = requests.post("http://localhost:8000/run", files=files)
+#### Obstruction Calculation (Both Angles)
+Calculate both horizon and zenith angles in a single request:
 
-prediction = response.json()
-print(f"Model output shape: {prediction.get('output_shape')}")
-print(f"Processing time: {prediction.get('processing_time_ms')}ms")
+```python
+import requests
+
+payload = {
+    "x": 0.0,
+    "y": 3.0,
+    "z": 0.0,
+    "rad_x": 0.0,
+    "rad_y": 0.0,
+    "mesh": [
+        [10.0, 0.0, -5.0],
+        [10.0, 5.0, -5.0],
+        [10.0, 0.0, 5.0],
+        [10.0, 0.0, 5.0],
+        [10.0, 5.0, -5.0],
+        [10.0, 5.0, 5.0]
+    ]
+}
+
+response = requests.post("http://localhost:8081/obstruction", json=payload)
+result = response.json()
+print(f"Horizon: {result['data']['horizon']['obstruction_angle_degrees']:.2f}°")
+print(f"Zenith: {result['data']['zenith']['obstruction_angle_degrees']:.2f}°")
+# Output:
+# Horizon: 11.31°
+# Zenith: 78.69°
 ```
 
 ### Deployment

@@ -71,15 +71,22 @@ class ServerApplication:
     def _setup_routes(self) -> None:
         """Setup Flask routes"""
         self._app.add_url_rule("/", "get_status", self._get_status, methods=["GET"])
-        self._app.add_url_rule("/raytrace", "raytrace", self._raytrace, methods=["POST"])
+        self._app.add_url_rule("/horizon_angle", "horizon_angle", self._horizon_angle, methods=["POST"])
+        self._app.add_url_rule("/obstruction", "obstruction", self._obstruction, methods=["POST"])
+        self._app.add_url_rule("/zenith_angle", "zenith_angle", self._zenith_angle, methods=["POST"])
         self._app.add_url_rule("/route_example", "route_example", self._route_example, methods=["POST"])
 
     def _get_status(self) -> Dict[str, Any]:
         """Get server status endpoint"""
         return jsonify(self._controller.get_status())
 
-    def _raytrace(self) -> Dict[str, Any]:
-        """Raytrace obstruction angle calculation endpoint"""
+    def _horizon_angle(self) -> Dict[str, Any]:
+        """
+        Horizon angle calculation endpoint
+
+        Calculates the angle from the horizontal plane at the window center
+        upward to the highest point of obstruction in the viewing direction.
+        """
         try:
             # Get JSON data from request
             if not request.is_json:
@@ -105,7 +112,82 @@ class ServerApplication:
                 "error": str(e)
             }), HTTPStatus.BAD_REQUEST.value
         except Exception as e:
-            self._logger.error(f"Raytrace endpoint failed: {str(e)}")
+            self._logger.error(f"Horizon angle endpoint failed: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "error": f"Internal server error: {str(e)}"
+            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
+
+    def _obstruction(self) -> Dict[str, Any]:
+        """
+        Obstruction calculation endpoint
+
+        Calculates both horizon and zenith angles for a given window and mesh.
+        """
+        try:
+            # Get JSON data from request
+            if not request.is_json:
+                raise BadRequest("Content-Type must be application/json")
+
+            request_data = request.get_json()
+
+            if not request_data:
+                raise BadRequest("Request body cannot be empty")
+
+            # Delegate to raytracing controller
+            result = self._raytrace_controller.calculate_both_angles(request_data)
+
+            # Check for errors
+            if result.get("status") == "error":
+                return jsonify(result), HTTPStatus.BAD_REQUEST.value
+
+            return jsonify(result)
+
+        except BadRequest as e:
+            return jsonify({
+                "status": "error",
+                "error": str(e)
+            }), HTTPStatus.BAD_REQUEST.value
+        except Exception as e:
+            self._logger.error(f"Obstruction endpoint failed: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "error": f"Internal server error: {str(e)}"
+            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
+
+    def _zenith_angle(self) -> Dict[str, Any]:
+        """
+        Zenith angle calculation endpoint
+
+        Calculates the angle from vertical (90°) downward to the lowest
+        overhead obstruction (like balconies or roofs).
+        """
+        try:
+            # Get JSON data from request
+            if not request.is_json:
+                raise BadRequest("Content-Type must be application/json")
+
+            request_data = request.get_json()
+
+            if not request_data:
+                raise BadRequest("Request body cannot be empty")
+
+            # Delegate to raytracing controller
+            result = self._raytrace_controller.calculate_zenith_angle(request_data)
+
+            # Check for errors
+            if result.get("status") == "error":
+                return jsonify(result), HTTPStatus.BAD_REQUEST.value
+
+            return jsonify(result)
+
+        except BadRequest as e:
+            return jsonify({
+                "status": "error",
+                "error": str(e)
+            }), HTTPStatus.BAD_REQUEST.value
+        except Exception as e:
+            self._logger.error(f"Zenith angle endpoint failed: {str(e)}")
             return jsonify({
                 "status": "error",
                 "error": f"Internal server error: {str(e)}"
