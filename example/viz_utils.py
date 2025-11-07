@@ -611,3 +611,109 @@ class TopViewVisualizer:
         margin = 3
         ax.set_xlim(self.window_center[0] - margin, self.window_center[0] + view_distance + margin)
         ax.set_ylim(self.window_center[2] - plane_width, self.window_center[2] + plane_width)
+
+
+class CombinedObstructionVisualizer:
+    """
+    Visualize both horizon and zenith angles on a single 3D plot
+
+    Displays vertical and horizontal obstructions together, showing:
+    - Window position and viewing direction
+    - Mesh geometry
+    - Projection plane
+    - Horizon angle line (red, for vertical surfaces)
+    - Zenith angle line (magenta, for horizontal surfaces)
+    """
+
+    def __init__(self, window_center: list, window_angles: list, mesh_vertices: list):
+        """
+        Initialize combined obstruction visualizer
+
+        Args:
+            window_center: [x, y, z] window center position
+            window_angles: [rad_x, rad_y] viewing angles in radians
+            mesh_vertices: List of mesh vertices (triangles)
+        """
+        self.window_center = window_center
+        self.window_angles = window_angles
+        self.mesh_vertices = mesh_vertices
+
+    def visualize(self, ax, horizon_data: dict, zenith_data: dict):
+        """
+        Create combined visualization of both obstruction angles
+
+        Args:
+            ax: Matplotlib 3D axis
+            horizon_data: Horizon angle response data from API
+            zenith_data: Zenith angle response data from API
+        """
+        # Calculate direction vectors and plane
+        calc = DirectionVectorCalculator()
+        dir_vec = calc.from_angles(*self.window_angles)
+        horizontal_dir = calc.get_horizontal_component(dir_vec)
+        plane_builder = ProjectionPlaneBuilder(self.window_center, horizontal_dir)
+
+        # Setup renderer
+        renderer = PlotElementRenderer()
+
+        # Add basic scene elements
+        renderer.add_window(ax, self.window_center)
+        renderer.add_mesh(ax, self.mesh_vertices)
+
+        # Calculate max range for viewing direction
+        max_x = max(v[0] for v in self.mesh_vertices)
+        max_y = max(v[1] for v in self.mesh_vertices)
+        view_distance = max(max_x, 10.0)
+
+        renderer.add_viewing_direction(ax, self.window_center, dir_vec, view_distance)
+        renderer.add_projection_plane(ax, plane_builder, width=12,
+                                     height_range=(-2, max_y + 2))
+
+        # Extract angles
+        horizon_angle = horizon_data["obstruction_angle_degrees"]
+        zenith_angle = zenith_data["obstruction_angle_degrees"]
+
+        # Add horizon angle visualization (if exists)
+        if horizon_angle > 0 and horizon_data.get('highest_point'):
+            hp = horizon_data['highest_point']
+            hp_3d = np.array([hp['x'], hp['y'], hp['z']])
+            hp_proj = plane_builder.project_point(hp_3d)
+
+            # Add highest point marker (orange triangle)
+            ax.scatter(hp_proj[0], hp_proj[2], hp_proj[1],
+                      c=Color.ORANGE.value, s=150, marker=Marker.TRIANGLE_UP.value,
+                      label=f'Horizon: {horizon_angle:.1f}°',
+                      edgecolors=Color.BLACK.value, lw=2)
+
+            # Add horizon line (red dashed)
+            ax.plot([self.window_center[0], hp_proj[0]],
+                   [self.window_center[2], hp_proj[2]],
+                   [self.window_center[1], hp_proj[1]],
+                   color=Color.RED.value, linestyle=LineStyle.DASHED.value,
+                   lw=3, label=f'Vertical obstruction')
+
+        # Add zenith angle visualization (if exists)
+        if zenith_angle > 0 and zenith_data.get('highest_point'):
+            zp = zenith_data['highest_point']
+            zp_3d = np.array([zp['x'], zp['y'], zp['z']])
+            zp_proj = plane_builder.project_point(zp_3d)
+
+            # Add furthest overhead point marker (magenta circle)
+            ax.scatter(zp_proj[0], zp_proj[2], zp_proj[1],
+                      c=Color.MAGENTA.value, s=150, marker=Marker.CIRCLE.value,
+                      label=f'Zenith: {zenith_angle:.1f}°',
+                      edgecolors=Color.BLACK.value, lw=2)
+
+            # Add zenith line (magenta dashed)
+            ax.plot([self.window_center[0], zp_proj[0]],
+                   [self.window_center[2], zp_proj[2]],
+                   [self.window_center[1], zp_proj[1]],
+                   color=Color.MAGENTA.value, linestyle=LineStyle.DASHED.value,
+                   lw=3, label=f'Horizontal obstruction')
+
+        # Configure axes
+        max_range = max(view_distance, max_y, 15.0)
+        title = f'Combined Obstruction: H={horizon_angle:.1f}° + Z={zenith_angle:.1f}°'
+
+        AxisConfigurator.setup(ax, max_range=max_range, title=title)
+        ax.legend(fontsize=10, loc='upper right')
