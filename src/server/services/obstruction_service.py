@@ -1,13 +1,14 @@
 from typing import Dict, Any
 from src.server.interfaces import ILogger
-from src.components.raytracing_models import RaytraceRequest, RaytraceResult
+from src.components.obstruction_models import ObstructionRequest, ObstructionResult
 from src.components.projection import IProjectionCalculator, OrthographicProjectionCalculator
-from src.components.obstruction_calculator import IObstructionCalculator, MaxHeightObstructionCalculator, ZenithAngleCalculator
+from src.components.obstruction_calculator import IObstructionCalculator, HorizonObstructionCalculator, ZenithAngleCalculator
+from src.components.constants import ResponseField, ResponseStatus
 
 
-class RaytraceService:
+class ObstructionService:
     """
-    Service orchestrating raytracing operations
+    Service orchestrating obstruction calculation operations
 
     Follows Single Responsibility Principle:
     - Coordinates projection and obstruction calculations
@@ -29,14 +30,14 @@ class RaytraceService:
             projection_calculator: Calculator for 3D to 2D projections
             obstruction_calculator: Calculator for horizon angles
             zenith_calculator: Calculator for zenith angles
-            logger: Structured logger instance
+            logger: Structured logger instance 
         """
         self._projection_calculator = projection_calculator
         self._obstruction_calculator = obstruction_calculator
         self._zenith_calculator = zenith_calculator
         self._logger = logger
 
-    def calculate_obstruction(self, request: RaytraceRequest) -> RaytraceResult:
+    def calculate_obstruction(self, request: ObstructionRequest) -> ObstructionResult:
         """
         Calculate obstruction angle for given window and geometry
 
@@ -44,7 +45,7 @@ class RaytraceService:
             request: Raytracing request with window and mesh data
 
         Returns:
-            RaytraceResult with obstruction angle and metadata
+            ObstructionResult with obstruction angle and metadata
 
         Raises:
             ValueError: If request data is invalid
@@ -67,14 +68,10 @@ class RaytraceService:
             self._logger.debug(f"Projected {len(projected_points)} points onto plane")
 
             # Step 3: Calculate obstruction angle
-            # Reference height is 0 since we're measuring from the window center
-            # (which is at the origin of the projection plane)
-            # Pass window center and normal for accurate angle calculation in viewing plane
             result = self._obstruction_calculator.calculate_obstruction_angle(
                 projected_points,
-                reference_height=0.0,
-                window_center=request.window.center,
-                window_normal=request.window.normal
+                request.window.center,
+                request.window.normal
             )
 
             self._logger.info(
@@ -84,10 +81,10 @@ class RaytraceService:
             return result
 
         except Exception as e:
-            self._logger.error(f"Raytrace calculation failed: {str(e)}")
+            self._logger.error(f"Obstruction calculation failed: {str(e)}")
             raise
 
-    def calculate_zenith_angle(self, request: RaytraceRequest) -> RaytraceResult:
+    def calculate_zenith_angle(self, request: ObstructionRequest) -> ObstructionResult:
         """
         Calculate zenith angle for given window and geometry
 
@@ -98,7 +95,7 @@ class RaytraceService:
             request: Raytracing request with window and mesh data
 
         Returns:
-            RaytraceResult with zenith angle and metadata
+            ObstructionResult with zenith angle and metadata
 
         Raises:
             ValueError: If request data is invalid
@@ -123,9 +120,8 @@ class RaytraceService:
             # Step 3: Calculate zenith angle
             result = self._zenith_calculator.calculate_obstruction_angle(
                 projected_points,
-                reference_height=0.0,
-                window_center=request.window.center,
-                window_normal=request.window.normal
+                request.window.center,
+                request.window.normal
             )
 
             self._logger.info(
@@ -138,7 +134,7 @@ class RaytraceService:
             self._logger.error(f"Zenith angle calculation failed: {str(e)}")
             raise
 
-    def calculate_both_angles(self, request: RaytraceRequest) -> Dict[str, RaytraceResult]:
+    def calculate_both_angles(self, request: ObstructionRequest) -> Dict[str, ObstructionResult]:
         """
         Calculate both horizon and zenith angles
 
@@ -146,35 +142,35 @@ class RaytraceService:
             request: Raytracing request with window and mesh data
 
         Returns:
-            Dictionary with 'horizon' and 'zenith' RaytraceResults
+            Dictionary with 'horizon' and 'zenith' ObstructionResults
         """
         horizon_result = self.calculate_obstruction(request)
         zenith_result = self.calculate_zenith_angle(request)
 
         return {
-            "horizon": horizon_result,
-            "zenith": zenith_result
+            ResponseField.HORIZON.value: horizon_result,
+            ResponseField.ZENITH.value: zenith_result
         }
 
     def get_status(self) -> Dict[str, Any]:
         """Get service status"""
         return {
-            "status": "ready",
+            ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
             "projection_calculator": type(self._projection_calculator).__name__,
             "horizon_calculator": type(self._obstruction_calculator).__name__,
             "zenith_calculator": type(self._zenith_calculator).__name__
         }
 
 
-class RaytraceServiceFactory:
+class ObstructionServiceFactory:
     """
-    Factory for creating RaytraceService instances (Factory Pattern)
+    Factory for creating ObstructionService instances (Factory Pattern)
 
     Centralizes service configuration and dependency wiring
     """
 
     @staticmethod
-    def create_default_service(logger: ILogger) -> RaytraceService:
+    def create_default_service(logger: ILogger) -> ObstructionService:
         """
         Create service with default implementations
 
@@ -182,13 +178,13 @@ class RaytraceServiceFactory:
             logger: Logger instance
 
         Returns:
-            Configured RaytraceService
+            Configured ObstructionService
         """
         projection_calculator = OrthographicProjectionCalculator()
-        obstruction_calculator = MaxHeightObstructionCalculator()
+        obstruction_calculator = HorizonObstructionCalculator()
         zenith_calculator = ZenithAngleCalculator()
 
-        return RaytraceService(
+        return ObstructionService(
             projection_calculator=projection_calculator,
             obstruction_calculator=obstruction_calculator,
             zenith_calculator=zenith_calculator,
@@ -201,7 +197,7 @@ class RaytraceServiceFactory:
         obstruction_calculator: IObstructionCalculator,
         zenith_calculator: IObstructionCalculator,
         logger: ILogger
-    ) -> RaytraceService:
+    ) -> ObstructionService:
         """
         Create service with custom implementations
 
@@ -212,9 +208,9 @@ class RaytraceServiceFactory:
             logger: Logger instance
 
         Returns:
-            Configured RaytraceService
+            Configured ObstructionService
         """
-        return RaytraceService(
+        return ObstructionService(
             projection_calculator=projection_calculator,
             obstruction_calculator=obstruction_calculator,
             zenith_calculator=zenith_calculator,

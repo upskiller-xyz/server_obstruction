@@ -1,12 +1,13 @@
 from typing import Dict, Any
 from src.server.interfaces import ILogger
-from src.server.services.raytracing_service import RaytraceService
-from src.components.raytracing_models import RaytraceRequest, RaytraceResult
+from src.server.services.obstruction_service import ObstructionService
+from src.components.obstruction_models import ObstructionRequest, ObstructionResult
+from src.components.constants import ResponseStatus, ResponseField, RequestField, ControllerStatus
 
 
-class RaytraceController:
+class ObstructionController:
     """
-    Controller for raytracing endpoints
+    Controller for obstruction calculation endpoints
 
     Responsibilities (Single Responsibility Principle):
     - Parse and validate request data
@@ -14,12 +15,12 @@ class RaytraceController:
     - Format responses
     """
 
-    def __init__(self, raytrace_service: RaytraceService, logger: ILogger):
+    def __init__(self, raytrace_service: ObstructionService, logger: ILogger):
         """
         Initialize controller with dependencies
 
         Args:
-            raytrace_service: Service for raytracing operations
+            raytrace_service: Service for obstruction calculation operations
             logger: Structured logger
         """
         self._raytrace_service = raytrace_service
@@ -32,19 +33,19 @@ class RaytraceController:
         Args:
             request_data: Dictionary containing:
                 - x, y, z: window center coordinates
-                - rad_x, rad_y: window normal angles
+                - direction_angle: horizontal rotation angle in radians (new format)
+                  OR rad_x, rad_y: window normal angles (old format)
                 - mesh: list of vertex coordinates
 
         Returns:
             Dictionary with calculation results or error
 
-        Example request:
+        Example request (new format):
         {
             "x": 0.0,
             "y": 1.5,
             "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
+            "direction_angle": 0.0,
             "mesh": [
                 [1.0, 0.0, 0.0],
                 [1.0, 3.0, 0.0],
@@ -58,33 +59,35 @@ class RaytraceController:
             self._validate_request(request_data)
 
             # Parse request into domain model
-            request = RaytraceRequest.from_dict(request_data)
+            request = ObstructionRequest.from_dict(request_data)
 
             # Delegate to service layer
             result = self._raytrace_service.calculate_obstruction(request)
 
             # Format response
             return {
-                "status": "success",
-                "data": result.to_dict()
+                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
+                ResponseField.DATA.value: result.to_dict()
             }
 
         except ValueError as e:
             self._logger.warning(f"Invalid request data: {str(e)}")
             return {
-                "status": "error",
-                "error": f"Invalid request: {str(e)}"
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
             }
         except Exception as e:
-            self._logger.error(f"Raytrace calculation failed: {str(e)}")
+            self._logger.error(f"Obstruction calculation failed: {str(e)}")
             return {
-                "status": "error",
-                "error": f"Calculation failed: {str(e)}"
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
             }
 
     def _validate_request(self, data: Dict[str, Any]) -> None:
         """
         Validate request data
+
+        Supports both new (direction_angle) and old (rad_x, rad_y) formats
 
         Args:
             data: Request data dictionary
@@ -92,15 +95,25 @@ class RaytraceController:
         Raises:
             ValueError: If required fields are missing or invalid
         """
-        # Check required fields
-        required_fields = ['x', 'y', 'z', 'rad_x', 'rad_y', 'mesh']
+        # Check required position fields
+        required_fields = [RequestField.X.value, RequestField.Y.value, RequestField.Z.value, RequestField.MESH.value]
         missing_fields = [field for field in required_fields if field not in data]
 
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
 
+        # Check for direction angle (new format) OR rad_x/rad_y (old format)
+        has_new_format = RequestField.DIRECTION_ANGLE.value in data
+        has_old_format = RequestField.RAD_X.value in data and RequestField.RAD_Y.value in data
+
+        if not has_new_format and not has_old_format:
+            raise ValueError(
+                f"Must provide either '{RequestField.DIRECTION_ANGLE.value}' (new format) "
+                f"or both '{RequestField.RAD_X.value}' and '{RequestField.RAD_Y.value}' (old format)"
+            )
+
         # Validate mesh format
-        mesh = data['mesh']
+        mesh = data[RequestField.MESH.value]
         if not isinstance(mesh, list):
             raise ValueError("Mesh must be a list of vertices")
 
@@ -121,12 +134,18 @@ class RaytraceController:
                 )
 
         # Validate numeric fields
-        numeric_fields = ['x', 'y', 'z', 'rad_x', 'rad_y']
+        numeric_fields = [RequestField.X.value, RequestField.Y.value, RequestField.Z.value]
+        if has_new_format:
+            numeric_fields.append(RequestField.DIRECTION_ANGLE.value)
+        if has_old_format:
+            numeric_fields.extend([RequestField.RAD_X.value, RequestField.RAD_Y.value])
+
         for field in numeric_fields:
-            try:
-                float(data[field])
-            except (TypeError, ValueError):
-                raise ValueError(f"Field '{field}' must be a number")
+            if field in data:  # Only validate if present
+                try:
+                    float(data[field])
+                except (TypeError, ValueError):
+                    raise ValueError(f"Field '{field}' must be a number")
 
     def calculate_zenith_angle(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -146,28 +165,28 @@ class RaytraceController:
             self._validate_request(request_data)
 
             # Parse request into domain model
-            request = RaytraceRequest.from_dict(request_data)
+            request = ObstructionRequest.from_dict(request_data)
 
             # Delegate to service layer
             result = self._raytrace_service.calculate_zenith_angle(request)
 
             # Format response
             return {
-                "status": "success",
-                "data": result.to_dict()
+                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
+                ResponseField.DATA.value: result.to_dict()
             }
 
         except ValueError as e:
             self._logger.warning(f"Invalid request data: {str(e)}")
             return {
-                "status": "error",
-                "error": f"Invalid request: {str(e)}"
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
             }
         except Exception as e:
             self._logger.error(f"Zenith angle calculation failed: {str(e)}")
             return {
-                "status": "error",
-                "error": f"Calculation failed: {str(e)}"
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
             }
 
     def calculate_both_angles(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -188,36 +207,36 @@ class RaytraceController:
             self._validate_request(request_data)
 
             # Parse request into domain model
-            request = RaytraceRequest.from_dict(request_data)
+            request = ObstructionRequest.from_dict(request_data)
 
             # Delegate to service layer
             results = self._raytrace_service.calculate_both_angles(request)
 
             # Format response
             return {
-                "status": "success",
-                "data": {
-                    "horizon": results["horizon"].to_dict(),
-                    "zenith": results["zenith"].to_dict()
+                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
+                ResponseField.DATA.value: {
+                    ResponseField.HORIZON.value: results[ResponseField.HORIZON.value].to_dict(),
+                    ResponseField.ZENITH.value: results[ResponseField.ZENITH.value].to_dict()
                 }
             }
 
         except ValueError as e:
             self._logger.warning(f"Invalid request data: {str(e)}")
             return {
-                "status": "error",
-                "error": f"Invalid request: {str(e)}"
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
             }
         except Exception as e:
             self._logger.error(f"Both angles calculation failed: {str(e)}")
             return {
-                "status": "error",
-                "error": f"Calculation failed: {str(e)}"
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
             }
 
     def get_status(self) -> Dict[str, Any]:
         """Get controller status"""
         return {
-            "controller": "ready",
-            "service": self._raytrace_service.get_status()
+            ResponseField.CONTROLLER.value: ControllerStatus.READY.value,
+            ResponseField.SERVICE.value: self._raytrace_service.get_status()
         }

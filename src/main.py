@@ -39,17 +39,17 @@ class ServerApplication:
         from src.server.services.logging import StructuredLogger
         from src.server.enums import LogLevel
         from src.server.controllers.base_controller import ServerController
-        from src.server.services.raytracing_service import RaytraceServiceFactory
-        from src.server.controllers.raytracing_controller import RaytraceController
+        from src.server.services.obstruction_service import ObstructionServiceFactory
+        from src.server.controllers.obstruction_controller import ObstructionController
 
         # Logger
         self._logger = StructuredLogger("Server", LogLevel.INFO)
 
         # Raytracing service (using Factory Pattern)
-        self._raytrace_service = RaytraceServiceFactory.create_default_service(self._logger)
+        self._raytrace_service = ObstructionServiceFactory.create_default_service(self._logger)
 
         # Raytracing controller
-        self._raytrace_controller = RaytraceController(
+        self._raytrace_controller = ObstructionController(
             raytrace_service=self._raytrace_service,
             logger=self._logger
         )
@@ -97,7 +97,7 @@ class ServerApplication:
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 
-            # Delegate to raytracing controller
+            # Delegate to obstruction controller
             result = self._raytrace_controller.calculate_obstruction(request_data)
 
             # Check for errors
@@ -134,7 +134,7 @@ class ServerApplication:
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 
-            # Delegate to raytracing controller
+            # Delegate to obstruction controller
             result = self._raytrace_controller.calculate_both_angles(request_data)
 
             # Check for errors
@@ -172,7 +172,7 @@ class ServerApplication:
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 
-            # Delegate to raytracing controller
+            # Delegate to obstruction controller
             result = self._raytrace_controller.calculate_zenith_angle(request_data)
 
             # Check for errors

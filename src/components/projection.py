@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List
 import numpy as np
-from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.raytracing_models import Window, ProjectionPlane, ProjectedPoint
+from src.components.geometry import Point3D, Vector3D, Mesh, CoordinateSystem
+from src.components.obstruction_models import Window, ProjectionPlane, ProjectedPoint
+from src.components.constants import MathConstants
 
 
 class IProjectionCalculator(ABC):
@@ -68,41 +69,17 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
         - Is vertical (contains the world up vector)
         - The plane's geometric normal is perpendicular to both the viewing direction and world up
         """
-        # World up vector (vertical direction)
-        world_up = Vector3D(x=0.0, y=1.0, z=0.0)
-        direction_arr = window.normal.to_array()  # Window viewing direction
-        world_up_arr = world_up.to_array()
+        direction = window.normal  # Window viewing direction
 
-        # The plane contains both the viewing direction and world up
-        # So the plane's geometric normal is perpendicular to both
-        plane_normal_arr = np.cross(direction_arr, world_up_arr)
-        plane_normal_mag = np.linalg.norm(plane_normal_arr)
+        # Calculate plane normal (perpendicular to both viewing direction and world up)
+        plane_normal = ProjectionPlane.calculate_plane_normal(direction)
 
-        if plane_normal_mag < 1e-6:
-            # Direction is parallel to world up (looking straight up/down)
-            # Use a different reference for the plane normal
-            world_forward = Vector3D(x=1.0, y=0.0, z=0.0)
-            plane_normal_arr = np.cross(direction_arr, world_forward.to_array())
-
-        plane_normal_arr = plane_normal_arr / np.linalg.norm(plane_normal_arr)
-        plane_normal = Vector3D.from_array(plane_normal_arr)
-
-        # The viewing direction is the u-axis (horizontal on the projection plane)
-        # Project the viewing direction onto the horizontal plane (remove vertical component)
-        direction_horizontal = direction_arr.copy()
-        direction_horizontal[1] = 0.0  # Remove Y component
-        direction_horizontal_mag = np.linalg.norm(direction_horizontal)
-
-        if direction_horizontal_mag > 1e-6:
-            u_axis_arr = direction_horizontal / direction_horizontal_mag
-        else:
-            # Viewing straight up/down, use a default horizontal direction
-            u_axis_arr = np.array([1.0, 0.0, 0.0])
-
+        # Calculate u-axis (horizontal component of viewing direction)
+        u_axis_arr = self._calculate_horizontal_component(direction.to_array())
         u_axis = Vector3D.from_array(u_axis_arr)
 
         # The vertical axis is always world up
-        v_axis = world_up
+        v_axis = Vector3D.from_array(CoordinateSystem.UP)
 
         return ProjectionPlane(
             origin=window.center,
@@ -110,6 +87,25 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
             v_axis=v_axis,
             normal=plane_normal  # Geometric normal to the plane
         )
+
+    def _calculate_horizontal_component(self, direction_arr: np.ndarray) -> np.ndarray:
+        """
+        Extract horizontal component of direction vector
+
+        Args:
+            direction_arr: Direction vector
+
+        Returns:
+            Normalized horizontal component (vertical removed)
+        """
+        direction_horizontal = CoordinateSystem.remove_vertical_component(direction_arr)
+        direction_horizontal_mag = np.linalg.norm(direction_horizontal)
+
+        if direction_horizontal_mag > MathConstants.EPSILON:
+            return direction_horizontal / direction_horizontal_mag
+        
+        # Viewing straight up/down, use default forward direction
+        return CoordinateSystem.FORWARD.copy()
 
     def project_point(self, point: Point3D, plane: ProjectionPlane) -> ProjectedPoint:
         """

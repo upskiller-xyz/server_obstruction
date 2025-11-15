@@ -94,16 +94,20 @@ class HorizontalRoofBuilder(IMeshBuilder):
 class ScenarioConfiguration:
     """Configuration for a test scenario"""
 
-    def __init__(self, window_center: List[float], window_angles: List[float]):
+    def __init__(self, window_center: List[float], direction_angle: float):
         """
         Initialize scenario configuration
 
         Args:
             window_center: [x, y, z] position of window
-            window_angles: [rad_x, rad_y] viewing angles
+            direction_angle: Horizontal rotation angle in radians (0 to 2π)
+                - 0: Points in +X direction
+                - π/2: Points in +Z direction
+                - π: Points in -X direction
+                - 3π/2: Points in -Z direction
         """
         self.window_center = window_center
-        self.window_angles = window_angles
+        self.direction_angle = direction_angle
         self.meshes: List[List[List[float]]] = []
 
     def add_mesh(self, builder: IMeshBuilder) -> 'ScenarioConfiguration':
@@ -132,8 +136,7 @@ class ScenarioConfiguration:
             "x": self.window_center[0],
             "y": self.window_center[1],
             "z": self.window_center[2],
-            "rad_x": self.window_angles[0],
-            "rad_y": self.window_angles[1],
+            "direction_angle": self.direction_angle,
             "mesh": self.get_combined_mesh()
         }
 
@@ -160,7 +163,7 @@ class StandardScenarios:
         """
         scenario = ScenarioConfiguration(
             window_center=[0.0, window_height, 0.0],
-            window_angles=[0.03, 0.0]
+            direction_angle=0.0  # Facing +X direction
         )
 
         wall_builder = VerticalWallBuilder(
@@ -192,7 +195,7 @@ class StandardScenarios:
         """
         scenario = ScenarioConfiguration(
             window_center=[0.0, window_height, 0.0],
-            window_angles=[0.0, 0.0]
+            direction_angle=0.0  # Facing +X direction
         )
 
         roof_builder = HorizontalRoofBuilder(
@@ -217,7 +220,7 @@ class StandardScenarios:
         """
         scenario = ScenarioConfiguration(
             window_center=[0.0, window_height, 0.0],
-            window_angles=[0.03, 0.0]
+            direction_angle=0.0  # Facing +X direction
         )
 
         # Add vertical wall

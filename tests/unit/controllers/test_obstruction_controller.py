@@ -1,13 +1,13 @@
 import pytest
 import numpy as np
 from unittest.mock import Mock
-from src.server.controllers.raytracing_controller import RaytraceController
+from src.server.controllers.obstruction_controller import ObstructionController
 from src.components.geometry import Point3D
-from src.components.raytracing_models import RaytraceResult
+from src.components.obstruction_models import ObstructionResult
 
 
-class TestRaytraceController:
-    """Test cases for RaytraceController class"""
+class TestObstructionController:
+    """Test cases for ObstructionController class"""
 
     def setup_method(self):
         """Setup test fixtures"""
@@ -18,7 +18,7 @@ class TestRaytraceController:
         self.mock_logger.error = Mock()
 
         self.mock_service = Mock()
-        self.controller = RaytraceController(
+        self.controller = ObstructionController(
             raytrace_service=self.mock_service,
             logger=self.mock_logger
         )
@@ -43,7 +43,7 @@ class TestRaytraceController:
             ]
         }
 
-        mock_result = RaytraceResult(
+        mock_result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
             highest_point=Point3D(x=1.0, y=3.0, z=0.0),
@@ -264,7 +264,7 @@ class TestRaytraceController:
             "mesh": vertices
         }
 
-        mock_result = RaytraceResult(
+        mock_result = ObstructionResult(
             obstruction_angle_degrees=30.0,
             obstruction_angle_radians=np.pi/6,
             highest_point=Point3D(x=50.0, y=1.0, z=0.0),
@@ -292,7 +292,7 @@ class TestRaytraceController:
             ]
         }
 
-        mock_result = RaytraceResult(
+        mock_result = ObstructionResult(
             obstruction_angle_degrees=0.0,
             obstruction_angle_radians=0.0,
             highest_point=None,
@@ -315,7 +315,7 @@ class TestRaytraceController:
             "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
         }
 
-        mock_result = RaytraceResult(
+        mock_result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
             highest_point=Point3D(x=1.0, y=3.0, z=0.0),

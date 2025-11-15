@@ -1,20 +1,20 @@
 import pytest
 import numpy as np
 from src.components.geometry import Point3D, Vector3D
-from src.components.raytracing_models import ProjectedPoint
+from src.components.obstruction_models import ProjectedPoint
 from src.components.obstruction_calculator import (
-    MaxHeightObstructionCalculator,
+    HorizonObstructionCalculator,
     WorstCaseObstructionCalculator,
     ZenithAngleCalculator
 )
 
 
-class TestMaxHeightObstructionCalculator:
-    """Test cases for MaxHeightObstructionCalculator class"""
+class TestHorizonObstructionCalculator:
+    """Test cases for HorizonObstructionCalculator class"""
 
     def setup_method(self):
         """Setup test fixtures"""
-        self.calculator = MaxHeightObstructionCalculator()
+        self.calculator = HorizonObstructionCalculator()
 
     def test_empty_points_returns_zero(self):
         """Test that empty point list returns zero obstruction"""

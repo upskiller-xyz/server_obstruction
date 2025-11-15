@@ -57,9 +57,34 @@ class DirectionVectorCalculator:
     """Calculate direction vectors from rotation angles"""
 
     @staticmethod
+    def from_horizontal_angle(angle: float) -> np.ndarray:
+        """
+        Convert horizontal rotation angle to unit direction vector
+
+        Coordinate system: Y-axis points up, rotation in XZ plane
+        - angle=0: Points in +X direction
+        - angle=π/2: Points in +Z direction
+        - angle=π: Points in -X direction
+        - angle=3π/2: Points in -Z direction
+
+        Args:
+            angle: Horizontal rotation angle in radians (0 to 2π)
+
+        Returns:
+            Unit vector in horizontal plane [x, y, z] where y=0
+        """
+        return np.array([
+            np.cos(angle),
+            0.0,  # Horizontal plane only
+            np.sin(angle)
+        ])
+
+    @staticmethod
     def from_angles(rad_x: float, rad_y: float) -> np.ndarray:
         """
-        Convert rotation angles to unit direction vector
+        DEPRECATED: Use from_horizontal_angle instead
+
+        Convert rotation angles to unit direction vector (old two-angle system)
 
         Returns vector in calculation space (X, Y, Z) where Y is up
         """
@@ -205,7 +230,7 @@ class PlotElementRenderer:
         """Add viewing direction arrow (swap Y and Z for matplotlib)"""
         ax.quiver(window_center[0], window_center[2], window_center[1],
                   direction_vec[0]*length, direction_vec[2]*length, direction_vec[1]*length,
-                  color=Color.MAGENTA.value, lw=2, arrow_length_ratio=0.03,
+                  color=Color.BLUE.value, lw=2, arrow_length_ratio=0.03,
                   label=PlotLabel.VIEW_DIR.value)
 
     @staticmethod
@@ -717,3 +742,40 @@ class CombinedObstructionVisualizer:
 
         AxisConfigurator.setup(ax, max_range=max_range, title=title)
         ax.legend(fontsize=10, loc='upper right')
+
+
+class MeshExporter:
+    """Export mesh data to various file formats"""
+
+    @staticmethod
+    def to_obj(mesh_vertices: list, output_path: str, window_center: list = None) -> None:
+        """
+        Export mesh vertices to Wavefront OBJ file format
+
+        Args:
+            mesh_vertices: List of vertices forming triangles [[x1,y1,z1], [x2,y2,z2], [x3,y3,z3], ...]
+            output_path: Path to save the OBJ file
+            window_center: Optional window position to include as a comment
+        """
+        with open(output_path, 'w') as f:
+            # Write header
+            f.write("# Wavefront OBJ file\n")
+            f.write("# Generated from obstruction calculation mesh data\n")
+
+            if window_center:
+                f.write(f"# Window position: {window_center[0]}, {window_center[1]}, {window_center[2]}\n")
+
+            f.write(f"# Vertices: {len(mesh_vertices)}\n")
+            f.write(f"# Triangles: {len(mesh_vertices) // 3}\n\n")
+
+            # Write vertices
+            for vertex in mesh_vertices:
+                f.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")
+
+            f.write("\n")
+
+            # Write faces (groups of 3 vertices form triangles)
+            # OBJ uses 1-based indexing
+            for i in range(0, len(mesh_vertices), 3):
+                v1, v2, v3 = i + 1, i + 2, i + 3
+                f.write(f"f {v1} {v2} {v3}\n")
