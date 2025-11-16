@@ -206,26 +206,62 @@ class ZenithAngleCalculator(IObstructionCalculator):
         if not triangles:
             return ObstructionResult.no_obstruction(projected_point_count=len(projected_points))
 
-        # Get first (furthest) triangle's points
-        # The triangles are sorted by distance, so first is furthest
+        # Get all points from filtered triangles
         overhead_points = [point for triangle in triangles for point in triangle.points]
 
-        # Find furthest point (for logging and result)
-        furthest_overhead = overhead_points[0] if overhead_points else projected_points[0]
-        logger.info(f"Selected furthest point from first triangle: ({furthest_overhead.original.x:.1f}, {furthest_overhead.original.y:.1f}, {furthest_overhead.original.z:.1f})")
-        lowest_3d = furthest_overhead.original
+        # Step 1: Find the closest mesh on vertical (Z) axis
+        min_vertical_distance = float('inf')
+        for point in overhead_points:
+            point_3d = point.original
+            vert_dist = point_3d.get_vertical() - window_center.get_vertical()
+            if vert_dist > 0 and vert_dist < min_vertical_distance:
+                min_vertical_distance = vert_dist
 
-        # Calculate vertical distance (positive because point is above)
-        vertical_distance = lowest_3d.get_vertical() - window_center.get_vertical()
-
-        # Must be above window
-        if vertical_distance <= 0:
+        if min_vertical_distance == float('inf'):
             return ObstructionResult.no_obstruction(
-                highest_point=lowest_3d,
                 projected_point_count=len(projected_points)
             )
 
-        # Calculate horizontal distance using HorizontalDistanceCalculator
+        # Step 2: Within the closest mesh, find the furthest point along view direction
+        # Use a small tolerance for "same vertical distance"
+        vertical_tolerance = 0.01
+        max_angle = 0.0
+        furthest_overhead = None
+
+        for point in overhead_points:
+            point_3d = point.original
+
+            # Calculate vertical distance
+            vert_dist = point_3d.get_vertical() - window_center.get_vertical()
+
+            # Only consider points at the closest vertical distance
+            if abs(vert_dist - min_vertical_distance) > vertical_tolerance:
+                continue
+
+            # Calculate horizontal distance
+            horiz_dist = HorizontalDistanceCalculator.calculate(
+                point_3d, window_center, window_normal
+            )
+
+            # Calculate zenith angle for this point
+            angle = AngleCalculator.calculate_zenith_angle(vert_dist, horiz_dist)
+
+            # Keep point with maximum angle (furthest horizontally)
+            if angle > max_angle:
+                max_angle = angle
+                furthest_overhead = point
+
+        # If no valid point found
+        if furthest_overhead is None:
+            return ObstructionResult.no_obstruction(
+                projected_point_count=len(projected_points)
+            )
+
+        lowest_3d = furthest_overhead.original
+        logger.info(f"Selected point from closest mesh (Z={lowest_3d.z:.1f}) with maximum angle: ({lowest_3d.x:.1f}, {lowest_3d.y:.1f}, {lowest_3d.z:.1f})")
+
+        # Calculate final distances for the selected point
+        vertical_distance = lowest_3d.get_vertical() - window_center.get_vertical()
         horizontal_distance = HorizontalDistanceCalculator.calculate(
             lowest_3d, window_center, window_normal
         )

@@ -267,6 +267,10 @@ class UpperForwardQuarterFilter(ITriangleFilter):
                     continue
 
                 # Check if in front of window (positive distance along view direction)
+                # IMPORTANT: This filters out obstructions directly above (perpendicular to view)
+                # because dot product of perpendicular vectors = 0, and we require > 0
+                # Example: Window facing East [1,0,0], point directly above [0,0,height]
+                #          dot([0,0,height], [1,0,0]) = 0, which fails > 0 test
                 point_to_window = point_arr - window_arr
                 dist_along_view = float(np.dot(point_to_window, normal_arr))
 
@@ -493,7 +497,7 @@ class ZenithTriangleProcessor(TriangleProcessor):
     - Filters triangles intersecting the projection plane
     - Filters to points above window
     - Filters horizontal surfaces
-    - Sorts from closest to furthest
+    - Sorts from furthest to closest (to find maximum zenith angle)
     """
 
     def __init__(
@@ -539,10 +543,11 @@ class ZenithTriangleProcessor(TriangleProcessor):
         )
         self.add_filter(horizontal_filter)
 
-        # Set distance sorter (closest to furthest)
+        # Set distance sorter (furthest to closest)
+        # For zenith angle, we want the furthest point to get the largest angle
         distance_sorter = DistanceSorter(
             window_center=window_center,
             window_normal=window_normal,
-            ascending=True
+            ascending=False  # Furthest first for maximum zenith angle
         )
         self.set_sorter(distance_sorter)

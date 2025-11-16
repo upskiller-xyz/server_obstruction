@@ -3,6 +3,8 @@ from src.server.interfaces import ILogger
 from src.server.services.obstruction_service import ObstructionService
 from src.components.obstruction_models import ObstructionRequest, ObstructionResult
 from src.components.constants import ResponseStatus, ResponseField, RequestField, ControllerStatus
+from src.components.validators import GeometricValidator, PointOnTriangleError
+from src.components.geometry import Point3D, Mesh
 
 
 class ObstructionController:
@@ -33,14 +35,13 @@ class ObstructionController:
         Args:
             request_data: Dictionary containing:
                 - x, y, z: window center coordinates
-                - direction_angle: horizontal rotation angle in radians (new format)
-                  OR rad_x, rad_y: window normal angles (old format)
+                - direction_angle: horizontal rotation angle in radians
                 - mesh: list of vertex coordinates
 
         Returns:
             Dictionary with calculation results or error
 
-        Example request (new format):
+        Example request:
         {
             "x": 0.0,
             "y": 1.5,
@@ -70,6 +71,24 @@ class ObstructionController:
                 ResponseField.DATA.value: result.to_dict()
             }
 
+        except PointOnTriangleError as e:
+            self._logger.warning(f"Window center lies on mesh: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: str(e),
+                ResponseField.WINDOW_CENTER.value: {
+                    RequestField.X.value: e.point.x,
+                    RequestField.Y.value: e.point.y,
+                    RequestField.Z.value: e.point.z
+                },
+                ResponseField.TRIANGLE.value: {
+                    ResponseField.VERTICES.value: [
+                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
+                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
+                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
+                    ]
+                }
+            }
         except ValueError as e:
             self._logger.warning(f"Invalid request data: {str(e)}")
             return {
@@ -87,8 +106,6 @@ class ObstructionController:
         """
         Validate request data
 
-        Supports both new (direction_angle) and old (rad_x, rad_y) formats
-
         Args:
             data: Request data dictionary
 
@@ -96,21 +113,17 @@ class ObstructionController:
             ValueError: If required fields are missing or invalid
         """
         # Check required position fields
-        required_fields = [RequestField.X.value, RequestField.Y.value, RequestField.Z.value, RequestField.MESH.value]
+        required_fields = [
+            RequestField.X.value,
+            RequestField.Y.value,
+            RequestField.Z.value,
+            RequestField.DIRECTION_ANGLE.value,
+            RequestField.MESH.value
+        ]
         missing_fields = [field for field in required_fields if field not in data]
 
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-
-        # Check for direction angle (new format) OR rad_x/rad_y (old format)
-        has_new_format = RequestField.DIRECTION_ANGLE.value in data
-        has_old_format = RequestField.RAD_X.value in data and RequestField.RAD_Y.value in data
-
-        if not has_new_format and not has_old_format:
-            raise ValueError(
-                f"Must provide either '{RequestField.DIRECTION_ANGLE.value}' (new format) "
-                f"or both '{RequestField.RAD_X.value}' and '{RequestField.RAD_Y.value}' (old format)"
-            )
 
         # Validate mesh format
         mesh = data[RequestField.MESH.value]
@@ -120,10 +133,16 @@ class ObstructionController:
         if len(mesh) == 0:
             raise ValueError("Mesh cannot be empty")
 
+        # Handle mesh vertices not divisible by 3
         if len(mesh) % 3 != 0:
-            raise ValueError(
-                f"Mesh must contain vertices in groups of 3 (triangles). "
-                f"Got {len(mesh)} vertices."
+            extra_vertices = len(mesh) % 3
+            original_count = len(mesh)
+            # Trim extra vertices (1-2 vertices)
+            data[RequestField.MESH.value] = mesh[:-extra_vertices]
+            self._logger.warning(
+                f"Mesh had {original_count} vertices (not divisible by 3). "
+                f"Trimmed {extra_vertices} extra vertex/vertices. "
+                f"Proceeding with {len(data[RequestField.MESH.value])} vertices."
             )
 
         # Validate each vertex
@@ -134,11 +153,12 @@ class ObstructionController:
                 )
 
         # Validate numeric fields
-        numeric_fields = [RequestField.X.value, RequestField.Y.value, RequestField.Z.value]
-        if has_new_format:
-            numeric_fields.append(RequestField.DIRECTION_ANGLE.value)
-        if has_old_format:
-            numeric_fields.extend([RequestField.RAD_X.value, RequestField.RAD_Y.value])
+        numeric_fields = [
+            RequestField.X.value,
+            RequestField.Y.value,
+            RequestField.Z.value,
+            RequestField.DIRECTION_ANGLE.value
+        ]
 
         for field in numeric_fields:
             if field in data:  # Only validate if present
@@ -147,6 +167,35 @@ class ObstructionController:
                 except (TypeError, ValueError):
                     raise ValueError(f"Field '{field}' must be a number")
 
+        # Validate window center doesn't lie on mesh
+        self._validate_window_not_on_mesh(data)
+
+    def _validate_window_not_on_mesh(self, data: Dict[str, Any]) -> None:
+        """
+        Validate that window center point doesn't lie on any mesh triangle
+
+        Args:
+            data: Request data dictionary
+
+        Raises:
+            PointOnTriangleError: If window center lies on a mesh triangle
+        """
+        # Extract window center
+        window_center = Point3D(
+            x=float(data[RequestField.X.value]),
+            y=float(data[RequestField.Y.value]),
+            z=float(data[RequestField.Z.value])
+        )
+
+        # Create mesh from vertices
+        mesh = Mesh.from_vertices(data[RequestField.MESH.value])
+
+        # Validate window center doesn't lie on any triangle
+        GeometricValidator.validate_point_not_on_mesh(
+            window_center,
+            mesh.triangles
+        )
+
     def calculate_zenith_angle(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handle zenith angle calculation request
@@ -154,7 +203,7 @@ class ObstructionController:
         Args:
             request_data: Dictionary containing:
                 - x, y, z: window center coordinates
-                - rad_x, rad_y: window normal angles
+                - direction_angle: horizontal rotation angle in radians
                 - mesh: list of vertex coordinates
 
         Returns:
@@ -176,6 +225,24 @@ class ObstructionController:
                 ResponseField.DATA.value: result.to_dict()
             }
 
+        except PointOnTriangleError as e:
+            self._logger.warning(f"Window center lies on mesh: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: str(e),
+                ResponseField.WINDOW_CENTER.value: {
+                    RequestField.X.value: e.point.x,
+                    RequestField.Y.value: e.point.y,
+                    RequestField.Z.value: e.point.z
+                },
+                ResponseField.TRIANGLE.value: {
+                    ResponseField.VERTICES.value: [
+                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
+                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
+                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
+                    ]
+                }
+            }
         except ValueError as e:
             self._logger.warning(f"Invalid request data: {str(e)}")
             return {
@@ -196,7 +263,7 @@ class ObstructionController:
         Args:
             request_data: Dictionary containing:
                 - x, y, z: window center coordinates
-                - rad_x, rad_y: window normal angles
+                - direction_angle: horizontal rotation angle in radians
                 - mesh: list of vertex coordinates
 
         Returns:
@@ -221,6 +288,24 @@ class ObstructionController:
                 }
             }
 
+        except PointOnTriangleError as e:
+            self._logger.warning(f"Window center lies on mesh: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: str(e),
+                ResponseField.WINDOW_CENTER.value: {
+                    RequestField.X.value: e.point.x,
+                    RequestField.Y.value: e.point.y,
+                    RequestField.Z.value: e.point.z
+                },
+                ResponseField.TRIANGLE.value: {
+                    ResponseField.VERTICES.value: [
+                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
+                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
+                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
+                    ]
+                }
+            }
         except ValueError as e:
             self._logger.warning(f"Invalid request data: {str(e)}")
             return {

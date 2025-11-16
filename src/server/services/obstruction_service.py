@@ -1,4 +1,5 @@
 from typing import Dict, Any
+import time
 from src.server.interfaces import ILogger
 from src.components.obstruction_models import ObstructionRequest, ObstructionResult
 from src.components.projection import IProjectionCalculator, OrthographicProjectionCalculator
@@ -50,32 +51,42 @@ class ObstructionService:
         Raises:
             ValueError: If request data is invalid
         """
-        self._logger.debug(
-            f"Starting raytrace calculation for window at "
+        start_time = time.time()
+        self._logger.info(
+            f"[TIMING] Starting horizon obstruction calculation for window at "
             f"({request.window.center.x}, {request.window.center.y}, {request.window.center.z})"
         )
 
         try:
             # Step 1: Create projection plane
+            step_start = time.time()
             plane = self._projection_calculator.create_projection_plane(request.window)
-            self._logger.debug("Projection plane created")
+            plane_time = time.time() - step_start
+            self._logger.info(f"[TIMING] Projection plane created in {plane_time*1000:.2f}ms")
 
             # Step 2: Project mesh onto plane
+            step_start = time.time()
             projected_points = self._projection_calculator.project_mesh(
                 request.mesh,
                 plane
             )
-            self._logger.debug(f"Projected {len(projected_points)} points onto plane")
+            projection_time = time.time() - step_start
+            self._logger.info(f"[TIMING] Projected {len(projected_points)} points in {projection_time*1000:.2f}ms")
 
             # Step 3: Calculate obstruction angle
+            step_start = time.time()
             result = self._obstruction_calculator.calculate_obstruction_angle(
                 projected_points,
                 request.window.center,
                 request.window.normal
             )
+            calc_time = time.time() - step_start
+            self._logger.info(f"[TIMING] Obstruction angle calculated in {calc_time*1000:.2f}ms")
 
+            total_time = time.time() - start_time
             self._logger.info(
-                f"Obstruction angle calculated: {result.obstruction_angle_degrees:.2f}°"
+                f"[TIMING] Horizon obstruction complete: {result.obstruction_angle_degrees:.2f}° "
+                f"(total: {total_time*1000:.2f}ms)"
             )
 
             return result
@@ -100,32 +111,42 @@ class ObstructionService:
         Raises:
             ValueError: If request data is invalid
         """
-        self._logger.debug(
-            f"Starting zenith angle calculation for window at "
+        start_time = time.time()
+        self._logger.info(
+            f"[TIMING] Starting zenith angle calculation for window at "
             f"({request.window.center.x}, {request.window.center.y}, {request.window.center.z})"
         )
 
         try:
             # Step 1: Create projection plane
+            step_start = time.time()
             plane = self._projection_calculator.create_projection_plane(request.window)
-            self._logger.debug("Projection plane created")
+            plane_time = time.time() - step_start
+            self._logger.info(f"[TIMING] Projection plane created in {plane_time*1000:.2f}ms")
 
             # Step 2: Project mesh onto plane
+            step_start = time.time()
             projected_points = self._projection_calculator.project_mesh(
                 request.mesh,
                 plane
             )
-            self._logger.debug(f"Projected {len(projected_points)} points onto plane")
+            projection_time = time.time() - step_start
+            self._logger.info(f"[TIMING] Projected {len(projected_points)} points in {projection_time*1000:.2f}ms")
 
             # Step 3: Calculate zenith angle
+            step_start = time.time()
             result = self._zenith_calculator.calculate_obstruction_angle(
                 projected_points,
                 request.window.center,
                 request.window.normal
             )
+            calc_time = time.time() - step_start
+            self._logger.info(f"[TIMING] Zenith angle calculated in {calc_time*1000:.2f}ms")
 
+            total_time = time.time() - start_time
             self._logger.info(
-                f"Zenith angle calculated: {result.obstruction_angle_degrees:.2f}°"
+                f"[TIMING] Zenith angle complete: {result.obstruction_angle_degrees:.2f}° "
+                f"(total: {total_time*1000:.2f}ms)"
             )
 
             return result

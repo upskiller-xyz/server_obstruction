@@ -1,0 +1,211 @@
+"""Validators for geometric constraints and data integrity"""
+from typing import Tuple, Optional
+import numpy as np
+from src.components.geometry import Point3D, Triangle
+from src.components.constants import MathConstants
+
+
+class PointOnTriangleError(ValueError):
+    """Raised when a point lies on a triangle where it shouldn't"""
+
+    def __init__(self, point: Point3D, triangle: Triangle):
+        """
+        Initialize error with point and triangle information
+
+        Args:
+            point: The point that lies on the triangle
+            triangle: The triangle containing the point
+        """
+        self.point = point
+        self.triangle = triangle
+        super().__init__(
+            f"Point ({point.x:.3f}, {point.y:.3f}, {point.z:.3f}) lies on mesh triangle "
+            f"with vertices: "
+            f"({triangle.v1.x:.3f}, {triangle.v1.y:.3f}, {triangle.v1.z:.3f}), "
+            f"({triangle.v2.x:.3f}, {triangle.v2.y:.3f}, {triangle.v2.z:.3f}), "
+            f"({triangle.v3.x:.3f}, {triangle.v3.y:.3f}, {triangle.v3.z:.3f})"
+        )
+
+
+class GeometricValidator:
+    """
+    Validates geometric constraints for obstruction calculations
+
+    Responsibilities (Single Responsibility Principle):
+    - Check if points lie on triangles
+    - Validate geometric relationships between elements
+    """
+
+    @staticmethod
+    def _calculate_barycentric_coordinates(
+        point: np.ndarray,
+        v1: np.ndarray,
+        v2: np.ndarray,
+        v3: np.ndarray
+    ) -> Tuple[float, float, float]:
+        """
+        Calculate barycentric coordinates of point with respect to triangle
+
+        Barycentric coordinates (u, v, w) represent point as:
+        P = u*V1 + v*V2 + w*V3 where u + v + w = 1
+
+        Args:
+            point: Point to check
+            v1, v2, v3: Triangle vertices
+
+        Returns:
+            Tuple of (u, v, w) barycentric coordinates
+        """
+        # Vectors from v1 to other vertices
+        e1 = v2 - v1
+        e2 = v3 - v1
+
+        # Vector from v1 to point
+        vp = point - v1
+
+        # Calculate dot products
+        d00 = np.dot(e1, e1)
+        d01 = np.dot(e1, e2)
+        d11 = np.dot(e2, e2)
+        d20 = np.dot(vp, e1)
+        d21 = np.dot(vp, e2)
+
+        # Calculate barycentric coordinates
+        denom = d00 * d11 - d01 * d01
+
+        if abs(denom) < MathConstants.EPSILON:
+            # Degenerate triangle
+            return (0.0, 0.0, 0.0)
+
+        v = (d11 * d20 - d01 * d21) / denom
+        w = (d00 * d21 - d01 * d20) / denom
+        u = 1.0 - v - w
+
+        return (u, v, w)
+
+    @staticmethod
+    def _point_distance_to_plane(
+        point: np.ndarray,
+        v1: np.ndarray,
+        v2: np.ndarray,
+        v3: np.ndarray
+    ) -> float:
+        """
+        Calculate perpendicular distance from point to triangle plane
+
+        Args:
+            point: Point to check
+            v1, v2, v3: Triangle vertices
+
+        Returns:
+            Absolute distance from point to plane
+        """
+        # Calculate triangle normal
+        e1 = v2 - v1
+        e2 = v3 - v1
+        normal = np.cross(e1, e2)
+
+        normal_mag = np.linalg.norm(normal)
+        if normal_mag < MathConstants.EPSILON:
+            # Degenerate triangle
+            return float('inf')
+
+        normal = normal / normal_mag
+
+        # Calculate distance to plane
+        vp = point - v1
+        distance = abs(np.dot(vp, normal))
+
+        return float(distance)
+
+    @staticmethod
+    def is_point_on_triangle(
+        point: Point3D,
+        triangle: Triangle,
+        tolerance: float = None
+    ) -> bool:
+        """
+        Check if a point lies on a triangle (within tolerance)
+
+        A point is on a triangle if:
+        1. It lies on the triangle's plane (distance < tolerance)
+        2. It lies within the triangle's boundaries (barycentric coordinates all >= 0)
+
+        Args:
+            point: Point to check
+            triangle: Triangle to check against
+            tolerance: Distance tolerance (default: MathConstants.EPSILON)
+
+        Returns:
+            True if point lies on triangle, False otherwise
+        """
+        if tolerance is None:
+            tolerance = MathConstants.EPSILON
+
+        # Convert to numpy arrays
+        p = point.to_array()
+        v1 = triangle.v1.to_array()
+        v2 = triangle.v2.to_array()
+        v3 = triangle.v3.to_array()
+
+        # Check if point is on triangle plane
+        distance = GeometricValidator._point_distance_to_plane(p, v1, v2, v3)
+        if distance > tolerance:
+            return False
+
+        # Check if point is within triangle boundaries using barycentric coordinates
+        u, v, w = GeometricValidator._calculate_barycentric_coordinates(p, v1, v2, v3)
+
+        # Point is inside triangle if all barycentric coordinates are non-negative
+        # Allow small negative values due to floating point errors
+        epsilon = -MathConstants.EPSILON
+        if u >= epsilon and v >= epsilon and w >= epsilon:
+            return True
+
+        return False
+
+    @staticmethod
+    def find_triangle_containing_point(
+        point: Point3D,
+        triangles: Tuple[Triangle, ...],
+        tolerance: float = None
+    ) -> Optional[Triangle]:
+        """
+        Find the first triangle that contains the given point
+
+        Args:
+            point: Point to check
+            triangles: Tuple of triangles to search
+            tolerance: Distance tolerance (default: MathConstants.EPSILON)
+
+        Returns:
+            First triangle containing the point, or None if not found
+        """
+        for triangle in triangles:
+            if GeometricValidator.is_point_on_triangle(point, triangle, tolerance):
+                return triangle
+        return None
+
+    @staticmethod
+    def validate_point_not_on_mesh(
+        point: Point3D,
+        triangles: Tuple[Triangle, ...],
+        tolerance: float = None
+    ) -> None:
+        """
+        Validate that a point does not lie on any triangle in the mesh
+
+        Args:
+            point: Point to validate (e.g., window center)
+            triangles: Mesh triangles
+            tolerance: Distance tolerance (default: MathConstants.EPSILON)
+
+        Raises:
+            PointOnTriangleError: If point lies on any triangle
+        """
+        triangle = GeometricValidator.find_triangle_containing_point(
+            point, triangles, tolerance
+        )
+
+        if triangle is not None:
+            raise PointOnTriangleError(point, triangle)

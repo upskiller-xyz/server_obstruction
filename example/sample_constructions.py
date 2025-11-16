@@ -1,4 +1,10 @@
-"""Sample construction builders for demo scenarios following OOP principles"""
+"""Sample construction builders for demo scenarios following OOP principles
+
+COORDINATE SYSTEM: Z-up (X=East, Y=North, Z=Up)
+- X-axis: East/West (horizontal)
+- Y-axis: North/South (horizontal)
+- Z-axis: Up/Down (vertical)
+"""
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 from enum import Enum
@@ -28,29 +34,32 @@ class VerticalWallBuilder(IMeshBuilder):
         Initialize vertical wall builder
 
         Args:
-            distance: Distance from origin along X-axis
-            height: Height of wall (Y-axis)
-            width: Width of wall (Z-axis, centered at 0)
+            distance: Distance from origin along X-axis (East)
+            height: Height of wall (Z-axis, vertical)
+            width: Width of wall (Y-axis, North-South, centered at 0)
         """
         self.distance = distance
         self.height = height
         self.width = width
 
     def build(self) -> List[List[float]]:
-        """Build vertical wall as two triangles forming a rectangle"""
+        """Build vertical wall as two triangles forming a rectangle
+
+        Coordinates: [x, y, z] where z is height
+        """
         half_width = self.width / 2
 
         # Two triangles forming vertical rectangle facing -X direction
         return [
             # Triangle 1: bottom-left, top-left, bottom-right
-            [self.distance, 0.0, -half_width],
-            [self.distance, self.height, -half_width],
-            [self.distance, 0.0, half_width],
+            [self.distance, -half_width, 0.0],
+            [self.distance, -half_width, self.height],
+            [self.distance, half_width, 0.0],
 
             # Triangle 2: bottom-right, top-left, top-right
-            [self.distance, 0.0, half_width],
-            [self.distance, self.height, -half_width],
-            [self.distance, self.height, half_width]
+            [self.distance, half_width, 0.0],
+            [self.distance, -half_width, self.height],
+            [self.distance, half_width, self.height]
         ]
 
 
@@ -63,10 +72,10 @@ class HorizontalRoofBuilder(IMeshBuilder):
         Initialize horizontal roof builder
 
         Args:
-            start_distance: Start distance along X-axis
-            end_distance: End distance along X-axis
-            height: Height of roof (Y-axis)
-            width: Width of roof (Z-axis, centered at 0)
+            start_distance: Start distance along X-axis (East)
+            end_distance: End distance along X-axis (East)
+            height: Height of roof (Z-axis, vertical)
+            width: Width of roof (Y-axis, North-South, centered at 0)
         """
         self.start_distance = start_distance
         self.end_distance = end_distance
@@ -74,20 +83,24 @@ class HorizontalRoofBuilder(IMeshBuilder):
         self.width = width
 
     def build(self) -> List[List[float]]:
-        """Build horizontal roof as two triangles forming a rectangle"""
+        """Build horizontal roof as two triangles forming a rectangle
+
+        Coordinates: [x, y, z] where z is height
+        Normal points up (+Z direction)
+        """
         half_width = self.width / 2
 
         # Two triangles forming horizontal rectangle (normal pointing up)
         return [
             # Triangle 1
-            [self.start_distance, self.height, -half_width],
-            [self.start_distance, self.height, half_width],
-            [self.end_distance, self.height, -half_width],
+            [self.start_distance, -half_width, self.height],
+            [self.start_distance, half_width, self.height],
+            [self.end_distance, -half_width, self.height],
 
             # Triangle 2
-            [self.start_distance, self.height, half_width],
-            [self.end_distance, self.height, half_width],
-            [self.end_distance, self.height, -half_width]
+            [self.start_distance, half_width, self.height],
+            [self.end_distance, half_width, self.height],
+            [self.end_distance, -half_width, self.height]
         ]
 
 
@@ -162,8 +175,8 @@ class StandardScenarios:
             Configured scenario
         """
         scenario = ScenarioConfiguration(
-            window_center=[0.0, window_height, 0.0],
-            direction_angle=0.0  # Facing +X direction
+            window_center=[0.0, 0.0, window_height],  # Z-up: [x, y, z]
+            direction_angle=0.0  # Facing +X direction (East)
         )
 
         wall_builder = VerticalWallBuilder(
@@ -184,18 +197,23 @@ class StandardScenarios:
         Create scenario with horizontal overhead obstruction
 
         Args:
-            window_height: Height of window center
-            roof_start: Start distance of roof
-            roof_end: End distance of roof
-            roof_height: Height of roof
-            roof_width: Width of roof
+            window_height: Height of window center (Z coordinate)
+            roof_start: Start distance of roof along X-axis (use positive value for in front)
+            roof_end: End distance of roof along X-axis
+            roof_height: Height of roof (Z coordinate)
+            roof_width: Width of roof (Y-axis, North-South)
 
         Returns:
             Configured scenario
+
+        Note:
+            For the roof to be detected, it must be:
+            - Above the window (roof_height > window_height)
+            - In front of the window (roof_start > 0, roof_end > 0)
         """
         scenario = ScenarioConfiguration(
-            window_center=[0.0, window_height, 0.0],
-            direction_angle=0.0  # Facing +X direction
+            window_center=[0.0, 0.0, window_height],  # Z-up: [x, y, z]
+            direction_angle=0.0  # Facing +X direction (East)
         )
 
         roof_builder = HorizontalRoofBuilder(
@@ -213,14 +231,14 @@ class StandardScenarios:
         Create scenario with both vertical and horizontal obstructions
 
         Args:
-            window_height: Height of window center
+            window_height: Height of window center (Z coordinate)
 
         Returns:
             Configured scenario
         """
         scenario = ScenarioConfiguration(
-            window_center=[0.0, window_height, 0.0],
-            direction_angle=0.0  # Facing +X direction
+            window_center=[0.0, 0.0, window_height],  # Z-up: [x, y, z]
+            direction_angle=0.0  # Facing +X direction (East)
         )
 
         # Add vertical wall

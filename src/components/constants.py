@@ -34,10 +34,8 @@ class RequestField(Enum):
     Y = "y"
     Z = "z"
 
-    # Direction fields
-    DIRECTION_ANGLE = "direction_angle"  # New format
-    RAD_X = "rad_x"  # Old format
-    RAD_Y = "rad_y"  # Old format
+    # Direction field
+    DIRECTION_ANGLE = "direction_angle"
 
     # Mesh
     MESH = "mesh"
@@ -58,3 +56,8 @@ class ResponseField(Enum):
     OBSTRUCTION_ANGLE_RADIANS = "obstruction_angle_radians"
     HIGHEST_POINT = "highest_point"
     PROJECTED_POINT_COUNT = "projected_point_count"
+
+    # Validation error fields
+    WINDOW_CENTER = "window_center"
+    TRIANGLE = "triangle"
+    VERTICES = "vertices"

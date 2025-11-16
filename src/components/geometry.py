@@ -192,23 +192,6 @@ class Vector3D:
         z = 0.0  # Horizontal plane only
         return cls(x=float(x), y=float(y), z=float(z))
 
-    @classmethod
-    def from_angles(cls, rad_x: float, rad_y: float) -> 'Vector3D':
-        """
-        DEPRECATED: Use from_horizontal_angle instead
-
-        Create vector from rotation angles (old two-angle system)
-
-        Args:
-            rad_x: Rotation around X axis (pitch)
-            rad_y: Rotation around Y axis (yaw)
-        """
-        # Convert spherical coordinates to Cartesian
-        x = np.cos(rad_y) * np.cos(rad_x)
-        y = np.sin(rad_x)
-        z = np.sin(rad_y) * np.cos(rad_x)
-        return cls(x=float(x), y=float(y), z=float(z))
-
 
 class AngleCalculator:
     """

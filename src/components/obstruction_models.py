@@ -16,14 +16,10 @@ class Window:
         """
         Create Window from dictionary
 
-        Supports both old format (rad_x, rad_y) and new format (direction_angle)
-
         Args:
             data: Dict with keys:
                 - x, y, z: window center coordinates
                 - direction_angle: horizontal rotation angle in radians (0 to 2π)
-                  OR (deprecated)
-                - rad_x, rad_y: old two-angle system
         """
         center = Point3D(
             x=float(data[RequestField.X.value]),
@@ -31,17 +27,7 @@ class Window:
             z=float(data[RequestField.Z.value])
         )
 
-        # Check for new single-angle format first
-        if RequestField.DIRECTION_ANGLE.value in data:
-            normal = Vector3D.from_horizontal_angle(float(data[RequestField.DIRECTION_ANGLE.value]))
-        # Fallback to old two-angle format for backward compatibility
-        elif RequestField.RAD_X.value in data and RequestField.RAD_Y.value in data:
-            normal = Vector3D.from_angles(
-                rad_x=float(data[RequestField.RAD_X.value]),
-                rad_y=float(data[RequestField.RAD_Y.value])
-            ).normalize()
-        else:
-            raise ValueError(f"Must provide either '{RequestField.DIRECTION_ANGLE.value}' or both '{RequestField.RAD_X.value}' and '{RequestField.RAD_Y.value}'")
+        normal = Vector3D.from_horizontal_angle(float(data[RequestField.DIRECTION_ANGLE.value]))
 
         return cls(center=center, normal=normal)
 
@@ -115,7 +101,6 @@ class ObstructionRequest:
             data: Dict with keys:
                 - x, y, z: window center coordinates
                 - direction_angle: horizontal rotation angle in radians (0 to 2π)
-                  OR (deprecated) rad_x, rad_y: old two-angle system
                 - mesh: list of vertices (every 3 form a triangle)
         """
         window = Window.from_dict(data)
