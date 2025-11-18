@@ -62,8 +62,8 @@ class ObstructionController:
             # Parse request into domain model
             request = ObstructionRequest.from_dict(request_data)
 
-            # Delegate to service layer
-            result = self._raytrace_service.calculate_obstruction(request)
+            # Delegate to service layer (use EFFICIENT method with filters)
+            result = self._raytrace_service.calculate_obstruction_efficient(request)
 
             # Format response
             return {
@@ -314,6 +314,127 @@ class ObstructionController:
             }
         except Exception as e:
             self._logger.error(f"Both angles calculation failed: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
+            }
+
+    def calculate_all_directions(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle all-direction obstruction calculation request
+
+        Calculates obstruction angles in a semicircle from the window.
+        By default samples 64 directions from 17.5° to 162.5° relative to window normal.
+
+        Args:
+            request_data: Dictionary containing:
+                - x, y, z: window center coordinates
+                - mesh: list of vertex coordinates
+                - num_directions (optional): number of directions to sample (default 64)
+                - start_angle_degrees (optional): start angle relative to window normal (default 17.5°)
+                - end_angle_degrees (optional): end angle relative to window normal (default 162.5°)
+
+        Returns:
+            Dictionary with obstruction results for all directions or error
+        """
+        try:
+            # Validate required fields (direction_angle not required for this endpoint)
+            required_fields = [
+                RequestField.X.value,
+                RequestField.Y.value,
+                RequestField.Z.value,
+                RequestField.MESH.value
+            ]
+            missing_fields = [field for field in required_fields if field not in request_data]
+
+            if missing_fields:
+                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+
+            # Validate mesh format
+            mesh = request_data[RequestField.MESH.value]
+            if not isinstance(mesh, list):
+                raise ValueError("Mesh must be a list of vertices")
+
+            if len(mesh) == 0:
+                raise ValueError("Mesh cannot be empty")
+
+            # Handle mesh vertices not divisible by 3
+            if len(mesh) % 3 != 0:
+                extra_vertices = len(mesh) % 3
+                original_count = len(mesh)
+                request_data[RequestField.MESH.value] = mesh[:-extra_vertices]
+                self._logger.warning(
+                    f"Mesh had {original_count} vertices (not divisible by 3). "
+                    f"Trimmed {extra_vertices} extra vertex/vertices. "
+                    f"Proceeding with {len(request_data[RequestField.MESH.value])} vertices."
+                )
+
+            # Validate window center doesn't lie on mesh
+            self._validate_window_not_on_mesh(request_data)
+
+            # Set default direction_angle to 0 for parsing
+            if RequestField.DIRECTION_ANGLE.value not in request_data:
+                request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
+
+            # Parse request into domain model
+            request = ObstructionRequest.from_dict(request_data)
+
+            # Get optional parameters
+            num_directions = request_data.get("num_directions", None)
+            start_angle_degrees = request_data.get("start_angle_degrees", None)
+            end_angle_degrees = request_data.get("end_angle_degrees", None)
+
+            # Validate num_directions if provided
+            if num_directions is not None:
+                if not isinstance(num_directions, int) or num_directions < 1:
+                    raise ValueError("num_directions must be a positive integer")
+
+            # Validate angle ranges if provided
+            if start_angle_degrees is not None:
+                if not isinstance(start_angle_degrees, (int, float)):
+                    raise ValueError("start_angle_degrees must be a number")
+
+            if end_angle_degrees is not None:
+                if not isinstance(end_angle_degrees, (int, float)):
+                    raise ValueError("end_angle_degrees must be a number")
+
+            # Delegate to service layer
+            results = self._raytrace_service.calculate_all_directions(
+                request, num_directions, start_angle_degrees, end_angle_degrees
+            )
+
+            # Format response
+            return {
+                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
+                ResponseField.DATA.value: results
+            }
+
+        except PointOnTriangleError as e:
+            self._logger.warning(f"Window center lies on mesh: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: str(e),
+                ResponseField.WINDOW_CENTER.value: {
+                    RequestField.X.value: e.point.x,
+                    RequestField.Y.value: e.point.y,
+                    RequestField.Z.value: e.point.z
+                },
+                ResponseField.TRIANGLE.value: {
+                    ResponseField.VERTICES.value: [
+                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
+                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
+                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
+                    ]
+                }
+            }
+        except ValueError as e:
+            self._logger.warning(f"Invalid request data: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
+            }
+        except Exception as e:
+            self._logger.error(f"All-direction obstruction calculation failed: {str(e)}")
             return {
                 ResponseField.STATUS.value: ResponseStatus.ERROR.value,
                 ResponseField.ERROR.value: f"Calculation failed: {str(e)}"

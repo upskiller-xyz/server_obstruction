@@ -1,0 +1,297 @@
+<mxfile host="app.diagrams.net" modified="2024-11-16T00:00:00.000Z" agent="Manual" version="22.0.0">
+  <diagram name="Architecture" id="architecture">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Server Obstruction System - Component Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Layer Labels -->
+        <mxCell id="layer1-label" value="CONTROLLER LAYER" style="text;html=1;strokeColor=none;fillColor=#E1D5E7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="layer2-label" value="SERVICE LAYER" style="text;html=1;strokeColor=none;fillColor=#D5E8D4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="240" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="layer3-label" value="COMPONENT LAYER" style="text;html=1;strokeColor=none;fillColor=#DAE8FC;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="380" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- CONTROLLER LAYER -->
+        <mxCell id="controller1" value="&lt;b&gt;ObstructionController&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ calculate_obstruction()&lt;br&gt;+ calculate_zenith_angle()&lt;br&gt;+ calculate_both_angles()&lt;br&gt;- _validate_request()&lt;br&gt;- _validate_window_not_on_mesh()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="250" y="80" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="interface1" value="«interface»&lt;br&gt;&lt;b&gt;ILogger&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ debug()&lt;br&gt;+ info()&lt;br&gt;+ warning()&lt;br&gt;+ error()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4E6;strokeColor=#D6B656;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="80" width="180" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- SERVICE LAYER -->
+        <mxCell id="service1" value="&lt;b&gt;ObstructionService&lt;/b&gt;&lt;br&gt;&lt;br&gt;- _projection_calculator&lt;br&gt;- _obstruction_calculator&lt;br&gt;- _zenith_calculator&lt;br&gt;- _logger&lt;br&gt;&lt;br&gt;+ calculate_obstruction()&lt;br&gt;+ calculate_zenith_angle()&lt;br&gt;+ calculate_both_angles()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="250" y="240" width="240" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="factory1" value="&lt;b&gt;ObstructionServiceFactory&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ create_default_service()&lt;br&gt;+ create_custom_service()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="550" y="240" width="240" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- COMPONENT LAYER - Interfaces -->
+        <mxCell id="interface2" value="«interface»&lt;br&gt;&lt;b&gt;IProjectionCalculator&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ create_projection_plane()&lt;br&gt;+ project_point()&lt;br&gt;+ project_mesh()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4E6;strokeColor=#D6B656;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="460" width="220" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="interface3" value="«interface»&lt;br&gt;&lt;b&gt;IObstructionCalculator&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ calculate_obstruction_angle()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4E6;strokeColor=#D6B656;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="460" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- COMPONENT LAYER - Implementations -->
+        <mxCell id="projection1" value="&lt;b&gt;OrthographicProjectionCalculator&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ create_projection_plane()&lt;br&gt;+ project_point()&lt;br&gt;+ project_mesh()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="250" y="620" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="calc1" value="&lt;b&gt;HorizonObstructionCalculator&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ calculate_obstruction_angle()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="550" y="600" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="calc2" value="&lt;b&gt;ZenithAngleCalculator&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ calculate_obstruction_angle()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="550" y="690" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="calc3" value="&lt;b&gt;WorstCaseObstructionCalculator&lt;/b&gt;&lt;br&gt;&lt;br&gt;+ calculate_obstruction_angle()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="550" y="780" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Triangle Processing -->
+        <mxCell id="triangle-processor" value="&lt;b&gt;TriangleProcessor&lt;/b&gt;&lt;br&gt;&lt;br&gt;# filters: List&lt;br&gt;# sorter: ITriangleSorter&lt;br&gt;&lt;br&gt;+ add_filter()&lt;br&gt;+ set_sorter()&lt;br&gt;+ process()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="850" y="460" width="200" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="horizon-processor" value="&lt;b&gt;HorizonTriangleProcessor&lt;/b&gt;&lt;br&gt;&lt;br&gt;Filters:&lt;br&gt;- UpperForwardQuarter&lt;br&gt;- PlaneIntersection&lt;br&gt;- Orientation (vertical)&lt;br&gt;Sorter: HeightSorter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="850" y="620" width="200" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="zenith-processor" value="&lt;b&gt;ZenithTriangleProcessor&lt;/b&gt;&lt;br&gt;&lt;br&gt;Filters:&lt;br&gt;- UpperForwardQuarter&lt;br&gt;- PlaneIntersection&lt;br&gt;- AboveWindow&lt;br&gt;- Orientation (horizontal)&lt;br&gt;Sorter: DistanceSorter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="850" y="750" width="200" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- Geometry & Models -->
+        <mxCell id="models-box" value="&lt;b&gt;Models&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Window&lt;br&gt;• ProjectedPoint&lt;br&gt;• ProjectionPlane&lt;br&gt;• ObstructionRequest&lt;br&gt;• ObstructionResult" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="460" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="geometry-box" value="&lt;b&gt;Geometry&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Point3D&lt;br&gt;• Vector3D&lt;br&gt;• Triangle&lt;br&gt;• Mesh&lt;br&gt;• AngleCalculator&lt;br&gt;• CoordinateSystem" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="600" width="200" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="validators-box" value="&lt;b&gt;Validators&lt;/b&gt;&lt;br&gt;&lt;br&gt;• GeometricValidator&lt;br&gt;• PointOnTriangleError" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;verticalAlign=top;spacingLeft=5;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="760" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrows - Controller to Service -->
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=0;" edge="1" parent="1" source="controller1" target="service1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1-label" value="delegates to" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow1">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows - Controller uses Logger -->
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1" source="controller1" target="interface1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow2-label" value="uses" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow2">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows - Service uses Interfaces -->
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1" source="service1" target="interface2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow3-label" value="uses" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow3">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1" source="service1" target="interface3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="520" y="320" />
+              <mxPoint x="520" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow4-label" value="uses (2 instances)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow4">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint x="40" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows - Factory creates Service -->
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1" source="factory1" target="service1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow5-label" value="creates" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow5">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows - Implementations implement Interfaces -->
+        <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;endArrow=block;endFill=0;" edge="1" parent="1" source="projection1" target="interface2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow6-label" value="implements" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow6">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;endArrow=block;endFill=0;" edge="1" parent="1" source="calc1" target="interface3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;endArrow=block;endFill=0;" edge="1" parent="1" source="calc2" target="interface3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="810" y="725" />
+              <mxPoint x="810" y="520" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;endArrow=block;endFill=0;" edge="1" parent="1" source="calc3" target="interface3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="820" y="815" />
+              <mxPoint x="820" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows - Calculators use Processors -->
+        <mxCell id="arrow10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=open;endFill=0;" edge="1" parent="1" source="calc1" target="horizon-processor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow10-label" value="uses" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow10">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=open;endFill=0;" edge="1" parent="1" source="calc2" target="zenith-processor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow11-label" value="uses" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow11">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows - Processors inherit from base -->
+        <mxCell id="arrow12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=0;" edge="1" parent="1" source="horizon-processor" target="triangle-processor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow12-label" value="extends" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow12">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=0;" edge="1" parent="1" source="zenith-processor" target="triangle-processor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1070" y="815" />
+              <mxPoint x="1070" y="525" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow13-label" value="extends" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="arrow13">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint x="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows - All use Models -->
+        <mxCell id="arrow14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1" source="service1" target="models-box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="520" y="320" />
+              <mxPoint x="520" y="440" />
+              <mxPoint x="1200" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1" source="triangle-processor" target="geometry-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="1350" y="80" width="220" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-title" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1350" y="85" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="120" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend1-text" value="Controller Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="115" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="145" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend2-text" value="Service Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="140" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="170" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend3-text" value="Component Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="165" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4E6;strokeColor=#D6B656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="195" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend4-text" value="Interface" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="190" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="220" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend5-text" value="Data Models" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="215" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend6" value="" style="endArrow=block;endFill=0;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1365" y="255" as="sourcePoint" />
+            <mxPoint x="1395" y="255" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend6-text" value="Implements/Extends" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="240" width="150" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -15,6 +15,13 @@ class ThresholdConstants:
     HORIZONTAL_SURFACE_THRESHOLD = 0.7  # Threshold for detecting horizontal surfaces
 
 
+class AllDirectionDefaults:
+    """Default values for all-direction obstruction calculations"""
+    NUM_DIRECTIONS = 64  # Default number of directions to sample
+    START_ANGLE_DEGREES = 17.5  # Start angle in degrees (relative to window normal)
+    END_ANGLE_DEGREES = 162.5  # End angle in degrees (relative to window normal)
+
+
 class ResponseStatus(Enum):
     """Response status values for API responses"""
     SUCCESS = "success"
@@ -50,6 +57,8 @@ class ResponseField(Enum):
     SERVICE = "service"
     HORIZON = "horizon"
     ZENITH = "zenith"
+    DIRECTION_ANGLE = "direction_angle"
+    RESULTS = "results"
 
     # Result fields
     OBSTRUCTION_ANGLE_DEGREES = "obstruction_angle_degrees"
