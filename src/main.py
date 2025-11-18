@@ -8,7 +8,15 @@ os.environ['OPENCV_IO_ENABLE_OPENEXR'] = '0'
 os.environ['OMP_NUM_THREADS'] = '1'
 
 import sys
+import logging
 from pathlib import Path
+
+# Configure root logger to show all logs from all modules
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -39,17 +47,17 @@ class ServerApplication:
         from src.server.services.logging import StructuredLogger
         from src.server.enums import LogLevel
         from src.server.controllers.base_controller import ServerController
-        from src.server.services.raytracing_service import RaytraceServiceFactory
-        from src.server.controllers.raytracing_controller import RaytraceController
+        from src.server.services.obstruction_service import ObstructionServiceFactory
+        from src.server.controllers.obstruction_controller import ObstructionController
 
         # Logger
         self._logger = StructuredLogger("Server", LogLevel.INFO)
 
         # Raytracing service (using Factory Pattern)
-        self._raytrace_service = RaytraceServiceFactory.create_default_service(self._logger)
+        self._raytrace_service = ObstructionServiceFactory.create_default_service(self._logger)
 
         # Raytracing controller
-        self._raytrace_controller = RaytraceController(
+        self._raytrace_controller = ObstructionController(
             raytrace_service=self._raytrace_service,
             logger=self._logger
         )
@@ -74,6 +82,7 @@ class ServerApplication:
         self._app.add_url_rule("/horizon_angle", "horizon_angle", self._horizon_angle, methods=["POST"])
         self._app.add_url_rule("/obstruction", "obstruction", self._obstruction, methods=["POST"])
         self._app.add_url_rule("/zenith_angle", "zenith_angle", self._zenith_angle, methods=["POST"])
+        self._app.add_url_rule("/obstruction_all", "obstruction_all", self._obstruction_all, methods=["POST"])
         self._app.add_url_rule("/route_example", "route_example", self._route_example, methods=["POST"])
 
     def _get_status(self) -> Dict[str, Any]:
@@ -97,7 +106,7 @@ class ServerApplication:
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 
-            # Delegate to raytracing controller
+            # Delegate to obstruction controller
             result = self._raytrace_controller.calculate_obstruction(request_data)
 
             # Check for errors
@@ -134,7 +143,7 @@ class ServerApplication:
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 
-            # Delegate to raytracing controller
+            # Delegate to obstruction controller
             result = self._raytrace_controller.calculate_both_angles(request_data)
 
             # Check for errors
@@ -172,7 +181,7 @@ class ServerApplication:
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 
-            # Delegate to raytracing controller
+            # Delegate to obstruction controller
             result = self._raytrace_controller.calculate_zenith_angle(request_data)
 
             # Check for errors
@@ -188,6 +197,44 @@ class ServerApplication:
             }), HTTPStatus.BAD_REQUEST.value
         except Exception as e:
             self._logger.error(f"Zenith angle endpoint failed: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "error": f"Internal server error: {str(e)}"
+            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
+
+    def _obstruction_all(self) -> Dict[str, Any]:
+        """
+        All-direction obstruction calculation endpoint
+
+        Calculates both horizon and zenith angles for all directions around the window.
+        The number of directions can be specified with the 'num_directions' parameter.
+        """
+        try:
+            # Get JSON data from request
+            if not request.is_json:
+                raise BadRequest("Content-Type must be application/json")
+
+            request_data = request.get_json()
+
+            if not request_data:
+                raise BadRequest("Request body cannot be empty")
+
+            # Delegate to obstruction controller
+            result = self._raytrace_controller.calculate_all_directions(request_data)
+
+            # Check for errors
+            if result.get("status") == "error":
+                return jsonify(result), HTTPStatus.BAD_REQUEST.value
+
+            return jsonify(result)
+
+        except BadRequest as e:
+            return jsonify({
+                "status": "error",
+                "error": str(e)
+            }), HTTPStatus.BAD_REQUEST.value
+        except Exception as e:
+            self._logger.error(f"All-direction obstruction endpoint failed: {str(e)}")
             return jsonify({
                 "status": "error",
                 "error": f"Internal server error: {str(e)}"

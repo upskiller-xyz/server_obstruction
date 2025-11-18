@@ -1,21 +1,21 @@
 import pytest
 import numpy as np
 from unittest.mock import Mock, MagicMock
-from src.server.services.raytracing_service import RaytraceService, RaytraceServiceFactory
+from src.server.services.obstruction_service import ObstructionService, ObstructionServiceFactory
 from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.raytracing_models import (
+from src.components.obstruction_models import (
     Window,
-    RaytraceRequest,
-    RaytraceResult,
+    ObstructionRequest,
+    ObstructionResult,
     ProjectionPlane,
     ProjectedPoint
 )
 from src.components.projection import OrthographicProjectionCalculator
-from src.components.obstruction_calculator import MaxHeightObstructionCalculator
+from src.components.obstruction_calculator import HorizonObstructionCalculator
 
 
-class TestRaytraceService:
-    """Test cases for RaytraceService class"""
+class TestObstructionService:
+    """Test cases for ObstructionService class"""
 
     def setup_method(self):
         """Setup test fixtures"""
@@ -28,7 +28,7 @@ class TestRaytraceService:
         self.mock_projection_calculator = Mock()
         self.mock_obstruction_calculator = Mock()
 
-        self.service = RaytraceService(
+        self.service = ObstructionService(
             projection_calculator=self.mock_projection_calculator,
             obstruction_calculator=self.mock_obstruction_calculator,
             logger=self.mock_logger
@@ -51,7 +51,7 @@ class TestRaytraceService:
             [1.0, 3.0, 0.0],
             [1.0, 1.5, 1.0]
         ])
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         # Setup mocks
         mock_plane = Mock()
@@ -62,7 +62,7 @@ class TestRaytraceService:
         ]
         self.mock_projection_calculator.project_mesh.return_value = projected_points
 
-        mock_result = RaytraceResult(
+        mock_result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
             highest_point=Point3D(x=1.0, y=3.0, z=0.0),
@@ -92,13 +92,13 @@ class TestRaytraceService:
             [1.0, 3.0, 0.0],
             [1.0, 1.5, 1.0]
         ])
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         # Setup mocks
         mock_plane = Mock()
         self.mock_projection_calculator.create_projection_plane.return_value = mock_plane
         self.mock_projection_calculator.project_mesh.return_value = []
-        self.mock_obstruction_calculator.calculate_obstruction_angle.return_value = RaytraceResult(
+        self.mock_obstruction_calculator.calculate_obstruction_angle.return_value = ObstructionResult(
             obstruction_angle_degrees=0.0,
             obstruction_angle_radians=0.0,
             highest_point=None,
@@ -123,7 +123,7 @@ class TestRaytraceService:
             [1.0, 3.0, 0.0],
             [1.0, 1.5, 1.0]
         ])
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         # Setup mock to raise exception
         self.mock_projection_calculator.create_projection_plane.side_effect = ValueError("Test error")
@@ -155,7 +155,7 @@ class TestRaytraceService:
             [1.0, 3.0, 0.0],
             [1.0, 1.5, 1.0]
         ])
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         # Setup mocks
         mock_plane = Mock()
@@ -163,8 +163,8 @@ class TestRaytraceService:
         projected_points = [Mock()]
         self.mock_projection_calculator.project_mesh.return_value = projected_points
 
-        # Return a proper RaytraceResult instead of Mock
-        mock_result = RaytraceResult(
+        # Return a proper ObstructionResult instead of Mock
+        mock_result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
             highest_point=Point3D(x=1.0, y=3.0, z=0.0),
@@ -181,18 +181,18 @@ class TestRaytraceService:
         assert call_args.kwargs['reference_height'] == 0.0
 
 
-class TestRaytraceServiceFactory:
-    """Test cases for RaytraceServiceFactory class"""
+class TestObstructionServiceFactory:
+    """Test cases for ObstructionServiceFactory class"""
 
     def test_create_default_service(self):
         """Test factory creates service with default implementations"""
         mock_logger = Mock()
 
-        service = RaytraceServiceFactory.create_default_service(mock_logger)
+        service = ObstructionServiceFactory.create_default_service(mock_logger)
 
-        assert isinstance(service, RaytraceService)
+        assert isinstance(service, ObstructionService)
         assert isinstance(service._projection_calculator, OrthographicProjectionCalculator)
-        assert isinstance(service._obstruction_calculator, MaxHeightObstructionCalculator)
+        assert isinstance(service._obstruction_calculator, HorizonObstructionCalculator)
         assert service._logger == mock_logger
 
     def test_create_custom_service(self):
@@ -201,19 +201,19 @@ class TestRaytraceServiceFactory:
         mock_projection = Mock()
         mock_obstruction = Mock()
 
-        service = RaytraceServiceFactory.create_custom_service(
+        service = ObstructionServiceFactory.create_custom_service(
             projection_calculator=mock_projection,
             obstruction_calculator=mock_obstruction,
             logger=mock_logger
         )
 
-        assert isinstance(service, RaytraceService)
+        assert isinstance(service, ObstructionService)
         assert service._projection_calculator == mock_projection
         assert service._obstruction_calculator == mock_obstruction
         assert service._logger == mock_logger
 
 
-class TestRaytraceServiceIntegration:
+class TestObstructionServiceIntegration:
     """Integration tests with real implementations"""
 
     def setup_method(self):
@@ -224,7 +224,7 @@ class TestRaytraceServiceIntegration:
         self.mock_logger.warning = Mock()
         self.mock_logger.error = Mock()
 
-        self.service = RaytraceServiceFactory.create_default_service(self.mock_logger)
+        self.service = ObstructionServiceFactory.create_default_service(self.mock_logger)
 
     def test_calculate_obstruction_integration(self):
         """Integration test with real calculation"""
@@ -241,7 +241,7 @@ class TestRaytraceServiceIntegration:
             [10.0, 0.0, 5.0]
         ])
 
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         result = self.service.calculate_obstruction(request)
 
@@ -265,7 +265,7 @@ class TestRaytraceServiceIntegration:
             [10.0, 0.0, 5.0]
         ])
 
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         result = self.service.calculate_obstruction(request)
 

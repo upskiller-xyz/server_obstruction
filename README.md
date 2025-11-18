@@ -11,20 +11,20 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/upskiller-xyz/server_template">
+  <a href="https://github.com/upskiller-xyz/server_obstruction">
     <img src="https://github.com/upskiller-xyz/DaylightFactor/blob/main/docs/images/logo_upskiller.png" alt="Logo" height="100" >
   </a>
 
-  <h3 align="center">XXX Server</h3>
+  <h3 align="center">Obstruction Server</h3>
 
   <p align="center">
-    Short description
+    Calculate horizon and zenith obstruction angles from 3D mesh geometry
     <br />
-    <a href="https://github.com/upskiller-xyz/server_template">View Demo</a>
+    <a href="https://github.com/upskiller-xyz/server_obstruction">View Demo</a>
     ·
-    <a href="https://github.com/upskiller-xyz/server_template/issues">Report Bug</a>
+    <a href="https://github.com/upskiller-xyz/server_obstruction/issues">Report Bug</a>
     ·
-    <a href="https://github.com/upskiller-xyz/server_template/issues">Request Feature</a>
+    <a href="https://github.com/upskiller-xyz/server_obstruction/issues">Request Feature</a>
   </p>
 </div>
 
@@ -71,7 +71,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Longer description
+Server for calculating obstruction angles (horizon and zenith) from 3D mesh geometry using plane-triangle intersection algorithms.
 
 
 
@@ -83,6 +83,7 @@ Longer description
 
 * [Python](https://www.python.org/)
 * [Flask](https://flask.palletsprojects.com/)
+* [NumPy](https://numpy.org/)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -95,14 +96,13 @@ To get a local copy up and running follow these simple steps.
 
 * [Python 3.13+](https://www.python.org/downloads/)
 * [Poetry](https://python-poetry.org/docs/#installation)
-* CUDA-capable GPU (optional, for GPU acceleration)
 
 ### Installation
 
 1. Clone the repo
    ```sh
-   git clone https://github.com/upskiller-xyz/server_template.git
-   cd server_template
+   git clone https://github.com/upskiller-xyz/server_obstruction.git
+   cd server_obstruction
    ```
 
 2. Install dependencies using Poetry:
@@ -117,12 +117,12 @@ To get a local copy up and running follow these simple steps.
 
 4. Set environment variables (optional):
    ```sh
-   export PORT=8000               # Server port
+   export PORT=8081               # Server port
    ```
 
 5. Run the server:
    ```sh
-   python main.py
+   python -m src.main
    ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -132,7 +132,7 @@ To get a local copy up and running follow these simple steps.
 
 ### 📚 Documentation
 
-- **[Coordinate System & Calculations](docs/coordinate_system_and_calculations.md)** - Detailed explanation of the 3D coordinate system, viewing directions, projection plane, and obstruction angle calculation methodology
+- **[Coordinate System & Calculations](docs/coordinate_system_and_calculations.md)** - Detailed explanation of the 3D coordinate system, viewing directions, and obstruction angle calculation methodology
 - **[API Reference](docs/api.md)** - REST API endpoints and request/response formats
 
 ### 🎯 Interactive Demo
@@ -159,62 +159,6 @@ print(response.json())
 # Output: {"status": "ready", "timestamp": "2025-01-01T00:00:00Z"}
 ```
 
-#### Horizon Angle Calculation
-Calculate the angle from the horizontal plane upward to the highest obstruction:
-
-```python
-import requests
-
-payload = {
-    "x": 0.0,          # Window center X coordinate
-    "y": 3.0,          # Window center Y coordinate
-    "z": 0.0,          # Window center Z coordinate
-    "rad_x": 0.0,      # Pitch angle (up/down rotation)
-    "rad_y": 0.0,      # Yaw angle (left/right rotation)
-    "mesh": [          # Triangle mesh vertices
-        [10.0, 0.0, -5.0],
-        [10.0, 5.0, -5.0],
-        [10.0, 0.0, 5.0],
-        [10.0, 0.0, 5.0],
-        [10.0, 5.0, -5.0],
-        [10.0, 5.0, 5.0]
-    ]
-}
-
-response = requests.post("http://localhost:8081/horizon_angle", json=payload)
-result = response.json()
-print(f"Horizon angle: {result['data']['obstruction_angle_degrees']:.2f}°")
-# Output: Horizon angle: 11.31°
-```
-
-#### Zenith Angle Calculation
-Calculate the angle from vertical (90°) downward to the lowest overhead obstruction:
-
-```python
-import requests
-
-payload = {
-    "x": 0.0,
-    "y": 3.0,
-    "z": 0.0,
-    "rad_x": 0.0,
-    "rad_y": 0.0,
-    "mesh": [
-        [10.0, 0.0, -5.0],
-        [10.0, 5.0, -5.0],
-        [10.0, 0.0, 5.0],
-        [10.0, 0.0, 5.0],
-        [10.0, 5.0, -5.0],
-        [10.0, 5.0, 5.0]
-    ]
-}
-
-response = requests.post("http://localhost:8081/zenith_angle", json=payload)
-result = response.json()
-print(f"Zenith angle: {result['data']['obstruction_angle_degrees']:.2f}°")
-# Output: Zenith angle: 78.69°
-```
-
 #### Obstruction Calculation (Both Angles)
 Calculate both horizon and zenith angles in a single request:
 
@@ -225,9 +169,8 @@ payload = {
     "x": 0.0,
     "y": 3.0,
     "z": 0.0,
-    "rad_x": 0.0,
-    "rad_y": 0.0,
-    "mesh": [
+    "direction_angle": 0.0,  # Horizontal viewing direction in radians
+    "mesh": [                # Triangle mesh vertices (groups of 3)
         [10.0, 0.0, -5.0],
         [10.0, 5.0, -5.0],
         [10.0, 0.0, 5.0],
@@ -241,9 +184,6 @@ response = requests.post("http://localhost:8081/obstruction", json=payload)
 result = response.json()
 print(f"Horizon: {result['data']['horizon']['obstruction_angle_degrees']:.2f}°")
 print(f"Zenith: {result['data']['zenith']['obstruction_angle_degrees']:.2f}°")
-# Output:
-# Horizon: 11.31°
-# Zenith: 78.69°
 ```
 
 ### Deployment
@@ -251,24 +191,23 @@ print(f"Zenith: {result['data']['zenith']['obstruction_angle_degrees']:.2f}°")
 #### Environment Configuration
 Create a `.env` file with required configurations:
 ```sh
-MODEL=df_default_2.0.0
-PORT=8000
+PORT=8081
 GCP_REGION=us-central1
-SERVER_NAME=model-server
-REPO_NAME=server_template
-IMAGE_NAME=model-server
+SERVER_NAME=obstruction-server
+REPO_NAME=server_obstruction
+IMAGE_NAME=obstruction-server
 
 SCW_REGISTRY_NAMESPACE=nsp
 SCW_PROJECT_ID=project-id
 SCW_SERVER=serve-container
-SCW_IMAGE=server_template
+SCW_IMAGE=server_obstruction
 ```
 
 #### Docker Deployment
 Build and run using Docker:
 ```sh
-docker build -t model-server .
-docker run -p 8000:8000 model-server
+docker build -t obstruction-server .
+docker run -p 8081:8081 obstruction-server
 ```
 
 #### Cloud Deployment
@@ -287,12 +226,12 @@ bash build_scw.sh
 
 #### Locally
 
-Set up the Model Server locally for development and testing:
+Set up the server locally for development and testing:
 
 1. **Clone the Repository**
    ```bash
-   git clone <your-repo-url>
-   cd server_template
+   git clone https://github.com/upskiller-xyz/server_obstruction.git
+   cd server_obstruction
    ```
 
 2. **Install Dependencies with Poetry**
@@ -305,24 +244,18 @@ Set up the Model Server locally for development and testing:
    poetry shell
    ```
 
-4. **Set Environment Variables (Optional)**
+4. **Run the Server**
    ```bash
-   export MODEL=df_default_2.0.0
-   export PORT=8000
+   python -m src.main
    ```
+   The server will start on `http://localhost:8081` by default.
 
-5. **Run the Server**
-   ```bash
-   python main.py
-   ```
-   The server will start on `http://localhost:8000` by default.
-
-6. **Run Tests**
+5. **Run Tests**
    ```bash
    poetry run pytest
    ```
 
-7. **Code Quality Checks**
+6. **Code Quality Checks**
    ```bash
    poetry run ruff check .
    poetry run mypy .
@@ -335,18 +268,21 @@ Set up the Model Server locally for development and testing:
 
 ### Architecture
 
-The Model Server follows object-oriented design principles with clean separation of concerns:
+The server follows object-oriented design principles with clean separation of concerns:
 
 ```
-ModelServerApplication
-├── DownloadStrategy (handles model downloads)
-└── StructuredLogger (logging system)
+ObstructionService
+├── TriangleFilter (pre-filters relevant geometry)
+├── PlaneTriangleIntersector (efficient intersection calculations)
+├── HorizonIntersectionCalculator (horizon obstruction)
+└── ZenithIntersectionCalculator (zenith obstruction)
 ```
 
 **Key Components:**
+- **Triangle Filtering**: Pre-filters geometry based on spatial criteria (direction, distance, height)
+- **Plane-Triangle Intersection**: Efficient algorithm that only processes relevant triangles
 - **Dependency Injection**: All services are injected through constructors
 - **Factory Patterns**: Services are created using factory classes
-- **Strategy Pattern**: Different loading and processing strategies
 - **Single Responsibility**: Each class has one clear purpose
 - **Abstract Base Classes**: Define contracts for implementations
 
@@ -355,7 +291,7 @@ ModelServerApplication
 <!-- ROADMAP -->
 ## Roadmap
 
-See the [open issues](https://github.com/upskiller-xyz/server_template/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/upskiller-xyz/server_obstruction/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -385,8 +321,8 @@ See [CLAUDE.md](CLAUDE.md) for detailed development instructions.
 
 ### Top contributors:
 
-<a href="https://github.com/upskiller-xyz/server_template/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=upskiller-xyz/server_template" alt="Top Contributors" />
+<a href="https://github.com/upskiller-xyz/server_obstruction/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=upskiller-xyz/server_obstruction" alt="Top Contributors" />
 </a>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -406,17 +342,14 @@ Strong copyleft. You **can** use, distribute and modify this code in both academ
 
 ## Attribution
 
-📖 **Academic/Industry Use**: Please cite this work as described in [CITATION.cff](docs/citation/CITATION.cff), [CITE.txt](docs/citation/CITE.txt) or [ATTRIBUTION.md](docs/citation/ATTRIBUTION.md). Alternatively you can download the BibTeX file [here](docs/citation/model-server.bib) by adding it to `.tex` files by
+📖 **Academic/Industry Use**: Please cite this work as described in [CITATION.cff](docs/citation/CITATION.cff), [CITE.txt](docs/citation/CITE.txt) or [ATTRIBUTION.md](docs/citation/ATTRIBUTION.md).
 
-```tex
-\bibliography{model-server}
-```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Trademark Notice
 
 - **"Upskiller"** is an informal collaborative name used by contributors affiliated with BIMTech Innovations AB.
-- BIMTech Innovations AB owns all legal rights to the **Model Server** project.
+- BIMTech Innovations AB owns all legal rights to the **Obstruction Server** project.
 - The GPL-3.0 license applies to code, not branding. Commercial use of the names requires permission.
 
 Contact: [Upskiller](mailto:info@upskiller.xyz)
@@ -431,9 +364,8 @@ Stanislava Fedorova - [e-mail](mailto:stasya.fedorova@gmail.com)
 ## Acknowledgments
 
 * [README template](https://github.com/othneildrew/Best-README-Template)
-* [PyTorch](https://pytorch.org/) - Deep learning framework
 * [Flask](https://flask.palletsprojects.com/) - Web framework
-* Alberto Floris - [e-mail](mailto:alberto.floris@arkion.co)
+* [NumPy](https://numpy.org/) - Numerical computations
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -441,13 +373,13 @@ Stanislava Fedorova - [e-mail](mailto:stasya.fedorova@gmail.com)
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/upskiller-xyz/server_template.svg?style=for-the-badge
-[contributors-url]: https://github.com/upskiller-xyz/server_template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/upskiller-xyz/server_template.svg?style=for-the-badge
-[forks-url]: https://github.com/upskiller-xyz/server_template/network/members
-[stars-shield]: https://img.shields.io/github/stars/upskiller-xyz/server_template.svg?style=for-the-badge
-[stars-url]: https://github.com/upskiller-xyz/server_template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/upskiller-xyz/server_template.svg?style=for-the-badge
-[issues-url]: https://github.com/upskiller-xyz/server_template/issues
-[license-shield]: https://img.shields.io/github/license/upskiller-xyz/server_template.svg?style=for-the-badge
-[license-url]: https://github.com/upskiller-xyz/server_template/blob/master/docs/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/upskiller-xyz/server_obstruction.svg?style=for-the-badge
+[contributors-url]: https://github.com/upskiller-xyz/server_obstruction/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/upskiller-xyz/server_obstruction.svg?style=for-the-badge
+[forks-url]: https://github.com/upskiller-xyz/server_obstruction/network/members
+[stars-shield]: https://img.shields.io/github/stars/upskiller-xyz/server_obstruction.svg?style=for-the-badge
+[stars-url]: https://github.com/upskiller-xyz/server_obstruction/stargazers
+[issues-shield]: https://img.shields.io/github/issues/upskiller-xyz/server_obstruction.svg?style=for-the-badge
+[issues-url]: https://github.com/upskiller-xyz/server_obstruction/issues
+[license-shield]: https://img.shields.io/github/license/upskiller-xyz/server_obstruction.svg?style=for-the-badge
+[license-url]: https://github.com/upskiller-xyz/server_obstruction/blob/master/docs/LICENSE.txt

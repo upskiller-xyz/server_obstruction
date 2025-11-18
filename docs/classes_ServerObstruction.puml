@@ -1,0 +1,316 @@
+@startuml classes_ServerObstruction
+set namespaceSeparator none
+class "AboveWindowFilter" as src.components.triangle_processing.AboveWindowFilter {
+  window_center
+  filter(triangles: List[Triangle]) -> List[Triangle]
+}
+class "AngleCalculator" as src.components.geometry.AngleCalculator {
+  calculate_obstruction_angle(vertical_distance: float, horizontal_distance: float) -> float
+  calculate_zenith_angle(vertical_distance: float, horizontal_distance: float) -> float
+  radians_to_degrees(radians: float) -> float
+}
+class "ContentType" as src.server.enums.ContentType {
+  name
+  is_image(content_type: str) -> bool
+}
+class "ControllerStatus" as src.components.constants.ControllerStatus {
+  name
+}
+class "CoordinateSystem" as src.components.geometry.CoordinateSystem {
+  FORWARD : ndarray
+  HORIZONTAL_INDICES : list
+  NORTH : ndarray
+  UP : ndarray
+  VERTICAL_INDEX : int
+  X_AXIS : ndarray
+  Y_AXIS : ndarray
+  Z_AXIS : ndarray
+  get_vertical_component(vector: np.ndarray) -> float
+  remove_vertical_component(vector: np.ndarray) -> np.ndarray
+  set_vertical_component(vector: np.ndarray, value: float) -> np.ndarray
+}
+class "DistanceSorter" as src.components.triangle_processing.DistanceSorter {
+  ascending : bool
+  window_center
+  window_normal
+  sort(triangles: List[Triangle]) -> List[Triangle]
+}
+class "GeometricValidator" as src.components.validators.GeometricValidator {
+  find_triangle_containing_point(point: Point3D, triangles: Tuple[Triangle, ...], tolerance: float) -> Optional[Triangle]
+  is_point_on_triangle(point: Point3D, triangle: Triangle, tolerance: float) -> bool
+  validate_point_not_on_mesh(point: Point3D, triangles: Tuple[Triangle, ...], tolerance: float) -> None
+}
+class "HTTPDownloadStrategy" as src.server.services.download.HTTPDownloadStrategy {
+  download(url: str, local_path: str) -> str
+}
+class "HTTPStatus" as src.server.enums.HTTPStatus {
+  name
+}
+class "HeightSorter" as src.components.triangle_processing.HeightSorter {
+  descending : bool
+  sort(triangles: List[Triangle]) -> List[Triangle]
+}
+class "HorizonObstructionCalculator" as src.components.obstruction_calculator.HorizonObstructionCalculator {
+  calculate_obstruction_angle(projected_points: List[ProjectedPoint], window_center: Point3D, window_normal: Vector3D) -> ObstructionResult
+}
+class "HorizonTriangleProcessor" as src.components.triangle_processing.HorizonTriangleProcessor {
+}
+class "HorizontalDistanceCalculator" as src.components.obstruction_calculator.HorizontalDistanceCalculator {
+  calculate(point: Point3D, window_center: Point3D, window_normal: Vector3D) -> float
+}
+class "IDownloadStrategy" as src.server.interfaces.IDownloadStrategy {
+  {abstract}download(url: str, local_path: str) -> str
+}
+class "IImageProcessor" as src.server.interfaces.IImageProcessor {
+  {abstract}preprocess(image_bytes: bytes) -> Any
+}
+class "ILogger" as src.server.interfaces.ILogger {
+  {abstract}debug(message: str) -> None
+  {abstract}error(message: str) -> None
+  {abstract}info(message: str) -> None
+  {abstract}warning(message: str) -> None
+}
+class "IModelLoader" as src.server.interfaces.IModelLoader {
+  {abstract}load() -> Any
+}
+class "IObstructionCalculator" as src.components.obstruction_calculator.IObstructionCalculator {
+  {abstract}calculate_obstruction_angle(projected_points: List[ProjectedPoint], window_center: Point3D, window_normal: Vector3D) -> ObstructionResult
+}
+class "IPredictionService" as src.server.interfaces.IPredictionService {
+  {abstract}predict(image_bytes: bytes) -> Dict[str, Any]
+}
+class "IProjectionCalculator" as src.components.projection.IProjectionCalculator {
+  {abstract}create_projection_plane(window: Window) -> ProjectionPlane
+  {abstract}project_mesh(mesh: Mesh, plane: ProjectionPlane) -> List[ProjectedPoint]
+  {abstract}project_point(point: Point3D, plane: ProjectionPlane) -> ProjectedPoint
+}
+class "IServerController" as src.server.interfaces.IServerController {
+  {abstract}get_status() -> Dict[str, Any]
+  {abstract}initialize() -> None
+}
+class "ITriangleFilter" as src.components.triangle_processing.ITriangleFilter {
+  {abstract}filter(triangles: List[Triangle]) -> List[Triangle]
+}
+class "ITriangleSorter" as src.components.triangle_processing.ITriangleSorter {
+  {abstract}sort(triangles: List[Triangle]) -> List[Triangle]
+}
+class "LogLevel" as src.server.enums.LogLevel {
+  name
+}
+class "MathConstants" as src.components.constants.MathConstants {
+  EPSILON : float
+}
+class "Mesh" as src.components.geometry.Mesh {
+  triangles : Tuple[Triangle, ...]
+  from_vertices(vertices: List[List[float]]) -> 'Mesh'
+  get_all_points() -> List[Point3D]
+}
+class "ModelStatus" as src.server.enums.ModelStatus {
+  name
+}
+class "ObstructionController" as src.server.controllers.obstruction_controller.ObstructionController {
+  calculate_both_angles(request_data: Dict[str, Any]) -> Dict[str, Any]
+  calculate_obstruction(request_data: Dict[str, Any]) -> Dict[str, Any]
+  calculate_zenith_angle(request_data: Dict[str, Any]) -> Dict[str, Any]
+  get_status() -> Dict[str, Any]
+}
+class "ObstructionRequest" as src.components.obstruction_models.ObstructionRequest {
+  mesh
+  window
+  from_dict(data: dict) -> 'ObstructionRequest'
+}
+class "ObstructionResult" as src.components.obstruction_models.ObstructionResult {
+  highest_point : Optional[Point3D]
+  obstruction_angle_degrees : float
+  obstruction_angle_radians : float
+  projected_point_count : int
+  no_obstruction(highest_point: Optional[Point3D], projected_point_count: int) -> 'ObstructionResult'
+  to_dict() -> dict
+}
+class "ObstructionService" as src.server.services.obstruction_service.ObstructionService {
+  calculate_both_angles(request: ObstructionRequest) -> Dict[str, ObstructionResult]
+  calculate_obstruction(request: ObstructionRequest) -> ObstructionResult
+  calculate_zenith_angle(request: ObstructionRequest) -> ObstructionResult
+  get_status() -> Dict[str, Any]
+}
+class "ObstructionServiceFactory" as src.server.services.obstruction_service.ObstructionServiceFactory {
+  create_custom_service(projection_calculator: IProjectionCalculator, obstruction_calculator: IObstructionCalculator, zenith_calculator: IObstructionCalculator, logger: ILogger) -> ObstructionService
+  create_default_service(logger: ILogger) -> ObstructionService
+}
+class "OrientationFilter" as src.components.triangle_processing.OrientationFilter {
+  orientation
+  vertical_threshold : float
+  filter(triangles: List[Triangle]) -> List[Triangle]
+}
+class "OrthographicProjectionCalculator" as src.components.projection.OrthographicProjectionCalculator {
+  create_projection_plane(window: Window) -> ProjectionPlane
+  project_mesh(mesh: Mesh, plane: ProjectionPlane) -> List[ProjectedPoint]
+  project_point(point: Point3D, plane: ProjectionPlane) -> ProjectedPoint
+}
+class "PlaneIntersectionFilter" as src.components.triangle_processing.PlaneIntersectionFilter {
+  normal_arr
+  plane_normal : ndarray
+  threshold : float
+  window_arr
+  window_center
+  window_normal
+  filter(triangles: List[Triangle]) -> List[Triangle]
+}
+class "Point3D" as src.components.geometry.Point3D {
+  x : float
+  y : float
+  z : float
+  from_array(arr: np.ndarray) -> 'Point3D'
+  get_horizontal_array(coord_system: type) -> np.ndarray
+  get_vertical(coord_system: type) -> float
+  to_array() -> np.ndarray
+}
+class "<color:red>PointOnTriangleError</color>" as src.components.validators.PointOnTriangleError {
+  point
+  triangle
+}
+class "ProjectedPoint" as src.components.obstruction_models.ProjectedPoint {
+  height : float
+  original
+  u : float
+  v : float
+}
+class "ProjectionPlane" as src.components.obstruction_models.ProjectionPlane {
+  normal
+  origin
+  u_axis
+  v_axis
+  calculate_plane_normal(direction: Vector3D) -> Vector3D
+}
+class "RequestField" as src.components.constants.RequestField {
+  name
+}
+class "ResponseField" as src.components.constants.ResponseField {
+  name
+}
+class "ResponseStatus" as src.components.constants.ResponseStatus {
+  name
+}
+class "ServerApplication" as src.main.ServerApplication {
+  app : Flask
+}
+class "ServerController" as src.server.controllers.base_controller.ServerController {
+  get_status() -> Dict[str, Any]
+  initialize() -> None
+}
+class "ServerLauncher" as src.main.ServerLauncher {
+  create_application() -> ServerApplication
+  run_server(app: ServerApplication, host: str, port: int, debug: bool) -> None
+}
+class "ServerStatus" as src.server.enums.ServerStatus {
+  name
+}
+class "StructuredLogger" as src.server.services.logging.StructuredLogger {
+  debug(message: str) -> None
+  error(message: str) -> None
+  info(message: str) -> None
+  warning(message: str) -> None
+}
+class "ThresholdConstants" as src.components.constants.ThresholdConstants {
+  HORIZONTAL_SURFACE_THRESHOLD : float
+  PLANE_THRESHOLD_TIGHT : float
+  PLANE_THRESHOLD_WIDE : float
+  VERTICAL_SURFACE_THRESHOLD : float
+}
+class "Triangle" as src.components.geometry.Triangle {
+  v1
+  v2
+  v3
+  vertices() -> List[Point3D]
+}
+class "Triangle" as src.components.triangle_processing.Triangle {
+  points : List[ProjectedPoint]
+  calculate_normal() -> np.ndarray
+  get_average_height() -> float
+  get_centroid() -> Point3D
+  get_highest_point() -> ProjectedPoint
+  get_orientation(vertical_threshold: float) -> TriangleOrientation
+  get_vertex_arrays() -> Tuple[np.ndarray, np.ndarray, np.ndarray]
+  get_vertices() -> List[Point3D]
+}
+class "TriangleOrientation" as src.components.triangle_processing.TriangleOrientation {
+  name
+}
+class "TriangleProcessor" as src.components.triangle_processing.TriangleProcessor {
+  filters : List[ITriangleFilter]
+  sorter : Optional[ITriangleSorter]
+  add_filter(filter_strategy: ITriangleFilter) -> 'TriangleProcessor'
+  process(projected_points: List[ProjectedPoint]) -> List[Triangle]
+  set_sorter(sorter: ITriangleSorter) -> 'TriangleProcessor'
+}
+class "UpperForwardQuarterFilter" as src.components.triangle_processing.UpperForwardQuarterFilter {
+  window_center
+  window_normal
+  filter(triangles: List[Triangle]) -> List[Triangle]
+}
+class "Vector3D" as src.components.geometry.Vector3D {
+  x : float
+  y : float
+  z : float
+  from_array(arr: np.ndarray) -> 'Vector3D'
+  from_horizontal_angle(angle: float) -> 'Vector3D'
+  get_horizontal(coord_system: type) -> 'Vector3D'
+  get_vertical(coord_system: type) -> float
+  magnitude() -> float
+  normalize() -> 'Vector3D'
+  to_array() -> np.ndarray
+}
+class "Window" as src.components.obstruction_models.Window {
+  center
+  normal
+  from_dict(data: dict) -> 'Window'
+}
+class "WorstCaseObstructionCalculator" as src.components.obstruction_calculator.WorstCaseObstructionCalculator {
+  calculate_obstruction_angle(projected_points: List[ProjectedPoint], window_center: Point3D, window_normal: Vector3D) -> ObstructionResult
+}
+class "ZenithAngleCalculator" as src.components.obstruction_calculator.ZenithAngleCalculator {
+  calculate_obstruction_angle(projected_points: List[ProjectedPoint], window_center: Point3D, window_normal: Vector3D) -> ObstructionResult
+}
+class "ZenithTriangleProcessor" as src.components.triangle_processing.ZenithTriangleProcessor {
+}
+src.components.obstruction_calculator.HorizonObstructionCalculator --|> src.components.obstruction_calculator.IObstructionCalculator
+src.components.obstruction_calculator.WorstCaseObstructionCalculator --|> src.components.obstruction_calculator.IObstructionCalculator
+src.components.obstruction_calculator.ZenithAngleCalculator --|> src.components.obstruction_calculator.IObstructionCalculator
+src.components.projection.OrthographicProjectionCalculator --|> src.components.projection.IProjectionCalculator
+src.components.triangle_processing.AboveWindowFilter --|> src.components.triangle_processing.ITriangleFilter
+src.components.triangle_processing.DistanceSorter --|> src.components.triangle_processing.ITriangleSorter
+src.components.triangle_processing.HeightSorter --|> src.components.triangle_processing.ITriangleSorter
+src.components.triangle_processing.HorizonTriangleProcessor --|> src.components.triangle_processing.TriangleProcessor
+src.components.triangle_processing.OrientationFilter --|> src.components.triangle_processing.ITriangleFilter
+src.components.triangle_processing.PlaneIntersectionFilter --|> src.components.triangle_processing.ITriangleFilter
+src.components.triangle_processing.UpperForwardQuarterFilter --|> src.components.triangle_processing.ITriangleFilter
+src.components.triangle_processing.ZenithTriangleProcessor --|> src.components.triangle_processing.TriangleProcessor
+src.server.controllers.base_controller.ServerController --|> src.server.interfaces.IServerController
+src.server.services.download.HTTPDownloadStrategy --|> src.server.interfaces.IDownloadStrategy
+src.server.services.logging.StructuredLogger --|> src.server.interfaces.ILogger
+src.components.obstruction_models.ObstructionRequest --> src.components.geometry.Mesh : mesh
+src.components.geometry.Triangle --> src.components.geometry.Point3D : v1
+src.components.geometry.Triangle --> src.components.geometry.Point3D : v2
+src.components.geometry.Triangle --> src.components.geometry.Point3D : v3
+src.components.obstruction_models.ProjectedPoint --> src.components.geometry.Point3D : original
+src.components.obstruction_models.ProjectionPlane --> src.components.geometry.Point3D : origin
+src.components.obstruction_models.Window --> src.components.geometry.Point3D : center
+src.components.obstruction_models.ProjectionPlane --> src.components.geometry.Vector3D : u_axis
+src.components.obstruction_models.ProjectionPlane --> src.components.geometry.Vector3D : v_axis
+src.components.obstruction_models.ProjectionPlane --> src.components.geometry.Vector3D : normal
+src.components.obstruction_models.Window --> src.components.geometry.Vector3D : normal
+src.components.obstruction_models.ObstructionRequest --> src.components.obstruction_models.Window : window
+src.components.triangle_processing.TriangleProcessor --> src.components.triangle_processing.ITriangleFilter : filters
+src.components.geometry.Point3D --o src.components.triangle_processing.AboveWindowFilter : window_center
+src.components.geometry.Point3D --o src.components.triangle_processing.DistanceSorter : window_center
+src.components.geometry.Point3D --o src.components.triangle_processing.PlaneIntersectionFilter : window_center
+src.components.geometry.Point3D --o src.components.triangle_processing.UpperForwardQuarterFilter : window_center
+src.components.geometry.Point3D --o src.components.validators.PointOnTriangleError : point
+src.components.geometry.Triangle --o src.components.validators.PointOnTriangleError : triangle
+src.components.geometry.Vector3D --o src.components.triangle_processing.DistanceSorter : window_normal
+src.components.geometry.Vector3D --o src.components.triangle_processing.PlaneIntersectionFilter : window_normal
+src.components.geometry.Vector3D --o src.components.triangle_processing.UpperForwardQuarterFilter : window_normal
+src.components.obstruction_models.ProjectedPoint --o src.components.triangle_processing.Triangle : points
+src.components.triangle_processing.ITriangleSorter --o src.components.triangle_processing.TriangleProcessor : sorter
+src.components.triangle_processing.TriangleOrientation --o src.components.triangle_processing.OrientationFilter : orientation
+@enduml

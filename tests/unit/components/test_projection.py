@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.raytracing_models import Window
+from src.components.obstruction_models import Window
 from src.components.projection import (
     OrthographicProjectionCalculator
 )

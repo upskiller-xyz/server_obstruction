@@ -1,9 +1,47 @@
-"""Visualization utilities for raytracing demo"""
+"""Visualization utilities for raytracing demo
+
+Coordinate System Transformation:
+- Calculation Space: X=East, Y=North, Z=Up (Z-up system)
+- Matplotlib 3D Space: X=right, Y=up, Z=forward (Y-up system)
+- Transformation: (calc_x, calc_y, calc_z) -> (mpl_x, mpl_z, mpl_y)
+  - X stays X
+  - Y (North) becomes Z (forward in matplotlib)
+  - Z (Up) becomes Y (up in matplotlib)
+"""
 from abc import ABC, abstractmethod
-from typing import Tuple, List
+from typing import Tuple, List, Union
 from enum import Enum
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+
+class CoordinateTransform:
+    """Transform between calculation space (Z-up) and matplotlib space (Y-up)"""
+
+    @staticmethod
+    def calc_to_mpl(point: Union[np.ndarray, List[float]]) -> np.ndarray:
+        """
+        Transform from calculation space to matplotlib 3D space
+
+        Calculation: (X=East, Y=North, Z=Up)
+        Matplotlib: (X=right, Y=up, Z=forward)
+
+        Transform: [calc_x, calc_y, calc_z] -> [mpl_x, mpl_y, mpl_z]
+                   [x, y, z] -> [x, z, y]
+
+        Args:
+            point: Point in calculation space [x, y, z]
+
+        Returns:
+            Point in matplotlib space [x, z, y]
+        """
+        p = np.array(point) if isinstance(point, list) else point
+        return np.array([p[0], p[1], p[2]])  # Swap Y and Z
+
+    @staticmethod
+    def calc_to_mpl_batch(points: List[List[float]]) -> List[List[float]]:
+        """Transform multiple points from calculation to matplotlib space"""
+        return [[p[0], p[1], p[2]] for p in points]
 
 
 class Color(Enum):
@@ -33,10 +71,10 @@ class LineStyle(Enum):
 
 
 class AxisLabel(Enum):
-    """Axis labels with units"""
-    X_METERS = 'X (m) →'
-    Y_METERS = 'Y (m) ↑'
-    Z_METERS = 'Z (m) →'
+    """Axis labels for matplotlib (Y-up system)"""
+    X_METERS = 'X (m) - East →'
+    Y_METERS = 'Y (m) - Up ↑'  # matplotlib Y is vertical
+    Z_METERS = 'Z (m) - North →'  # matplotlib Z is horizontal (was Y in calc)
 
 
 class PlotLabel(Enum):
@@ -57,23 +95,48 @@ class DirectionVectorCalculator:
     """Calculate direction vectors from rotation angles"""
 
     @staticmethod
+    def from_horizontal_angle(angle: float) -> np.ndarray:
+        """
+        Convert horizontal rotation angle to unit direction vector
+
+        Coordinate system: Z-axis points up, rotation in XY plane
+        - angle=0: Points in +X direction (East)
+        - angle=π/2: Points in +Y direction (North)
+        - angle=π: Points in -X direction (West)
+        - angle=3π/2: Points in -Y direction (South)
+
+        Args:
+            angle: Horizontal rotation angle in radians (0 to 2π)
+
+        Returns:
+            Unit vector in horizontal plane [x, y, z] where z=0
+        """
+        return np.array([
+            np.cos(angle),
+            np.sin(angle),
+            0.0  # Horizontal plane only (Z is up)
+        ])
+
+    @staticmethod
     def from_angles(rad_x: float, rad_y: float) -> np.ndarray:
         """
-        Convert rotation angles to unit direction vector
+        DEPRECATED: Use from_horizontal_angle instead
 
-        Returns vector in calculation space (X, Y, Z) where Y is up
+        Convert rotation angles to unit direction vector (old two-angle system)
+
+        Returns vector in calculation space (X, Y, Z) where Z is up
         """
         return np.array([
             np.cos(rad_y) * np.cos(rad_x),
-            np.sin(rad_x),
-            np.sin(rad_y) * np.cos(rad_x)
+            np.sin(rad_y) * np.cos(rad_x),
+            np.sin(rad_x)
         ])
 
     @staticmethod
     def get_horizontal_component(direction_vec: np.ndarray) -> np.ndarray:
-        """Extract horizontal component of direction vector (remove Y which is up)"""
+        """Extract horizontal component of direction vector (remove Z which is up)"""
         horiz = direction_vec.copy()
-        horiz[1] = 0.0
+        horiz[2] = 0.0  # Remove Z component (vertical)
         mag = np.linalg.norm(horiz)
         return horiz / mag if mag > 1e-6 else np.array([1.0, 0.0, 0.0])
 
@@ -84,7 +147,7 @@ class ProjectionPlaneBuilder:
     def __init__(self, window_center: List[float], horizontal_dir: np.ndarray):
         self.window_center = np.array(window_center)
         self.u_axis = horizontal_dir / np.linalg.norm(horizontal_dir)
-        self.v_axis = np.array([0, 1, 0])  # World up (Y-axis in calc space)
+        self.v_axis = np.array([0, 0, 1])  # World up
 
     def build_mesh(self, width: float = 12, height_range: Tuple[float, float] = (-2, 10),
                    resolution: int = 8) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -111,10 +174,15 @@ class ProjectionPlaneBuilder:
 
     def project_point(self, point: np.ndarray) -> np.ndarray:
         """Project a 3D point onto this plane"""
-        relative = point - self.window_center
+        wc = self.window_center
+        wc[2] = point[2]
+        relative = point - wc
+        relative[2] = point[2]
         u = np.dot(relative, self.u_axis)
         v = np.dot(relative, self.v_axis)
-        return self.window_center + u * self.u_axis + v * self.v_axis
+        res = wc + u * self.u_axis + v * self.v_axis
+        res[2] = point[2]
+        return res
 
 
 class MeshProjector:
@@ -137,9 +205,9 @@ class MeshProjector:
         for vertex in mesh_vertices:
             projected = self.plane_builder.project_point(np.array(vertex))
 
-            # Y component is height in calc space
-            if projected[1] > max_height:
-                max_height = projected[1]
+            # Z component is height in calc space (Z-up coordinate system)
+            if projected[2] > max_height:
+                max_height = projected[2]
                 highest_projected = projected
                 highest_original = np.array(vertex)
 
@@ -189,50 +257,70 @@ class PlotElementRenderer:
 
     @staticmethod
     def add_window(ax, window_center: List[float]):
-        """Add window marker to plot (swap Y and Z for matplotlib)"""
-        ax.scatter(window_center[0], window_center[2], window_center[1],
+        """Add window marker to plot"""
+        mpl_pos = CoordinateTransform.calc_to_mpl(window_center)
+        ax.scatter(mpl_pos[0], mpl_pos[1], mpl_pos[2],
                    c=Color.RED.value, s=200, marker=Marker.CIRCLE.value,
                    label=PlotLabel.WINDOW.value, edgecolors=Color.BLACK.value, lw=2)
+        
 
     @staticmethod
     def add_mesh(ax, mesh_vertices: List[List[float]]):
-        """Add mesh to plot (swap Y and Z for matplotlib)"""
-        mesh_viz = [[v[0], v[2], v[1]] for v in mesh_vertices]
-        ax.add_collection3d(MeshRenderer.create_collection(mesh_viz))
+        """Add mesh to plot"""
+        mesh_viz = CoordinateTransform.calc_to_mpl_batch(mesh_vertices)
+        m = MeshRenderer.create_collection(mesh_vertices)
+        ax.add_collection3d(MeshRenderer.create_collection(mesh_vertices))
 
     @staticmethod
     def add_viewing_direction(ax, window_center: List[float], direction_vec: np.ndarray, length: float):
-        """Add viewing direction arrow (swap Y and Z for matplotlib)"""
-        ax.quiver(window_center[0], window_center[2], window_center[1],
-                  direction_vec[0]*length, direction_vec[2]*length, direction_vec[1]*length,
-                  color=Color.MAGENTA.value, lw=2, arrow_length_ratio=0.03,
+        """Add viewing direction arrow"""
+        mpl_pos = CoordinateTransform.calc_to_mpl(window_center)
+        mpl_dir = CoordinateTransform.calc_to_mpl(direction_vec)
+        ax.quiver(mpl_pos[0], mpl_pos[1], mpl_pos[2],
+                  mpl_dir[0]*length, mpl_dir[1]*length, mpl_dir[2]*length,
+                  color=Color.BLUE.value, lw=2, arrow_length_ratio=0.03,
                   label=PlotLabel.VIEW_DIR.value)
 
     @staticmethod
     def add_projection_plane(ax, plane_builder: ProjectionPlaneBuilder,
                             width: float = 12, height_range: Tuple[float, float] = (-2, 10)):
-        """Add projection plane surface (swap Y and Z for matplotlib)"""
+        """Add projection plane surface"""
         pX, pY, pZ = plane_builder.build_mesh(width=width, height_range=height_range)
-        ax.plot_surface(pX, pZ, pY, alpha=0.15, color=Color.GREEN.value)
+        # Transform each point in the mesh to matplotlib space
+        resolution = pX.shape[0]
+        mpl_X, mpl_Y, mpl_Z = np.zeros_like(pX), np.zeros_like(pY), np.zeros_like(pZ)
+        for i in range(resolution):
+            for j in range(resolution):
+                calc_point = [pX[i,j], pY[i,j], pZ[i,j]]
+                mpl_point = CoordinateTransform.calc_to_mpl(calc_point)
+                mpl_X[i,j], mpl_Y[i,j], mpl_Z[i,j] = mpl_point
+        ax.plot_surface(mpl_X, mpl_Y, mpl_Z, alpha=0.15, color=Color.GREEN.value)
 
     @staticmethod
     def add_highest_point(ax, point: np.ndarray):
-        """Add highest projected point marker (swap Y and Z for matplotlib)"""
-        ax.scatter(point[0], point[2], point[1], c=Color.ORANGE.value, s=150,
+        """Add highest projected point marker"""
+        mpl_pos = CoordinateTransform.calc_to_mpl(point)
+        ax.scatter(mpl_pos[0], mpl_pos[1], mpl_pos[2], c=Color.ORANGE.value, s=150,
                    marker=Marker.TRIANGLE_UP.value, label=PlotLabel.HIGHEST_ON_PLANE.value,
                    edgecolors=Color.BLACK.value, lw=2)
 
     @staticmethod
     def add_obstruction_line(ax, start: List[float], end: np.ndarray, angle_degrees: float):
-        """Add obstruction line from window to highest point (swap Y and Z for matplotlib)"""
-        ax.plot([start[0], end[0]], [start[2], end[2]], [start[1], end[1]],
+        """Add obstruction line from window to highest point"""
+        mpl_start = CoordinateTransform.calc_to_mpl(start)
+        mpl_end = CoordinateTransform.calc_to_mpl(end)
+        ax.plot([mpl_start[0], mpl_end[0]], [mpl_start[1], mpl_end[1]], [mpl_start[2], mpl_end[2]],
                 color=Color.RED.value, linestyle=LineStyle.DASHED.value, lw=3,
                 label=f'Obstruction {angle_degrees:.1f}°')
 
     @staticmethod
     def add_projection_line(ax, original: np.ndarray, projected: np.ndarray):
-        """Add line showing projection from mesh to plane (swap Y and Z for matplotlib)"""
-        ax.plot([original[0], projected[0]], [original[2], projected[2]], [original[1], projected[1]],
+        """Add line showing projection from mesh to plane"""
+        
+        mpl_orig = CoordinateTransform.calc_to_mpl(original)
+        
+        mpl_proj = CoordinateTransform.calc_to_mpl(projected)
+        ax.plot([mpl_orig[0], mpl_proj[0]], [mpl_orig[1], mpl_proj[1]], [mpl_orig[2], mpl_proj[2]],
                 color=Color.BLUE.value, linestyle=LineStyle.DASHED.value, lw=2, alpha=0.8,
                 label=PlotLabel.PROJECTION.value)
 
@@ -248,7 +336,7 @@ class ZenithVisualizationHelper:
 
         The direction plane is perpendicular to (direction × world_up)
         """
-        world_up = np.array([0.0, 1.0, 0.0])
+        world_up = np.array([0.0, 0.0, 1.0])  # Z-up coordinate system
         plane_normal = np.cross(direction_vec, world_up)
         plane_normal_mag = np.linalg.norm(plane_normal)
 
@@ -269,9 +357,10 @@ class ZenithVisualizationHelper:
     def calculate_horizontal_reference_point(projected_point: np.ndarray,
                                             window_center: np.ndarray) -> np.ndarray:
         """
-        Calculate horizontal reference point (same X,Z as projected point, same Y as window)
+        Calculate horizontal reference point (same X,Y as projected point, same Z as window)
+        Z-up coordinate system: horizontal plane is XY (constant Z)
         """
-        return np.array([projected_point[0], window_center[1], projected_point[2]])
+        return np.array([projected_point[0], projected_point[1], window_center[2]])
 
 
 class ZenithPlotRenderer:
@@ -279,45 +368,65 @@ class ZenithPlotRenderer:
 
     @staticmethod
     def add_overhead_point(ax, point: np.ndarray, label: str = PlotLabel.FURTHEST_OVERHEAD.value):
-        """Add overhead obstruction point marker (swap Y and Z for matplotlib)"""
-        ax.scatter(point[0], point[2], point[1],
+        """Add overhead obstruction point marker"""
+        print("overhead ", point)
+        mpl_pos = CoordinateTransform.calc_to_mpl(point)
+        print("overhead converted", mpl_pos)
+        ax.scatter(mpl_pos[0], mpl_pos[1], mpl_pos[2],
                    c=Color.RED.value, s=150, marker=Marker.CIRCLE.value, label=label,
                    edgecolors=Color.BLACK.value, linewidths=2)
 
     @staticmethod
     def add_api_point(ax, point: np.ndarray):
-        """Add original API point marker (off-plane) (swap Y and Z for matplotlib)"""
-        ax.scatter(point[0], point[2], point[1],
+        """Add original API point marker (off-plane)"""
+        print("api ", point)
+        # mpl_pos = CoordinateTransform.calc_to_mpl(point)
+        # print("api converted", mpl_pos)
+        ax.scatter(point[0], point[1], point[2],
                    c=Color.ORANGE.value, s=100, marker=Marker.CROSS.value,
                    label=PlotLabel.API_POINT_OFF_PLANE.value, linewidths=2)
 
     @staticmethod
     def add_zenith_line(ax, window_pos: np.ndarray, overhead_point: np.ndarray, angle_degrees: float):
-        """Add zenith line from window to overhead point (swap Y and Z for matplotlib)"""
-        ax.plot([window_pos[0], overhead_point[0]],
-                [window_pos[2], overhead_point[2]],
-                [window_pos[1], overhead_point[1]],
+        """Add zenith line from window to overhead point"""
+        print("window pos ", window_pos)
+        print("ovhd pnt ", overhead_point)
+        mpl_win = window_pos # CoordinateTransform.calc_to_mpl(window_pos)
+        mpl_point = overhead_point #CoordinateTransform.calc_to_mpl(overhead_point)
+        # print("window pos converted", mpl_win)
+        # print("ovhd pnt converted", mpl_point)
+        ax.plot([mpl_win[0], mpl_point[0]],
+                [mpl_win[1], mpl_point[1]],
+                [mpl_win[2], mpl_point[2]],
                 color=Color.RED.value, linestyle=LineStyle.DASHED.value, linewidth=3,
                 label=f'Zenith line: {angle_degrees:.1f}°')
 
     @staticmethod
     def add_horizontal_reference(ax, window_pos: np.ndarray, horizontal_ref_point: np.ndarray):
-        """Add horizontal reference line (parallel to XZ plane) (swap Y and Z for matplotlib)"""
-        ax.plot([window_pos[0], horizontal_ref_point[0]],
-                [window_pos[2], horizontal_ref_point[2]],
-                [window_pos[1], horizontal_ref_point[1]],
+        """Add horizontal reference line (parallel to XY plane)"""
+        print("window pos ", window_pos)
+        print("hr pnt ", horizontal_ref_point)
+        mpl_win = window_pos #CoordinateTransform.calc_to_mpl(window_pos)
+        mpl_ref = horizontal_ref_point #CoordinateTransform.calc_to_mpl(horizontal_ref_point)
+        # print("window pos converted", mpl_win)
+        # print("href pnt converted", mpl_ref)
+        ax.plot([mpl_win[0], mpl_ref[0]],
+                [mpl_win[1], mpl_ref[1]],
+                [mpl_win[2], mpl_ref[2]],
                 color=Color.GREEN.value, linestyle=LineStyle.SOLID.value, linewidth=2.5, alpha=0.8,
                 label=PlotLabel.HORIZONTAL_REFERENCE.value)
-        ax.scatter(horizontal_ref_point[0], horizontal_ref_point[2], horizontal_ref_point[1],
+        ax.scatter(mpl_ref[0], mpl_ref[1], mpl_ref[2],
                    c=Color.GREEN.value, s=100, marker=Marker.SQUARE.value,
                    edgecolors=Color.BLACK.value, linewidths=1)
 
     @staticmethod
     def add_vertical_component(ax, horizontal_ref_point: np.ndarray, overhead_point: np.ndarray):
-        """Add vertical component line (parallel to Y axis) (swap Y and Z for matplotlib)"""
-        ax.plot([horizontal_ref_point[0], overhead_point[0]],
-                [horizontal_ref_point[2], overhead_point[2]],
-                [horizontal_ref_point[1], overhead_point[1]],
+        """Add vertical component line (parallel to Z axis)"""
+        mpl_ref = CoordinateTransform.calc_to_mpl(horizontal_ref_point)
+        mpl_point = CoordinateTransform.calc_to_mpl(overhead_point)
+        ax.plot([mpl_ref[0], mpl_point[0]],
+                [mpl_ref[1], mpl_point[1]],
+                [mpl_ref[2], mpl_point[2]],
                 color=Color.BLUE.value, linestyle=LineStyle.SOLID.value, linewidth=2.5, alpha=0.8,
                 label=PlotLabel.VERTICAL_COMPONENT.value)
 
@@ -326,15 +435,19 @@ class VisualizationFactory:
     """Factory for creating visualization components"""
 
     @staticmethod
-    def create_projection_components(window_center: List[float], window_angles: Tuple[float, float]):
+    def create_projection_components(window_center: List[float], direction_angle: float):
         """
         Create all components needed for projection visualization
+
+        Args:
+            window_center: [x, y, z] window position
+            direction_angle: Horizontal rotation angle in radians
 
         Returns:
             (direction_vec, horizontal_dir, plane_builder, mesh_projector)
         """
         calc = DirectionVectorCalculator()
-        direction_vec = calc.from_angles(*window_angles)
+        direction_vec = calc.from_horizontal_angle(direction_angle)
         horizontal_dir = calc.get_horizontal_component(direction_vec)
 
         plane_builder = ProjectionPlaneBuilder(window_center, horizontal_dir)
@@ -346,19 +459,19 @@ class VisualizationFactory:
 class HorizonAngleVisualizer:
     """Complete horizon angle visualization orchestrator"""
 
-    def __init__(self, window_center: List[float], window_angles: Tuple[float, float],
+    def __init__(self, window_center: List[float], direction_angle: float,
                  mesh_vertices: List[List[float]], building_dimensions: Tuple[float, float, float]):
         """
         Initialize visualizer with scene parameters
 
         Args:
             window_center: [x, y, z] position of window
-            window_angles: (rad_x, rad_y) rotation angles
+            direction_angle: Horizontal rotation angle in radians
             mesh_vertices: List of mesh triangle vertices
             building_dimensions: (distance, height, width) for axis scaling
         """
         self.window_center = window_center
-        self.window_angles = window_angles
+        self.direction_angle = direction_angle
         self.mesh_vertices = mesh_vertices
         self.building_dist, self.building_height, self.building_width = building_dimensions
 
@@ -373,7 +486,7 @@ class HorizonAngleVisualizer:
         """
         # Create visualization components
         dir_vec, dir_h, plane_builder, mesh_projector = VisualizationFactory.create_projection_components(
-            self.window_center, self.window_angles)
+            self.window_center, self.direction_angle)
 
         # Setup renderer
         renderer = PlotElementRenderer()
@@ -387,11 +500,17 @@ class HorizonAngleVisualizer:
 
         # Add highest point and lines if exists
         if highest_point:
+            print("highest point", highest_point)
             hp_3d = np.array([highest_point['x'], highest_point['y'], highest_point['z']])
+            print("HP3D", hp_3d)
             hp_proj = plane_builder.project_point(hp_3d)
+            print("HP_porj", hp_proj)
             renderer.add_highest_point(ax, hp_proj)
             renderer.add_obstruction_line(ax, self.window_center, hp_proj, obstruction_angle)
-            renderer.add_projection_line(ax, dir_vec * self.building_dist, hp_proj)
+
+            # Calculate point along view direction from window
+            view_point = np.array(self.window_center) + dir_vec * self.building_dist
+            renderer.add_projection_line(ax, view_point, hp_proj)
 
         # Configure axes
         max_range = max(self.building_dist, self.building_height, self.building_width)
@@ -403,19 +522,19 @@ class HorizonAngleVisualizer:
 class ZenithAngleVisualizer:
     """Complete zenith angle visualization orchestrator"""
 
-    def __init__(self, window_center: List[float], window_angles: Tuple[float, float],
+    def __init__(self, window_center: List[float], direction_angle: float,
                  mesh_vertices: List[List[float]], scene_dimensions: Tuple[float, float, float]):
         """
         Initialize visualizer with scene parameters
 
         Args:
             window_center: [x, y, z] position of window
-            window_angles: (rad_x, rad_y) rotation angles
+            direction_angle: Horizontal rotation angle in radians
             mesh_vertices: List of mesh triangle vertices
             scene_dimensions: (distance, height, width) for axis scaling
         """
         self.window_center = np.array(window_center)
-        self.window_angles = window_angles
+        self.direction_angle = direction_angle
         self.mesh_vertices = mesh_vertices
         self.scene_dist, self.scene_height, self.scene_width = scene_dimensions
 
@@ -430,7 +549,7 @@ class ZenithAngleVisualizer:
         """
         # Create visualization components
         dir_vec, _, plane_builder, _ = VisualizationFactory.create_projection_components(
-            self.window_center.tolist(), self.window_angles)
+            self.window_center.tolist(), self.direction_angle)
 
         # Setup renderers
         base_renderer = PlotElementRenderer()
@@ -447,7 +566,9 @@ class ZenithAngleVisualizer:
 
         # Process and render overhead point
         if overhead_point and zenith_angle > 0:
+            print("OVERHEAD", overhead_point)
             lp_3d = np.array([overhead_point['x'], overhead_point['y'], overhead_point['z']])
+            print("LP3D", lp_3d)
 
             # Project point onto direction plane
             projected_point = zenith_helper.project_point_onto_direction_plane(
@@ -476,21 +597,21 @@ class ZenithAngleVisualizer:
 class DualAngleVisualizer:
     """Dual visualization showing both horizon and zenith angles side-by-side"""
 
-    def __init__(self, window_center: List[float], window_angles: Tuple[float, float],
+    def __init__(self, window_center: List[float], direction_angle: float,
                  mesh_vertices: List[List[float]], building_dimensions: Tuple[float, float, float]):
         """
         Initialize dual visualizer
 
         Args:
             window_center: [x, y, z] position of window
-            window_angles: (rad_x, rad_y) rotation angles
+            direction_angle: Horizontal rotation angle in radians
             mesh_vertices: List of mesh triangle vertices
             building_dimensions: (distance, height, width) for axis scaling
         """
         self.horizon_viz = HorizonAngleVisualizer(
-            window_center, window_angles, mesh_vertices, building_dimensions)
+            window_center, direction_angle, mesh_vertices, building_dimensions)
         self.zenith_viz = ZenithAngleVisualizer(
-            window_center, window_angles, mesh_vertices, building_dimensions)
+            window_center, direction_angle, mesh_vertices, building_dimensions)
 
     def visualize(self, fig, horizon_data: dict, zenith_data: dict):
         """
@@ -533,16 +654,16 @@ class DualAngleVisualizer:
 class TopViewVisualizer:
     """Top-down view visualizer showing XZ plane"""
 
-    def __init__(self, window_center: List[float], window_angles: Tuple[float, float]):
+    def __init__(self, window_center: List[float], direction_angle: float):
         """
         Initialize top view visualizer
 
         Args:
             window_center: [x, y, z] position of window
-            window_angles: (rad_x, rad_y) rotation angles
+            direction_angle: Horizontal rotation angle in radians
         """
         self.window_center = np.array(window_center)
-        self.window_angles = window_angles
+        self.direction_angle = direction_angle
 
     def visualize(self, ax, view_distance: float = 10.0, plane_width: float = 8.0):
         """
@@ -555,27 +676,29 @@ class TopViewVisualizer:
         """
         # Calculate direction vector
         calc = DirectionVectorCalculator()
-        dir_vec = calc.from_angles(*self.window_angles)
+        dir_vec = calc.from_horizontal_angle(self.direction_angle)
 
         # Calculate plane normal (perpendicular to direction in horizontal plane)
-        world_up = np.array([0.0, 1.0, 0.0])
+        world_up = np.array([0.0, 0.0, 1.0])  # Z-up coordinate system
         plane_normal = np.cross(dir_vec, world_up)
         plane_normal_mag = np.linalg.norm(plane_normal)
 
         if plane_normal_mag > 1e-6:
             plane_normal = plane_normal / plane_normal_mag
         else:
-            plane_normal = np.array([0.0, 0.0, 1.0])
+            # Direction is vertical, use default perpendicular
+            plane_normal = np.array([0.0, 1.0, 0.0])
+            
 
         # Draw window
-        ax.scatter(self.window_center[0], self.window_center[2],
+        ax.scatter(self.window_center[0], self.window_center[1],
                   c=Color.RED.value, s=300, marker=Marker.CIRCLE.value,
                   label=PlotLabel.WINDOW.value, edgecolors=Color.BLACK.value,
                   linewidths=2, zorder=5)
 
         # Draw viewing direction arrow
-        ax.arrow(self.window_center[0], self.window_center[2],
-                dir_vec[0] * view_distance, dir_vec[2] * view_distance,
+        ax.arrow(self.window_center[0], self.window_center[1],
+                dir_vec[0] * view_distance, dir_vec[1] * view_distance,
                 head_width=0.5, head_length=0.5, fc=Color.MAGENTA.value, ec=Color.MAGENTA.value,
                 linewidth=2, label=PlotLabel.VIEW_DIRECTION.value, zorder=4)
 
@@ -584,7 +707,7 @@ class TopViewVisualizer:
         plane_start = self.window_center + plane_normal * (plane_width / 2)
         plane_end = self.window_center - plane_normal * (plane_width / 2)
 
-        ax.plot([plane_start[0], plane_end[0]], [plane_start[2], plane_end[2]],
+        ax.plot([plane_start[0], plane_end[0]], [plane_start[1], plane_end[1]],
                color=Color.GREEN.value, linestyle=LineStyle.SOLID.value, linewidth=3,
                alpha=0.7, label=PlotLabel.DIRECTION_PLANE.value, zorder=3)
 
@@ -595,14 +718,14 @@ class TopViewVisualizer:
             p2 = p1 + dir_vec * plane_length
             alpha = 0.7 if offset == 0 else 0.3
             lw = 3 if offset == 0 else 1
-            ax.plot([p1[0], p2[0]], [p1[2], p2[2]],
+            ax.plot([p1[0], p2[0]], [p1[1], p2[1]],
                    color=Color.GREEN.value, linestyle=LineStyle.SOLID.value,
                    linewidth=lw, alpha=alpha, zorder=2)
 
         # Configure axes
         ax.set_xlabel(AxisLabel.X_METERS.value, fontsize=12, fontweight='bold')
-        ax.set_ylabel(AxisLabel.Z_METERS.value, fontsize=12, fontweight='bold')
-        ax.set_title('Top View (Looking Down at XZ Plane)', fontsize=14, fontweight='bold')
+        ax.set_ylabel(AxisLabel.Y_METERS.value, fontsize=12, fontweight='bold')
+        ax.set_title('Top View (Looking Down at XY Plane)', fontsize=14, fontweight='bold')
         ax.grid(True, alpha=0.3)
         ax.axis('equal')
         ax.legend(fontsize=10, loc='upper right')
@@ -610,7 +733,7 @@ class TopViewVisualizer:
         # Set axis limits
         margin = 3
         ax.set_xlim(self.window_center[0] - margin, self.window_center[0] + view_distance + margin)
-        ax.set_ylim(self.window_center[2] - plane_width, self.window_center[2] + plane_width)
+        ax.set_ylim(self.window_center[1] - plane_width, self.window_center[1] + plane_width)
 
 
 class CombinedObstructionVisualizer:
@@ -625,17 +748,17 @@ class CombinedObstructionVisualizer:
     - Zenith angle line (magenta, for horizontal surfaces)
     """
 
-    def __init__(self, window_center: list, window_angles: list, mesh_vertices: list):
+    def __init__(self, window_center: list, direction_angle: float, mesh_vertices: list):
         """
         Initialize combined obstruction visualizer
 
         Args:
             window_center: [x, y, z] window center position
-            window_angles: [rad_x, rad_y] viewing angles in radians
+            direction_angle: Horizontal rotation angle in radians
             mesh_vertices: List of mesh vertices (triangles)
         """
         self.window_center = window_center
-        self.window_angles = window_angles
+        self.direction_angle = direction_angle
         self.mesh_vertices = mesh_vertices
 
     def visualize(self, ax, horizon_data: dict, zenith_data: dict):
@@ -649,7 +772,7 @@ class CombinedObstructionVisualizer:
         """
         # Calculate direction vectors and plane
         calc = DirectionVectorCalculator()
-        dir_vec = calc.from_angles(*self.window_angles)
+        dir_vec = calc.from_horizontal_angle(self.direction_angle)
         horizontal_dir = calc.get_horizontal_component(dir_vec)
         plane_builder = ProjectionPlaneBuilder(self.window_center, horizontal_dir)
 
@@ -676,19 +799,22 @@ class CombinedObstructionVisualizer:
         # Add horizon angle visualization (if exists)
         if horizon_angle > 0 and horizon_data.get('highest_point'):
             hp = horizon_data['highest_point']
+            
             hp_3d = np.array([hp['x'], hp['y'], hp['z']])
             hp_proj = plane_builder.project_point(hp_3d)
+            mpl_hp = CoordinateTransform.calc_to_mpl(hp_proj)
 
             # Add highest point marker (orange triangle)
-            ax.scatter(hp_proj[0], hp_proj[2], hp_proj[1],
+            ax.scatter(mpl_hp[0], mpl_hp[1], mpl_hp[2],
                       c=Color.ORANGE.value, s=150, marker=Marker.TRIANGLE_UP.value,
                       label=f'Horizon: {horizon_angle:.1f}°',
                       edgecolors=Color.BLACK.value, lw=2)
 
             # Add horizon line (red dashed)
-            ax.plot([self.window_center[0], hp_proj[0]],
-                   [self.window_center[2], hp_proj[2]],
-                   [self.window_center[1], hp_proj[1]],
+            mpl_win = CoordinateTransform.calc_to_mpl(self.window_center)
+            ax.plot([mpl_win[0], mpl_hp[0]],
+                   [mpl_win[1], mpl_hp[1]],
+                   [mpl_win[2], mpl_hp[2]],
                    color=Color.RED.value, linestyle=LineStyle.DASHED.value,
                    lw=3, label=f'Vertical obstruction')
 
@@ -697,17 +823,19 @@ class CombinedObstructionVisualizer:
             zp = zenith_data['highest_point']
             zp_3d = np.array([zp['x'], zp['y'], zp['z']])
             zp_proj = plane_builder.project_point(zp_3d)
+            mpl_zp = CoordinateTransform.calc_to_mpl(zp_proj)
 
             # Add furthest overhead point marker (magenta circle)
-            ax.scatter(zp_proj[0], zp_proj[2], zp_proj[1],
+            ax.scatter(mpl_zp[0], mpl_zp[1], mpl_zp[2],
                       c=Color.MAGENTA.value, s=150, marker=Marker.CIRCLE.value,
                       label=f'Zenith: {zenith_angle:.1f}°',
                       edgecolors=Color.BLACK.value, lw=2)
 
             # Add zenith line (magenta dashed)
-            ax.plot([self.window_center[0], zp_proj[0]],
-                   [self.window_center[2], zp_proj[2]],
-                   [self.window_center[1], zp_proj[1]],
+            mpl_win = CoordinateTransform.calc_to_mpl(self.window_center)
+            ax.plot([mpl_win[0], mpl_zp[0]],
+                   [mpl_win[1], mpl_zp[1]],
+                   [mpl_win[2], mpl_zp[2]],
                    color=Color.MAGENTA.value, linestyle=LineStyle.DASHED.value,
                    lw=3, label=f'Horizontal obstruction')
 
@@ -717,3 +845,40 @@ class CombinedObstructionVisualizer:
 
         AxisConfigurator.setup(ax, max_range=max_range, title=title)
         ax.legend(fontsize=10, loc='upper right')
+
+
+class MeshExporter:
+    """Export mesh data to various file formats"""
+
+    @staticmethod
+    def to_obj(mesh_vertices: list, output_path: str, window_center: list = None) -> None:
+        """
+        Export mesh vertices to Wavefront OBJ file format
+
+        Args:
+            mesh_vertices: List of vertices forming triangles [[x1,y1,z1], [x2,y2,z2], [x3,y3,z3], ...]
+            output_path: Path to save the OBJ file
+            window_center: Optional window position to include as a comment
+        """
+        with open(output_path, 'w') as f:
+            # Write header
+            f.write("# Wavefront OBJ file\n")
+            f.write("# Generated from obstruction calculation mesh data\n")
+
+            if window_center:
+                f.write(f"# Window position: {window_center[0]}, {window_center[1]}, {window_center[2]}\n")
+
+            f.write(f"# Vertices: {len(mesh_vertices)}\n")
+            f.write(f"# Triangles: {len(mesh_vertices) // 3}\n\n")
+
+            # Write vertices
+            for vertex in mesh_vertices:
+                f.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")
+
+            f.write("\n")
+
+            # Write faces (groups of 3 vertices form triangles)
+            # OBJ uses 1-based indexing
+            for i in range(0, len(mesh_vertices), 3):
+                v1, v2, v3 = i + 1, i + 2, i + 3
+                f.write(f"f {v1} {v2} {v3}\n")

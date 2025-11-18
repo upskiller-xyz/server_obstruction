@@ -1,12 +1,12 @@
 import pytest
 import numpy as np
 from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.raytracing_models import (
+from src.components.obstruction_models import (
     Window,
     ProjectedPoint,
     ProjectionPlane,
-    RaytraceRequest,
-    RaytraceResult
+    ObstructionRequest,
+    ObstructionResult
 )
 
 
@@ -118,8 +118,8 @@ class TestProjectionPlane:
             plane.origin = Point3D(x=5.0, y=5.0, z=5.0)
 
 
-class TestRaytraceRequest:
-    """Test cases for RaytraceRequest class"""
+class TestObstructionRequest:
+    """Test cases for ObstructionRequest class"""
 
     def test_raytrace_request_creation(self):
         """Test basic request creation"""
@@ -132,12 +132,12 @@ class TestRaytraceRequest:
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0]
         ])
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
         assert request.window == window
         assert request.mesh == mesh
 
     def test_raytrace_request_immutability(self):
-        """Test that RaytraceRequest is immutable"""
+        """Test that ObstructionRequest is immutable"""
         window = Window(
             center=Point3D(x=0.0, y=1.5, z=0.0),
             normal=Vector3D(x=1.0, y=0.0, z=0.0)
@@ -147,7 +147,7 @@ class TestRaytraceRequest:
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0]
         ])
-        request = RaytraceRequest(window=window, mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
         with pytest.raises(AttributeError):
             request.window = None
 
@@ -165,7 +165,7 @@ class TestRaytraceRequest:
                 [0.0, 1.0, 0.0]
             ]
         }
-        request = RaytraceRequest.from_dict(data)
+        request = ObstructionRequest.from_dict(data)
         assert request.window.center.x == 0.0
         assert request.window.center.y == 1.5
         assert len(request.mesh.triangles) == 1
@@ -183,17 +183,17 @@ class TestRaytraceRequest:
                 [1.0, 1.0, 0.0], [2.0, 1.0, 0.0], [1.0, 2.0, 0.0]
             ]
         }
-        request = RaytraceRequest.from_dict(data)
+        request = ObstructionRequest.from_dict(data)
         assert len(request.mesh.triangles) == 2
 
 
-class TestRaytraceResult:
-    """Test cases for RaytraceResult class"""
+class TestObstructionResult:
+    """Test cases for ObstructionResult class"""
 
     def test_raytrace_result_creation(self):
         """Test basic result creation"""
         highest = Point3D(x=1.0, y=5.0, z=0.0)
-        result = RaytraceResult(
+        result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
             highest_point=highest,
@@ -205,9 +205,9 @@ class TestRaytraceResult:
         assert result.projected_point_count == 10
 
     def test_raytrace_result_immutability(self):
-        """Test that RaytraceResult is immutable"""
+        """Test that ObstructionResult is immutable"""
         highest = Point3D(x=1.0, y=5.0, z=0.0)
-        result = RaytraceResult(
+        result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
             highest_point=highest,
@@ -219,7 +219,7 @@ class TestRaytraceResult:
     def test_to_dict(self):
         """Test conversion to dictionary"""
         highest = Point3D(x=1.0, y=5.0, z=0.0)
-        result = RaytraceResult(
+        result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
             highest_point=highest,
@@ -235,7 +235,7 @@ class TestRaytraceResult:
 
     def test_to_dict_no_highest_point(self):
         """Test to_dict with no highest point"""
-        result = RaytraceResult(
+        result = ObstructionResult(
             obstruction_angle_degrees=0.0,
             obstruction_angle_radians=0.0,
             highest_point=None,
