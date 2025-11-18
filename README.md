@@ -366,7 +366,6 @@ Stanislava Fedorova - [e-mail](mailto:stasya.fedorova@gmail.com)
 * [README template](https://github.com/othneildrew/Best-README-Template)
 * [Flask](https://flask.palletsprojects.com/) - Web framework
 * [NumPy](https://numpy.org/) - Numerical computations
-* Alberto Floris - [e-mail](mailto:alberto.floris@arkion.co)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
