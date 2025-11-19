@@ -79,15 +79,38 @@ class ServerApplication:
     def _setup_routes(self) -> None:
         """Setup Flask routes"""
         self._app.add_url_rule("/", "get_status", self._get_status, methods=["GET"])
+        self._app.add_url_rule("/routes", "list_routes", self._list_routes, methods=["GET"])
         self._app.add_url_rule("/horizon_angle", "horizon_angle", self._horizon_angle, methods=["POST"])
         self._app.add_url_rule("/obstruction", "obstruction", self._obstruction, methods=["POST"])
         self._app.add_url_rule("/zenith_angle", "zenith_angle", self._zenith_angle, methods=["POST"])
         self._app.add_url_rule("/obstruction_all", "obstruction_all", self._obstruction_all, methods=["POST"])
         self._app.add_url_rule("/route_example", "route_example", self._route_example, methods=["POST"])
 
+        # Log registered routes
+        self._logger.info("Registered routes:")
+        for rule in self._app.url_map.iter_rules():
+            methods = ', '.join(sorted(rule.methods - {'HEAD', 'OPTIONS'}))
+            self._logger.info(f"  {rule.rule:30} [{methods}]")
+
     def _get_status(self) -> Dict[str, Any]:
         """Get server status endpoint"""
         return jsonify(self._controller.get_status())
+
+    def _list_routes(self) -> Dict[str, Any]:
+        """List all registered routes (debug endpoint)"""
+        routes = []
+        for rule in self._app.url_map.iter_rules():
+            routes.append({
+                'endpoint': rule.endpoint,
+                'methods': sorted(list(rule.methods - {'HEAD', 'OPTIONS'})),
+                'path': rule.rule
+            })
+        routes.sort(key=lambda x: x['path'])
+        return jsonify({
+            'status': 'success',
+            'total_routes': len(routes),
+            'routes': routes
+        })
 
     def _horizon_angle(self) -> Dict[str, Any]:
         """
