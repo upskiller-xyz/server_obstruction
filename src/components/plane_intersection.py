@@ -49,10 +49,12 @@ class TriangleFilter:
 
         # Vectorize: extract all vertices into numpy arrays (N x 3 x 3)
         # Shape: (num_triangles, 3_vertices, 3_coords)
-        vertices_array = np.array([
-            [t.v1.to_array(), t.v2.to_array(), t.v3.to_array()]
-            for t in triangles
-        ])  # Shape: (N, 3, 3)
+        # Use faster array construction
+        vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
+        for i, t in enumerate(triangles):
+            vertices_array[i, 0] = t.v1.to_array()
+            vertices_array[i, 1] = t.v2.to_array()
+            vertices_array[i, 2] = t.v3.to_array()
 
         window_arr = window_center.to_array()
 
@@ -93,8 +95,9 @@ class TriangleFilter:
         # Combine filters
         keep_mask = above_mask & far_enough_mask
 
-        # Build filtered list
-        filtered = [triangles[i] for i in range(n_triangles) if keep_mask[i]]
+        # Build filtered list using fancy indexing (faster than list comprehension)
+        keep_indices = np.where(keep_mask)[0]
+        filtered = [triangles[i] for i in keep_indices]
 
         stats = {
             'kept': int(keep_mask.sum()),
@@ -116,7 +119,7 @@ class TriangleFilter:
         window_normal: Vector3D
     ) -> List[Triangle]:
         """
-        Filter triangles relevant for zenith obstruction calculation
+        Filter triangles relevant for zenith obstruction calculation (VECTORIZED)
 
         Criteria:
         1. Triangle must be above window center (Z axis)
@@ -130,42 +133,50 @@ class TriangleFilter:
         Returns:
             Filtered list of relevant triangles
         """
-        filtered = []
+        n_triangles = len(triangles)
+        if n_triangles == 0:
+            return []
+
+        # Vectorize: extract all vertices into numpy arrays (N x 3 x 3)
+        # Use faster array construction
+        vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
+        for i, t in enumerate(triangles):
+            vertices_array[i, 0] = t.v1.to_array()
+            vertices_array[i, 1] = t.v2.to_array()
+            vertices_array[i, 2] = t.v3.to_array()
+
+        window_arr = window_center.to_array()
         normal_arr = window_normal.to_array()
+
+        # 1. Filter by height: max Z of triangle > window Z
+        max_z_per_triangle = vertices_array[:, :, 2].max(axis=1)  # Shape: (N,)
+        above_mask = max_z_per_triangle > window_arr[2]
+
+        # 2. Check if at least one vertex is in front (or at) window
         normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
         normal_horizontal_mag = np.linalg.norm(normal_horizontal)
 
         if normal_horizontal_mag < MathConstants.EPSILON:
-            normal_horizontal = None
+            # No horizontal normal - accept all triangles that pass height filter
+            forward_mask = np.ones(n_triangles, dtype=bool)
         else:
             normal_horizontal = normal_horizontal / normal_horizontal_mag
 
-        for triangle in triangles:
-            vertices = triangle.vertices()
+            # Vectors from window to each vertex
+            vecs = vertices_array - window_arr  # Shape: (N, 3, 3)
 
-            # Check if at least part of triangle is above window center
-            # For slanted roofs, we need triangles that have ANY vertex above window
-            max_z = max(v.z for v in vertices)
-            if max_z <= window_center.z:
-                continue  # Entire triangle at or below window
+            # Dot product with horizontal normal for all vertices
+            forward_distances = np.dot(vecs, normal_horizontal)  # Shape: (N, 3)
 
-            # Check if at least one vertex is in front (or at) window
-            has_forward_vertex = False
-            for vertex in vertices:
-                vec_to_vertex = vertex.to_array() - window_center.to_array()
+            # Triangle is valid if ANY vertex is in front or at window (>= -epsilon)
+            forward_mask = (forward_distances >= -MathConstants.EPSILON).any(axis=1)
 
-                if normal_horizontal is not None:
-                    forward_distance = float(np.dot(vec_to_vertex, normal_horizontal))
-                    if forward_distance >= -MathConstants.EPSILON:  # Allow slightly behind
-                        has_forward_vertex = True
-                        break
-                else:
-                    # No horizontal normal - accept all
-                    has_forward_vertex = True
-                    break
+        # Combine filters
+        keep_mask = above_mask & forward_mask
 
-            if has_forward_vertex:
-                filtered.append(triangle)
+        # Build filtered list using fancy indexing (faster than list comprehension)
+        keep_indices = np.where(keep_mask)[0]
+        filtered = [triangles[i] for i in keep_indices]
 
         return filtered
 
