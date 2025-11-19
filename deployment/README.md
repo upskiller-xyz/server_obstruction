@@ -4,28 +4,77 @@ This directory contains all files needed for deploying the Obstruction Server on
 
 ## Quick Start
 
+### Docker Deployment (Recommended - Easiest)
+
 ```bash
 # Clone repository on your VM
 git clone https://github.com/upskiller-xyz/server_obstruction.git
 cd server_obstruction/deployment
 
-# Run automated deployment
+# Run automated Docker deployment
+sudo bash deploy-docker.sh
+```
+
+### Native Deployment (Traditional)
+
+```bash
+# Clone repository on your VM
+git clone https://github.com/upskiller-xyz/server_obstruction.git
+cd server_obstruction/deployment
+
+# Run automated native deployment
 sudo bash deploy.sh
 ```
 
 ## Files Included
 
+### Docker Deployment Files
+
 | File | Description |
 |------|-------------|
-| `deploy.sh` | Automated deployment script for VM setup |
+| `deploy-docker.sh` | Automated Docker deployment script |
+| `docker-compose.yml` | Docker Compose configuration |
+| `.env.docker` | Docker environment configuration |
+| `nginx-docker.conf` | Nginx configuration for Docker |
+| `DOCKER_DEPLOYMENT.md` | Comprehensive Docker deployment guide |
+
+### Native Deployment Files
+
+| File | Description |
+|------|-------------|
+| `deploy.sh` | Automated native deployment script for VM setup |
 | `obstruction-server.service` | Systemd service file for automatic startup |
 | `nginx-obstruction-server.conf` | Nginx reverse proxy configuration |
 | `.env.production` | Production environment configuration template |
-| `VM_DEPLOYMENT.md` | Comprehensive deployment documentation |
+| `VM_DEPLOYMENT.md` | Comprehensive native deployment documentation |
 
 ## Deployment Options
 
-### 1. Automated Deployment (Recommended)
+### Docker Deployment (Recommended)
+
+**Pros**: Easiest setup, no Python version issues, consistent environment
+**Cons**: Slight overhead, requires Docker
+
+```bash
+# Basic Docker deployment
+sudo bash deploy-docker.sh
+
+# With nginx reverse proxy
+sudo bash deploy-docker.sh --with-nginx
+
+# Custom port
+sudo bash deploy-docker.sh --port 8082
+
+# Force rebuild
+sudo bash deploy-docker.sh --build
+```
+
+See [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) for detailed documentation.
+
+### Native Deployment
+
+**Pros**: Native performance, minimal overhead
+**Cons**: More complex setup, Python version dependencies
 
 ```bash
 # Basic deployment
@@ -41,9 +90,7 @@ sudo bash deploy.sh --domain your-domain.com
 sudo bash deploy.sh --port 8082
 ```
 
-### 2. Manual Deployment
-
-Follow the step-by-step instructions in [VM_DEPLOYMENT.md](VM_DEPLOYMENT.md).
+See [VM_DEPLOYMENT.md](VM_DEPLOYMENT.md) for detailed documentation.
 
 ## Prerequisites
 

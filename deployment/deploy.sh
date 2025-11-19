@@ -75,36 +75,66 @@ echo -e "${YELLOW}[2/10] Updating system packages...${NC}"
 apt-get update
 apt-get upgrade -y
 
-# Install required system packages
-echo -e "${YELLOW}[3/10] Installing required system packages...${NC}"
+# Install base system packages
+echo -e "${YELLOW}[3/10] Installing base system packages...${NC}"
 apt-get install -y \
-    python3.13 \
-    python3.13-venv \
+    software-properties-common \
     python3-pip \
     git \
     build-essential \
     curl \
     wget
 
-# If Python 3.13 is not available, use Python 3.12 or 3.11
-if ! command -v python3.13 &> /dev/null; then
-    echo -e "${YELLOW}Python 3.13 not available, checking for alternatives...${NC}"
-    if command -v python3.12 &> /dev/null; then
+# Detect and install appropriate Python version
+echo -e "${YELLOW}[4/10] Detecting and installing Python...${NC}"
+PYTHON_CMD=""
+
+# Check for Python 3.13, 3.12, or 3.11
+if command -v python3.13 &> /dev/null; then
+    PYTHON_CMD="python3.13"
+    echo -e "${GREEN}Found Python 3.13${NC}"
+elif command -v python3.12 &> /dev/null; then
+    PYTHON_CMD="python3.12"
+    echo -e "${GREEN}Found Python 3.12${NC}"
+elif command -v python3.11 &> /dev/null; then
+    PYTHON_CMD="python3.11"
+    echo -e "${GREEN}Found Python 3.11${NC}"
+else
+    # Try to install from deadsnakes PPA
+    echo -e "${YELLOW}No suitable Python version found. Adding deadsnakes PPA...${NC}"
+    add-apt-repository -y ppa:deadsnakes/ppa
+    apt-get update
+
+    # Try to install Python 3.13
+    if apt-cache show python3.13 &> /dev/null; then
+        apt-get install -y python3.13 python3.13-venv python3.13-dev
+        PYTHON_CMD="python3.13"
+        echo -e "${GREEN}Installed Python 3.13${NC}"
+    elif apt-cache show python3.12 &> /dev/null; then
+        apt-get install -y python3.12 python3.12-venv python3.12-dev
         PYTHON_CMD="python3.12"
-    elif command -v python3.11 &> /dev/null; then
+        echo -e "${GREEN}Installed Python 3.12${NC}"
+    elif apt-cache show python3.11 &> /dev/null; then
+        apt-get install -y python3.11 python3.11-venv python3.11-dev
         PYTHON_CMD="python3.11"
+        echo -e "${GREEN}Installed Python 3.11${NC}"
     else
-        echo -e "${RED}Error: Python 3.11+ is required${NC}"
+        echo -e "${RED}Error: Unable to install Python 3.11 or higher${NC}"
         exit 1
     fi
-else
-    PYTHON_CMD="python3.13"
 fi
 
-echo -e "${GREEN}Using Python: $PYTHON_CMD${NC}"
+# Ensure venv module is installed
+PYTHON_VERSION_SHORT=$(echo $PYTHON_CMD | grep -oP '\d+\.\d+')
+if ! apt-cache show ${PYTHON_CMD}-venv &> /dev/null; then
+    echo -e "${YELLOW}Installing ${PYTHON_CMD}-venv...${NC}"
+    apt-get install -y ${PYTHON_CMD}-venv ${PYTHON_CMD}-dev || true
+fi
+
+echo -e "${GREEN}Using Python: $PYTHON_CMD ($($PYTHON_CMD --version))${NC}"
 
 # Create service user
-echo -e "${YELLOW}[4/10] Creating service user...${NC}"
+echo -e "${YELLOW}[5/10] Creating service user...${NC}"
 if ! id "$SERVICE_USER" &>/dev/null; then
     useradd -r -s /bin/bash -m -d "$INSTALL_DIR" "$SERVICE_USER"
     echo -e "${GREEN}Created user: $SERVICE_USER${NC}"
@@ -113,7 +143,7 @@ else
 fi
 
 # Clone or update repository
-echo -e "${YELLOW}[5/10] Setting up application directory...${NC}"
+echo -e "${YELLOW}[6/10] Setting up application directory...${NC}"
 if [ -d "$INSTALL_DIR/.git" ]; then
     echo -e "${YELLOW}Repository exists, pulling latest changes...${NC}"
     cd "$INSTALL_DIR"
@@ -126,7 +156,7 @@ else
 fi
 
 # Create virtual environment
-echo -e "${YELLOW}[6/10] Creating Python virtual environment...${NC}"
+echo -e "${YELLOW}[7/10] Creating Python virtual environment...${NC}"
 if [ ! -d "$INSTALL_DIR/venv" ]; then
     sudo -u "$SERVICE_USER" $PYTHON_CMD -m venv "$INSTALL_DIR/venv"
 else
@@ -134,12 +164,12 @@ else
 fi
 
 # Install Python dependencies
-echo -e "${YELLOW}[7/10] Installing Python dependencies...${NC}"
+echo -e "${YELLOW}[8/10] Installing Python dependencies...${NC}"
 sudo -u "$SERVICE_USER" "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
 sudo -u "$SERVICE_USER" "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 
 # Create environment file
-echo -e "${YELLOW}[8/10] Configuring environment...${NC}"
+echo -e "${YELLOW}[9/10] Configuring environment...${NC}"
 if [ ! -f "$INSTALL_DIR/.env" ]; then
     cat > "$INSTALL_DIR/.env" << EOF
 # Obstruction Server Configuration
@@ -171,7 +201,7 @@ mkdir -p /var/log/obstruction-server
 chown "$SERVICE_USER:$SERVICE_USER" /var/log/obstruction-server
 
 # Install systemd service
-echo -e "${YELLOW}[9/10] Installing systemd service...${NC}"
+echo -e "${YELLOW}[10/10] Installing systemd service...${NC}"
 cp "$INSTALL_DIR/deployment/obstruction-server.service" "/etc/systemd/system/$SERVICE_NAME.service"
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME.service"
@@ -191,7 +221,7 @@ fi
 
 # Install and configure nginx (optional)
 if [ "$SKIP_NGINX" = false ]; then
-    echo -e "${YELLOW}[10/10] Installing and configuring nginx...${NC}"
+    echo -e "${YELLOW}[11/11] Installing and configuring nginx...${NC}"
     apt-get install -y nginx
 
     # Configure nginx
@@ -221,7 +251,7 @@ if [ "$SKIP_NGINX" = false ]; then
         echo -e "${GREEN}✓ SSL certificate installed${NC}"
     fi
 else
-    echo -e "${YELLOW}[10/10] Skipping nginx installation${NC}"
+    echo -e "${YELLOW}[11/11] Skipping nginx installation${NC}"
 fi
 
 # Print deployment summary
