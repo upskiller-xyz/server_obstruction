@@ -147,9 +147,21 @@ fi
 # Create logs directory
 mkdir -p logs
 
-# Stop existing containers
-echo -e "${YELLOW}Stopping existing containers...${NC}"
-$DOCKER_COMPOSE down --remove-orphans 2>/dev/null || true
+# Stop existing instances of this application's containers only
+echo -e "${YELLOW}Stopping existing instances of this application...${NC}"
+if docker ps -a --format '{{.Names}}' | grep -q '^obstruction-server$'; then
+    echo -e "${YELLOW}  Stopping obstruction-server container...${NC}"
+    docker stop obstruction-server 2>/dev/null || true
+    docker rm obstruction-server 2>/dev/null || true
+    echo -e "${GREEN}  ✓ Removed obstruction-server${NC}"
+fi
+
+if docker ps -a --format '{{.Names}}' | grep -q '^obstruction-nginx$'; then
+    echo -e "${YELLOW}  Stopping obstruction-nginx container...${NC}"
+    docker stop obstruction-nginx 2>/dev/null || true
+    docker rm obstruction-nginx 2>/dev/null || true
+    echo -e "${GREEN}  ✓ Removed obstruction-nginx${NC}"
+fi
 
 # Build and start containers
 if [ "$FORCE_BUILD" = true ]; then
