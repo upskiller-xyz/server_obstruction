@@ -233,6 +233,95 @@ class ObstructionService:
             ResponseField.ZENITH.value: zenith_result
         }
 
+    async def calculate_all_directions_async(
+        self,
+        request: ObstructionRequest,
+        num_directions: int = None,
+        start_angle_degrees: float = None,
+        end_angle_degrees: float = None
+    ) -> Dict[str, Any]:
+        """
+        Calculate obstruction angles for multiple directions in parallel using asyncio
+
+        Uses asyncio to run calculations in parallel without HTTP overhead.
+        Much faster than making HTTP requests to itself.
+        """
+        import asyncio
+        from src.components.obstruction_models import Window
+        from src.components.geometry import Vector3D
+
+        # Apply defaults
+        if num_directions is None:
+            num_directions = AllDirectionDefaults.NUM_DIRECTIONS
+        if start_angle_degrees is None:
+            start_angle_degrees = AllDirectionDefaults.START_ANGLE_DEGREES
+        if end_angle_degrees is None:
+            end_angle_degrees = AllDirectionDefaults.END_ANGLE_DEGREES
+
+        start_time = time.time()
+
+        # Get base direction
+        normal_arr = request.window.normal.to_array()
+        base_direction_angle = math.atan2(normal_arr[1], normal_arr[0])
+
+        # Generate direction angles
+        start_angle_rad = math.radians(start_angle_degrees)
+        end_angle_rad = math.radians(end_angle_degrees)
+        angle_step = (end_angle_rad - start_angle_rad) / (num_directions - 1) if num_directions > 1 else 0
+
+        direction_angles = []
+        for i in range(num_directions):
+            relative_angle = start_angle_rad + (i * angle_step)
+            absolute_angle = base_direction_angle - (math.pi / 2) + relative_angle
+            direction_angles.append(absolute_angle)
+
+        # Calculate each direction in parallel using thread pool
+        loop = asyncio.get_event_loop()
+        tasks = []
+
+        for direction_angle in direction_angles:
+            # Create window normal for this direction
+            normal = Vector3D.from_horizontal_angle(direction_angle)
+
+            # Create async task for calculation
+            task = loop.run_in_executor(
+                None,
+                self._calculate_direction_sync,
+                request.mesh,
+                request.window.center,
+                normal,
+                direction_angle
+            )
+            tasks.append(task)
+
+        # Execute all in parallel
+        results = await asyncio.gather(*tasks)
+
+        total_time = time.time() - start_time
+        self._logger.info(f"[PARALLEL] Calculated {num_directions} directions in {total_time:.2f}s")
+
+        return {
+            ResponseField.RESULTS.value: results
+        }
+
+    def _calculate_direction_sync(self, mesh, center, normal, direction_angle):
+        """Synchronous calculation for a single direction (for thread pool)"""
+        horizon_calculator = IntersectionObstructionCalculator()
+        horizon_result = horizon_calculator.calculate_obstruction_angle_from_mesh(
+            mesh, center, normal
+        )
+
+        zenith_calculator = IntersectionZenithCalculator()
+        zenith_result = zenith_calculator.calculate_zenith_angle_from_mesh(
+            mesh, center, normal
+        )
+
+        return {
+            ResponseField.DIRECTION_ANGLE.value: direction_angle,
+            ResponseField.HORIZON.value: horizon_result.to_dict(),
+            ResponseField.ZENITH.value: zenith_result.to_dict()
+        }
+
     def calculate_all_directions(
         self,
         request: ObstructionRequest,

@@ -27,7 +27,7 @@ class TriangleFilter:
         min_horizontal_distance: float = 2.0
     ) -> List[Triangle]:
         """
-        Filter triangles relevant for horizon obstruction calculation
+        Filter triangles relevant for horizon obstruction calculation (VECTORIZED)
 
         Criteria:
         1. Triangle must be in front of window (following view direction)
@@ -43,72 +43,68 @@ class TriangleFilter:
         Returns:
             Filtered list of relevant triangles
         """
-        filtered = []
-        stats = {'below': 0, 'behind': 0, 'too_close': 0, 'kept': 0}
+        n_triangles = len(triangles)
+        if n_triangles == 0:
+            return []
 
+        # Vectorize: extract all vertices into numpy arrays (N x 3 x 3)
+        # Shape: (num_triangles, 3_vertices, 3_coords)
+        vertices_array = np.array([
+            [t.v1.to_array(), t.v2.to_array(), t.v3.to_array()]
+            for t in triangles
+        ])  # Shape: (N, 3, 3)
+
+        window_arr = window_center.to_array()
+
+        # 1. Filter by height: max Z of triangle > window Z
+        max_z_per_triangle = vertices_array[:, :, 2].max(axis=1)  # Shape: (N,)
+        above_mask = max_z_per_triangle > window_arr[2]
+
+        # Prepare horizontal normal
         normal_arr = window_normal.to_array()
         normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
         normal_horizontal_mag = np.linalg.norm(normal_horizontal)
 
         if normal_horizontal_mag < MathConstants.EPSILON:
-            # Viewing straight up/down - use all horizontal distances
-            normal_horizontal = None
+            # Viewing straight up/down - check Euclidean horizontal distance
+            # Vec from window to each vertex
+            vecs = vertices_array - window_arr  # Shape: (N, 3, 3)
+            horiz_vecs = vecs[:, :, :2]  # Shape: (N, 3, 2) - only X, Y
+            horiz_dists = np.linalg.norm(horiz_vecs, axis=2)  # Shape: (N, 3)
+
+            # Triangle is valid if ANY vertex is >= min_horizontal_distance
+            far_enough_mask = (horiz_dists >= min_horizontal_distance).any(axis=1)
         else:
             normal_horizontal = normal_horizontal / normal_horizontal_mag
 
-        for triangle in triangles:
-            # Get all three vertices
-            vertices = triangle.vertices()
+            # 2. Check if in front AND far enough
+            # Vectors from window to each vertex
+            vecs = vertices_array - window_arr  # Shape: (N, 3, 3)
 
-            # Check if highest vertex is above window center
-            max_z = max(v.z for v in vertices)
-            if max_z <= window_center.z:
-                stats['below'] += 1
-                continue  # Entire triangle below window
+            # Dot product with horizontal normal for all vertices
+            forward_distances = np.dot(vecs, normal_horizontal)  # Shape: (N, 3)
 
-            # Check if at least one vertex is in front and far enough
-            has_valid_vertex = False
-            all_behind = True
-            all_too_close = True
+            # Triangle is valid if ANY vertex is in front (>0) AND >= min_horizontal_distance
+            in_front = forward_distances > 0
+            far_enough = forward_distances >= min_horizontal_distance
+            valid_vertex = in_front & far_enough
+            far_enough_mask = valid_vertex.any(axis=1)  # Shape: (N,)
 
-            for vertex in vertices:
-                vec_to_vertex = vertex.to_array() - window_center.to_array()
+        # Combine filters
+        keep_mask = above_mask & far_enough_mask
 
-                if normal_horizontal is not None:
-                    # Check if in front (positive dot product) AND far enough
-                    forward_distance = float(np.dot(vec_to_vertex, normal_horizontal))
+        # Build filtered list
+        filtered = [triangles[i] for i in range(n_triangles) if keep_mask[i]]
 
-                    if forward_distance > 0:
-                        all_behind = False
-
-                    # Must be in front (forward_distance > 0) AND far enough (> min_horizontal_distance)
-                    if forward_distance <= 0:
-                        continue  # Behind window
-
-                    if forward_distance >= min_horizontal_distance:
-                        all_too_close = False
-                        has_valid_vertex = True
-                        break
-                else:
-                    # No horizontal normal - check Euclidean distance
-                    horiz_vec = np.array([vec_to_vertex[0], vec_to_vertex[1], 0.0])
-                    horiz_dist = float(np.linalg.norm(horiz_vec))
-                    if horiz_dist >= min_horizontal_distance:
-                        all_too_close = False
-                        has_valid_vertex = True
-                        break
-
-            if has_valid_vertex:
-                filtered.append(triangle)
-                stats['kept'] += 1
-            elif all_behind:
-                stats['behind'] += 1
-            elif all_too_close:
-                stats['too_close'] += 1
+        stats = {
+            'kept': int(keep_mask.sum()),
+            'below': int((~above_mask).sum()),
+            'too_close_or_behind': int((above_mask & ~far_enough_mask).sum())
+        }
 
         logger.info(
-            f"        [HORIZON-FILTER] Kept {stats['kept']}/{len(triangles)} - "
-            f"Filtered: {stats['below']} below window, {stats['behind']} behind, {stats['too_close']} too close (<{min_horizontal_distance}m)"
+            f"        [HORIZON-FILTER] Kept {stats['kept']}/{n_triangles} - "
+            f"Filtered: {stats['below']} below window, {stats['too_close_or_behind']} too close/behind (<{min_horizontal_distance}m)"
         )
 
         return filtered

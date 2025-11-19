@@ -1,9 +1,15 @@
 *.png
 saved_model
 *.sh
-# *.keras
-
 *.ipynb
+*.puml
+*.drawio
+
+.claude/
+checkpoints/
+docs/
+assets/
+example/
 
 *.csv
 *.json
@@ -14,6 +20,10 @@ saved_model
 *.zip
 .bashrc
 .env
+.gitignore
+.git/
+.coverage
+.pytest_cache/
 
 *.xls
 *.DS_Store

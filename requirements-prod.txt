@@ -1,0 +1,19 @@
+# Production dependencies for deployed server
+# Minimal set for Docker/Cloud Run deployment
+
+# Web Framework & Server
+flask>=3.0.0,<4.0.0
+werkzeug>=3.0.0,<4.0.0
+gunicorn>=21.0.0,<23.0.0
+
+# HTTP Client (async for parallel requests)
+aiohttp>=3.9.0,<4.0.0
+
+# Numerical Computing
+numpy>=1.24.0,<2.0.0
+
+# CORS support
+flask-cors>=4.0.0,<5.0.0
+
+# Utilities
+setuptools==66.1.1

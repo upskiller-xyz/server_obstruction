@@ -2,12 +2,19 @@
 saved_model
 *.ipynb
 *.sh
-.claude/
+*.puml
+*.drawio
+*.md
+*.txt
+!requirements-prod.txt
 
+.claude/
 checkpoints/
 docs/
 assets/
 example/
+.git/
+.github/
 
 *.csv
 *.json
@@ -17,6 +24,11 @@ example/
 *.xlsx
 *.zip
 .bashrc
+.env
+.gitignore
+.git/
+.coverage
+.pytest_cache/
 tests/
 
 *.xls
