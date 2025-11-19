@@ -18,7 +18,7 @@ RUN chmod 444 main.py
 RUN chmod 444 /requirements-prod.txt
 
 ENV PORT 8080
-ENV WORKERS 8
+ENV WORKERS 16
 ENV THREADS 16
 
 CMD exec gunicorn --bind :$PORT --workers $WORKERS --threads $THREADS --timeout 900 main:app

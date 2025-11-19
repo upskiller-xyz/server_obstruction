@@ -11,13 +11,13 @@ Environment="PATH=/opt/obstruction-server/venv/bin"
 Environment="PORT=8081"
 EnvironmentFile=/opt/obstruction-server/.env
 ExecStart=/opt/obstruction-server/venv/bin/gunicorn \
-    --bind 0.0.0.0:8081 \
-    --workers 4 \
-    --threads 8 \
-    --timeout 900 \
+    --bind 0.0.0.0:${PORT} \
+    --workers ${WORKERS} \
+    --threads ${THREADS} \
+    --timeout ${TIMEOUT} \
     --access-logfile /var/log/obstruction-server/access.log \
     --error-logfile /var/log/obstruction-server/error.log \
-    --log-level info \
+    --log-level ${GUNICORN_LOG_LEVEL} \
     --chdir /opt/obstruction-server/src \
     main:app
 
