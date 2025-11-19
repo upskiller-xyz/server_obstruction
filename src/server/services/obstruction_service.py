@@ -368,18 +368,26 @@ class ObstructionService:
 
     async def _calculate_direction_async(self, mesh, center, normal, direction_angle):
         """Asynchronous calculation for a single direction with parallel horizon/zenith"""
+        # Filter triangles behind window for THIS direction (applies to both horizon and zenith)
+        filtered_triangles = TriangleFilter.filter_by_direction(
+            mesh.triangles,
+            center,
+            normal
+        )
+        filtered_mesh = Mesh(tuple(filtered_triangles))
+
         loop = asyncio.get_event_loop()
-        self._logger.info("start tasks inside")
-        # Calculate horizon and zenith in parallel
+
+        # Calculate horizon and zenith in parallel using the direction-filtered mesh
         horizon_task = loop.run_in_executor(
             None,
             self._calculate_horizon_sync,
-            mesh, center, normal
+            filtered_mesh, center, normal
         )
         zenith_task = loop.run_in_executor(
             None,
             self._calculate_zenith_sync,
-            mesh, center, normal
+            filtered_mesh, center, normal
         )
 
         horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)

@@ -126,6 +126,55 @@ class TriangleFilter:
         return filtered
 
     @staticmethod
+    def filter_by_direction(
+        triangles: Tuple[Triangle, ...],
+        window_center: Point3D,
+        window_normal: Vector3D
+    ) -> List[Triangle]:
+        """
+        Quick filter: Remove triangles behind window for a specific direction (VECTORIZED)
+
+        Use this to filter triangles for a specific viewing direction.
+        Does NOT filter by height - assumes height filtering already done.
+
+        Args:
+            triangles: Mesh triangles (already filtered by height)
+            window_center: Window center point
+            window_normal: Window viewing direction
+
+        Returns:
+            Filtered list of triangles not behind window
+        """
+        n_triangles = len(triangles)
+        if n_triangles == 0:
+            return []
+
+        # Build vertices array
+        vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
+        for i, t in enumerate(triangles):
+            vertices_array[i, 0] = t.v1.to_array()
+            vertices_array[i, 1] = t.v2.to_array()
+            vertices_array[i, 2] = t.v3.to_array()
+
+        window_arr = window_center.to_array()
+        normal_arr = window_normal.to_array()
+        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
+        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+
+        if normal_horizontal_mag > 1e-6:
+            normal_horizontal = normal_horizontal / normal_horizontal_mag
+            vecs = vertices_array - window_arr
+            forward_distances = np.dot(vecs, normal_horizontal)
+            # Triangle kept if ANY vertex is not behind (>= -epsilon)
+            not_behind_mask = (forward_distances >= -1e-6).any(axis=1)
+            filtered = [triangles[i] for i in range(n_triangles) if not_behind_mask[i]]
+        else:
+            # Viewing straight up/down - keep all
+            filtered = list(triangles)
+
+        return filtered
+
+    @staticmethod
     def filter_for_both(
         triangles: Tuple[Triangle, ...],
         window_center: Point3D,
@@ -689,53 +738,45 @@ class HorizonIntersectionCalculator:
         plane = VerticalPlane.from_window(window_center, window_normal)
         logger.info(f"        [HORIZON-PREFILTERED] Step 1/3: Plane created in {(time.time()-step_start)*1000:.2f}ms")
 
-        # Step 2: Find plane-triangle intersections
+        # Step 2: Find intersections and calculate angles with early termination
         step_start = time.time()
-        intersection_points = []
+        max_angle = 0.0
+        max_point = None
+        max_height = window_center.z
         triangles_checked = 0
+        triangles_skipped = 0
+        total_intersections = 0
+        filtered_by_angle = 0
 
         for triangle in triangles:
+            # Early termination: skip triangles where max Z is below current max height
+            triangle_max_z = max(triangle.v1.z, triangle.v2.z, triangle.v3.z)
+            if triangle_max_z <= max_height:
+                triangles_skipped += 1
+                continue
+
             triangles_checked += 1
             points = PlaneTriangleIntersector.intersect_triangle_with_plane(triangle, plane)
 
             for point in points:
                 if point.z > window_center.z:
-                    intersection_points.append((point, triangle))
+                    total_intersections += 1
+
+                    angle = PlaneTriangleIntersector.calculate_obstruction_angle(
+                        point, window_center, window_normal
+                    )
+
+                    if angle is None:
+                        filtered_by_angle += 1
+                    elif angle > max_angle:
+                        max_angle = angle
+                        max_point = point
+                        max_height = point.z  # Update threshold for early termination
 
         logger.info(
-            f"        [HORIZON-PREFILTERED] Step 2/3: Found {len(intersection_points)} intersections "
-            f"(checked {triangles_checked} triangles) in {(time.time()-step_start)*1000:.2f}ms"
-        )
-
-        if not intersection_points:
-            logger.info(f"        [HORIZON-PREFILTERED] No intersections found, total time: {(time.time()-algo_start)*1000:.2f}ms")
-            return None, None, 0
-
-        total_intersections = len(intersection_points)
-
-        # Step 3: Calculate angles for ALL points
-        step_start = time.time()
-        max_angle = 0.0
-        max_point = None
-        points_checked = 0
-        filtered_by_angle = 0
-
-        for point, triangle in intersection_points:
-            angle = PlaneTriangleIntersector.calculate_obstruction_angle(
-                point, window_center, window_normal
-            )
-
-            points_checked += 1
-
-            if angle is None:
-                filtered_by_angle += 1
-            elif angle > max_angle:
-                max_angle = angle
-                max_point = point
-
-        logger.info(
-            f"        [HORIZON-PREFILTERED] Step 3/3: Calculated angles for {points_checked} points "
-            f"({filtered_by_angle} filtered by angle/distance constraints) in {(time.time()-step_start)*1000:.2f}ms"
+            f"        [HORIZON-PREFILTERED] Step 2/2: Found {total_intersections} intersections, "
+            f"checked {triangles_checked} triangles, skipped {triangles_skipped} below max height "
+            f"({filtered_by_angle} filtered by angle) in {(time.time()-step_start)*1000:.2f}ms"
         )
 
         if max_point is None:
