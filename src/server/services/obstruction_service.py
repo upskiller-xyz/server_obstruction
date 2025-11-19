@@ -209,7 +209,10 @@ class ObstructionService:
 
     def calculate_both_angles(self, request: ObstructionRequest) -> Dict[str, ObstructionResult]:
         """
-        Calculate both horizon and zenith angles using EFFICIENT methods with filtering
+        Calculate both horizon and zenith angles using EFFICIENT methods with COMBINED filtering
+
+        This optimized version filters triangles ONCE for both calculations,
+        avoiding duplicate array construction and filtering operations.
 
         Args:
             request: Raytracing request with window and mesh data
@@ -217,15 +220,38 @@ class ObstructionService:
         Returns:
             Dictionary with 'horizon' and 'zenith' ObstructionResults
         """
-        # Use EFFICIENT intersection-based methods instead of slow projection
-        horizon_calculator = IntersectionObstructionCalculator()
-        horizon_result = horizon_calculator.calculate_obstruction_angle_from_mesh(
-            request.mesh, request.window.center, request.window.normal
+        from src.components.plane_intersection import TriangleFilter
+
+        start_time = time.time()
+
+        # OPTIMIZATION: Filter triangles ONCE for both calculations
+        horizon_triangles, zenith_triangles = TriangleFilter.filter_for_both(
+            request.mesh.triangles,
+            request.window.center,
+            request.window.normal,
+            min_horizontal_distance=1.0
+        )
+        filter_time = time.time() - start_time
+        self._logger.info(
+            f"[BOTH-ANGLES] Combined filter: {len(horizon_triangles)} horizon, "
+            f"{len(zenith_triangles)} zenith triangles in {filter_time*1000:.2f}ms"
         )
 
+        # Create filtered mesh objects for each calculator
+        from src.components.geometry import Mesh
+        horizon_mesh = Mesh(triangles=tuple(horizon_triangles))
+        zenith_mesh = Mesh(triangles=tuple(zenith_triangles))
+
+        # Calculate horizon angle with pre-filtered mesh
+        horizon_calculator = IntersectionObstructionCalculator()
+        horizon_result = horizon_calculator._calculate_with_filtered_mesh(
+            horizon_mesh, request.window.center, request.window.normal
+        )
+
+        # Calculate zenith angle with pre-filtered mesh
         zenith_calculator = IntersectionZenithCalculator()
-        zenith_result = zenith_calculator.calculate_zenith_angle_from_mesh(
-            request.mesh, request.window.center, request.window.normal
+        zenith_result = zenith_calculator._calculate_with_filtered_mesh(
+            zenith_mesh, request.window.center, request.window.normal
         )
 
         return {

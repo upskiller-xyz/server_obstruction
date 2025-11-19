@@ -20,6 +20,86 @@ class TriangleFilter:
     """Filters triangles based on spatial criteria for efficient obstruction calculation"""
 
     @staticmethod
+    def filter_for_both(
+        triangles: Tuple[Triangle, ...],
+        window_center: Point3D,
+        window_normal: Vector3D,
+        min_horizontal_distance: float = 2.0
+    ) -> Tuple[List[Triangle], List[Triangle]]:
+        """
+        Filter triangles for BOTH horizon and zenith calculations at once (OPTIMIZED)
+
+        This avoids duplicate work when calculating both angles:
+        - Builds vertices array once
+        - Applies common height filter once
+        - Returns both horizon and zenith filtered sets
+
+        Returns:
+            Tuple of (horizon_filtered, zenith_filtered)
+        """
+        n_triangles = len(triangles)
+        if n_triangles == 0:
+            return [], []
+
+        # Build vertices array ONCE (most expensive operation)
+        vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
+        for i, t in enumerate(triangles):
+            vertices_array[i, 0] = t.v1.to_array()
+            vertices_array[i, 1] = t.v2.to_array()
+            vertices_array[i, 2] = t.v3.to_array()
+
+        window_arr = window_center.to_array()
+
+        # Common filter: height (max Z > window Z) - SHARED BY BOTH
+        max_z_per_triangle = vertices_array[:, :, 2].max(axis=1)
+        above_mask = max_z_per_triangle > window_arr[2]
+
+        # Prepare horizontal normal - SHARED BY BOTH
+        normal_arr = window_normal.to_array()
+        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
+        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+
+        if normal_horizontal_mag < MathConstants.EPSILON:
+            # Viewing straight up/down
+            vecs = vertices_array - window_arr
+            horiz_vecs = vecs[:, :, :2]
+            horiz_dists = np.linalg.norm(horiz_vecs, axis=2)
+
+            # Horizon: stricter distance requirement
+            horizon_mask = above_mask & (horiz_dists >= min_horizontal_distance).any(axis=1)
+
+            # Zenith: no distance requirement, just above
+            zenith_mask = above_mask
+        else:
+            normal_horizontal = normal_horizontal / normal_horizontal_mag
+            vecs = vertices_array - window_arr
+            forward_distances = np.dot(vecs, normal_horizontal)
+
+            # Horizon: strict (in front AND far enough)
+            in_front = forward_distances > 0
+            far_enough = forward_distances >= min_horizontal_distance
+            horizon_mask = above_mask & (in_front & far_enough).any(axis=1)
+
+            # Zenith: lenient (at or in front of window)
+            zenith_forward = (forward_distances >= -MathConstants.EPSILON).any(axis=1)
+            zenith_mask = above_mask & zenith_forward
+
+        # Build both filtered lists
+        horizon_indices = np.where(horizon_mask)[0]
+        zenith_indices = np.where(zenith_mask)[0]
+
+        horizon_filtered = [triangles[i] for i in horizon_indices]
+        zenith_filtered = [triangles[i] for i in zenith_indices]
+
+        logger.info(
+            f"        [COMBINED-FILTER] Horizon: {len(horizon_filtered)}/{n_triangles}, "
+            f"Zenith: {len(zenith_filtered)}/{n_triangles} "
+            f"(saved ~{n_triangles*9*8/1024:.1f}KB array rebuild)"
+        )
+
+        return horizon_filtered, zenith_filtered
+
+    @staticmethod
     def filter_for_horizon(
         triangles: Tuple[Triangle, ...],
         window_center: Point3D,
@@ -471,6 +551,99 @@ class HorizonIntersectionCalculator:
     """
 
     @staticmethod
+    def calculate_max_obstruction_angle_prefiltered(
+        triangles: List[Triangle],
+        window_center: Point3D,
+        window_normal: Vector3D
+    ) -> Tuple[Optional[float], Optional[Point3D], int]:
+        """
+        Calculate maximum obstruction angle using plane intersections on PRE-FILTERED triangles
+
+        This method skips the filtering step (Step 0) and works directly with
+        triangles that have already been filtered.
+
+        Args:
+            triangles: Pre-filtered list of relevant triangles
+            window_center: Window center point
+            window_normal: Window viewing direction (unit vector)
+
+        Returns:
+            Tuple of (max_angle_radians, highest_point, intersection_count)
+        """
+        import time
+        import logging
+        logger = logging.getLogger(__name__)
+
+        algo_start = time.time()
+
+        if not triangles:
+            logger.info(f"        [HORIZON-PREFILTERED] No triangles provided")
+            return None, None, 0
+
+        # Step 1: Create vertical plane through window in viewing direction
+        step_start = time.time()
+        plane = VerticalPlane.from_window(window_center, window_normal)
+        logger.info(f"        [HORIZON-PREFILTERED] Step 1/3: Plane created in {(time.time()-step_start)*1000:.2f}ms")
+
+        # Step 2: Find plane-triangle intersections
+        step_start = time.time()
+        intersection_points = []
+        triangles_checked = 0
+
+        for triangle in triangles:
+            triangles_checked += 1
+            points = PlaneTriangleIntersector.intersect_triangle_with_plane(triangle, plane)
+
+            for point in points:
+                if point.z > window_center.z:
+                    intersection_points.append((point, triangle))
+
+        logger.info(
+            f"        [HORIZON-PREFILTERED] Step 2/3: Found {len(intersection_points)} intersections "
+            f"(checked {triangles_checked} triangles) in {(time.time()-step_start)*1000:.2f}ms"
+        )
+
+        if not intersection_points:
+            logger.info(f"        [HORIZON-PREFILTERED] No intersections found, total time: {(time.time()-algo_start)*1000:.2f}ms")
+            return None, None, 0
+
+        total_intersections = len(intersection_points)
+
+        # Step 3: Calculate angles for ALL points
+        step_start = time.time()
+        max_angle = 0.0
+        max_point = None
+        points_checked = 0
+        filtered_by_angle = 0
+
+        for point, triangle in intersection_points:
+            angle = PlaneTriangleIntersector.calculate_obstruction_angle(
+                point, window_center, window_normal
+            )
+
+            points_checked += 1
+
+            if angle is None:
+                filtered_by_angle += 1
+            elif angle > max_angle:
+                max_angle = angle
+                max_point = point
+
+        logger.info(
+            f"        [HORIZON-PREFILTERED] Step 3/3: Calculated angles for {points_checked} points "
+            f"({filtered_by_angle} filtered by angle/distance constraints) in {(time.time()-step_start)*1000:.2f}ms"
+        )
+
+        if max_point is None:
+            logger.info(f"        [HORIZON-PREFILTERED] No valid angles found, total time: {(time.time()-algo_start)*1000:.2f}ms")
+            return None, None, total_intersections
+
+        total_time = time.time() - algo_start
+        logger.info(f"        [HORIZON-PREFILTERED] ✓ TOTAL TIME: {total_time*1000:.2f}ms")
+
+        return max_angle, max_point, total_intersections
+
+    @staticmethod
     def calculate_max_obstruction_angle(
         mesh: Mesh,
         window_center: Point3D,
@@ -591,6 +764,115 @@ class ZenithIntersectionCalculator:
 
     Similar to horizon calculator but looks for overhead obstructions.
     """
+
+    @staticmethod
+    def calculate_max_zenith_angle_prefiltered(
+        triangles: List[Triangle],
+        window_center: Point3D,
+        window_normal: Vector3D
+    ) -> Tuple[Optional[float], Optional[Point3D], int]:
+        """
+        Calculate maximum zenith angle using plane intersections on PRE-FILTERED triangles
+
+        This method skips the filtering step (Step 0) and works directly with
+        triangles that have already been filtered.
+
+        Args:
+            triangles: Pre-filtered list of relevant triangles
+            window_center: Window center point
+            window_normal: Window viewing direction (unit vector)
+
+        Returns:
+            Tuple of (max_angle_radians, furthest_point, intersection_count)
+        """
+        import time
+        import logging
+        logger = logging.getLogger(__name__)
+
+        algo_start = time.time()
+
+        if not triangles:
+            logger.info(f"        [ZENITH-PREFILTERED] No triangles provided")
+            return None, None, 0
+
+        # Step 1: Create plane
+        step_start = time.time()
+        plane = VerticalPlane.from_window(window_center, window_normal)
+        logger.info(f"        [ZENITH-PREFILTERED] Step 1/3: Plane created in {(time.time()-step_start)*1000:.2f}ms")
+
+        # Step 2: Find intersections
+        step_start = time.time()
+        intersection_points = []
+        triangles_checked = 0
+        for triangle in triangles:
+            triangles_checked += 1
+            points = PlaneTriangleIntersector.intersect_triangle_with_plane(triangle, plane)
+            for point in points:
+                if point.z > window_center.z:
+                    intersection_points.append((point, triangle))
+
+        logger.info(
+            f"        [ZENITH-PREFILTERED] Step 2/3: Found {len(intersection_points)} intersections "
+            f"(checked {triangles_checked} triangles) in {(time.time()-step_start)*1000:.2f}ms"
+        )
+
+        if not intersection_points:
+            logger.info(f"        [ZENITH-PREFILTERED] No intersections found, total time: {(time.time()-algo_start)*1000:.2f}ms")
+            return None, None, 0
+
+        total_intersections = len(intersection_points)
+
+        # Step 3: Calculate angles
+        step_start = time.time()
+        min_zenith_angle = float('inf')
+        closest_point = None
+        max_zenith_degrees = 75.0
+        max_zenith_rad = np.radians(max_zenith_degrees)
+
+        for point, _ in intersection_points:
+            vertical_distance = point.z - window_center.z
+
+            if vertical_distance <= 0:
+                continue
+
+            point_vec = point.to_array() - window_center.to_array()
+            normal_arr = window_normal.to_array()
+            normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
+            normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+
+            if normal_horizontal_mag < MathConstants.EPSILON:
+                point_horizontal = np.array([point_vec[0], point_vec[1], 0.0])
+                horizontal_distance = float(np.linalg.norm(point_horizontal))
+            else:
+                normal_horizontal = normal_horizontal / normal_horizontal_mag
+                horizontal_distance = abs(float(np.dot(point_vec, normal_horizontal)))
+
+            if horizontal_distance < MathConstants.EPSILON:
+                zenith_angle = 0.0
+            else:
+                elevation_angle = float(np.arctan(vertical_distance / horizontal_distance))
+                zenith_angle = (np.pi / 2) - elevation_angle
+
+            if zenith_angle > max_zenith_rad:
+                continue
+
+            if zenith_angle < min_zenith_angle:
+                min_zenith_angle = zenith_angle
+                closest_point = point
+
+        logger.info(
+            f"        [ZENITH-PREFILTERED] Step 3/3: Calculated angles for {total_intersections} points "
+            f"in {(time.time()-step_start)*1000:.2f}ms"
+        )
+
+        if closest_point is None or min_zenith_angle == float('inf'):
+            logger.info(f"        [ZENITH-PREFILTERED] No valid angles found, total time: {(time.time()-algo_start)*1000:.2f}ms")
+            return None, None, total_intersections
+
+        total_time = time.time() - algo_start
+        logger.info(f"        [ZENITH-PREFILTERED] ✓ TOTAL TIME: {total_time*1000:.2f}ms")
+
+        return min_zenith_angle, closest_point, total_intersections
 
     @staticmethod
     def calculate_max_zenith_angle(

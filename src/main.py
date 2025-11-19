@@ -50,9 +50,26 @@ class ServerApplication:
         from src.server.services.obstruction_service import ObstructionServiceFactory
         from src.server.services.parallel_obstruction_service import ParallelObstructionServiceFactory
         from src.server.controllers.obstruction_controller import ObstructionController
+        import multiprocessing
 
         # Logger
         self._logger = StructuredLogger("Server", LogLevel.INFO)
+
+        # Log worker/thread configuration
+        workers = int(os.getenv("WORKERS", "1"))
+        threads = int(os.getenv("THREADS", "8"))
+        cpu_count = multiprocessing.cpu_count()
+        max_concurrent = workers * threads
+
+        self._logger.info("=" * 60)
+        self._logger.info("GUNICORN WORKER CONFIGURATION")
+        self._logger.info("=" * 60)
+        self._logger.info(f"  CPU Cores Available:  {cpu_count}")
+        self._logger.info(f"  Workers (processes):  {workers}")
+        self._logger.info(f"  Threads per worker:   {threads}")
+        self._logger.info(f"  Max concurrent reqs:  {max_concurrent} ({workers}×{threads})")
+        self._logger.info(f"  Workers per core:     {workers/cpu_count:.1f}x")
+        self._logger.info("=" * 60)
 
         # Raytracing service (using Factory Pattern)
         self._raytrace_service = ObstructionServiceFactory.create_default_service(self._logger)
