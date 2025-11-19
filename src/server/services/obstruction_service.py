@@ -79,14 +79,14 @@ class ObstructionService:
                 request.window.center,
                 request.window.normal
             )
-            request.mesh = Mesh(tuple(coarse_filtered))
+            filtered_mesh = Mesh(tuple(coarse_filtered))
             coarse_time = time.time() - coarse_start
             self._logger.info(f"[PRE-FILTER] Completed in {coarse_time*1000:.2f}ms")
 
             # Use intersection-based calculator with pre-filtered mesh (skips Step 0)
             calculator = IntersectionObstructionCalculator()
             result = calculator._calculate_with_filtered_mesh(
-                request.mesh,
+                filtered_mesh,
                 request.window.center,
                 request.window.normal
             )
@@ -243,14 +243,14 @@ class ObstructionService:
             request.window.center,
             request.window.normal
         )
-        request.mesh = Mesh(tuple(coarse_filtered))
+        filtered_mesh = Mesh(tuple(coarse_filtered))
         coarse_time = time.time() - coarse_start
         self._logger.info(f"[PRE-FILTER] Completed in {coarse_time*1000:.2f}ms")
 
         # OPTIMIZATION: Filter triangles ONCE for both calculations
         filter_start = time.time()
         horizon_triangles, zenith_triangles = TriangleFilter.filter_for_both(
-            request.mesh.triangles,
+            filtered_mesh.triangles,
             request.window.center,
             request.window.normal,
             min_horizontal_distance=1.0
@@ -368,21 +368,27 @@ class ObstructionService:
 
     async def _calculate_direction_async(self, mesh, center, normal, direction_angle):
         """Asynchronous calculation for a single direction with parallel horizon/zenith"""
-        # Mesh is already pre-filtered globally (height + base direction)
-        # Skip per-direction filtering to avoid rebuilding vertices array 64 times
+        # Filter triangles behind window for THIS specific direction
+        # This reduces triangles from ~1200 to ~700
+        filtered_triangles = TriangleFilter.filter_by_direction(
+            mesh.triangles,
+            center,
+            normal
+        )
+        filtered_mesh = Mesh(tuple(filtered_triangles))
 
         loop = asyncio.get_event_loop()
 
-        # Calculate horizon and zenith in parallel
+        # Calculate horizon and zenith in parallel with direction-filtered mesh
         horizon_task = loop.run_in_executor(
             None,
             self._calculate_horizon_sync,
-            mesh, center, normal
+            filtered_mesh, center, normal
         )
         zenith_task = loop.run_in_executor(
             None,
             self._calculate_zenith_sync,
-            mesh, center, normal
+            filtered_mesh, center, normal
         )
 
         horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)

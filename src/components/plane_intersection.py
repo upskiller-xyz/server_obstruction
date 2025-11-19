@@ -936,114 +936,75 @@ class ZenithIntersectionCalculator:
             logger.info(f"        [ZENITH-PREFILTERED] No triangles provided")
             return None, None, 0
 
-        # Ray-casting approach: Cast vertical ray from window center (shifted slightly forward)
+        # Step 1: Create plane
         step_start = time.time()
+        plane = VerticalPlane.from_window(window_center, window_normal)
+        logger.info(f"        [ZENITH-PREFILTERED] Step 1/2: Plane created in {(time.time()-step_start)*1000:.2f}ms")
 
-        normal_arr = window_normal.to_array()
-        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
-        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
-
-        # Shift ray origin slightly forward in view direction (0.1m)
-        if normal_horizontal_mag > MathConstants.EPSILON:
-            normal_horizontal = normal_horizontal / normal_horizontal_mag
-            ray_origin_offset = normal_horizontal * 0.1
-            ray_origin = window_center.to_array() + ray_origin_offset
-        else:
-            ray_origin = window_center.to_array()
-
-        ray_direction = np.array([0.0, 0.0, 1.0])  # Straight up
-
-        # Find all triangles that intersect the vertical ray
+        # Step 2: Find intersections and calculate angles with early termination
+        step_start = time.time()
         min_zenith_angle = float('inf')
         closest_point = None
         closest_distance = float('inf')
         triangles_checked = 0
-        ray_hits = 0
+        total_intersections = 0
         max_zenith_degrees = 75.0
         max_zenith_rad = np.radians(max_zenith_degrees)
 
+        normal_arr = window_normal.to_array()
+        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
+        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+        if normal_horizontal_mag > MathConstants.EPSILON:
+            normal_horizontal = normal_horizontal / normal_horizontal_mag
+
         for triangle in triangles:
             triangles_checked += 1
+            points = PlaneTriangleIntersector.intersect_triangle_with_plane(triangle, plane)
 
-            # Ray-triangle intersection using Möller–Trumbore algorithm
-            v0 = triangle.v1.to_array()
-            v1 = triangle.v2.to_array()
-            v2 = triangle.v3.to_array()
+            for point in points:
+                if point.z > window_center.z:
+                    total_intersections += 1
 
-            edge1 = v1 - v0
-            edge2 = v2 - v0
-            h = np.cross(ray_direction, edge2)
-            a = np.dot(edge1, h)
+                    point_vec = point.to_array() - window_center.to_array()
+                    vertical_distance = point_vec[2]
 
-            if abs(a) < MathConstants.EPSILON:
-                continue  # Ray parallel to triangle
+                    if vertical_distance <= 0:
+                        continue
 
-            f = 1.0 / a
-            s = ray_origin - v0
-            u = f * np.dot(s, h)
+                    if normal_horizontal_mag < MathConstants.EPSILON:
+                        point_horizontal = np.array([point_vec[0], point_vec[1], 0.0])
+                        horizontal_distance = float(np.linalg.norm(point_horizontal))
+                    else:
+                        horizontal_distance = abs(float(np.dot(point_vec, normal_horizontal)))
 
-            if u < 0.0 or u > 1.0:
-                continue
+                    if horizontal_distance < MathConstants.EPSILON:
+                        zenith_angle = 0.0
+                    else:
+                        elevation_angle = float(np.arctan(vertical_distance / horizontal_distance))
+                        zenith_angle = (np.pi / 2) - elevation_angle
 
-            q = np.cross(s, edge1)
-            v = f * np.dot(ray_direction, q)
+                    if zenith_angle > max_zenith_rad:
+                        continue
 
-            if v < 0.0 or u + v > 1.0:
-                continue
-
-            # Intersection exists - get distance along ray
-            t = f * np.dot(edge2, q)
-
-            if t <= MathConstants.EPSILON:
-                continue  # Intersection behind ray origin
-
-            ray_hits += 1
-
-            # Calculate intersection point
-            intersection = ray_origin + ray_direction * t
-            intersection_point = Point3D(intersection[0], intersection[1], intersection[2])
-
-            # Calculate zenith angle based on horizontal distance from window center
-            point_vec = intersection - window_center.to_array()
-            vertical_distance = point_vec[2]
-
-            if vertical_distance <= 0:
-                continue
-
-            if normal_horizontal_mag < MathConstants.EPSILON:
-                point_horizontal = np.array([point_vec[0], point_vec[1], 0.0])
-                horizontal_distance = float(np.linalg.norm(point_horizontal))
-            else:
-                horizontal_distance = abs(float(np.dot(point_vec, normal_horizontal)))
-
-            if horizontal_distance < MathConstants.EPSILON:
-                zenith_angle = 0.0
-            else:
-                elevation_angle = float(np.arctan(vertical_distance / horizontal_distance))
-                zenith_angle = (np.pi / 2) - elevation_angle
-
-            if zenith_angle > max_zenith_rad:
-                continue
-
-            # Early termination: prefer closer obstacles
-            if horizontal_distance < closest_distance:
-                min_zenith_angle = zenith_angle
-                closest_point = intersection_point
-                closest_distance = horizontal_distance
+                    # Early termination: prefer closer obstacles
+                    if horizontal_distance < closest_distance:
+                        min_zenith_angle = zenith_angle
+                        closest_point = point
+                        closest_distance = horizontal_distance
 
         logger.info(
-            f"        [ZENITH-PREFILTERED] Ray-cast: {ray_hits} hits from {triangles_checked} triangles "
-            f"in {(time.time()-step_start)*1000:.2f}ms"
+            f"        [ZENITH-PREFILTERED] Step 2/2: Found {total_intersections} intersections, "
+            f"checked {triangles_checked} triangles in {(time.time()-step_start)*1000:.2f}ms"
         )
 
         if closest_point is None or min_zenith_angle == float('inf'):
             logger.info(f"        [ZENITH-PREFILTERED] No valid intersections found, total time: {(time.time()-algo_start)*1000:.2f}ms")
-            return None, None, 0
+            return None, None, total_intersections
 
         total_time = time.time() - algo_start
         logger.info(f"        [ZENITH-PREFILTERED] ✓ TOTAL TIME: {total_time*1000:.2f}ms")
 
-        return min_zenith_angle, closest_point, ray_hits
+        return min_zenith_angle, closest_point, total_intersections
 
     @staticmethod
     def calculate_max_zenith_angle(
