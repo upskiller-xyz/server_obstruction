@@ -1,4 +1,5 @@
 from typing import Dict, Any, Optional
+import time
 import asyncio
 from src.server.interfaces import ILogger
 from src.server.services.obstruction_service import ObstructionService
@@ -64,15 +65,24 @@ class ObstructionController:
             ]
         }
         """
+        controller_start = time.time()
+
         try:
             # Validate required fields
+            validation_start = time.time()
             self._validate_request(request_data)
+            self._logger.info(f"[CONTROLLER] Validation: {(time.time()-validation_start)*1000:.2f}ms")
 
             # Parse request into domain model
+            parse_start = time.time()
             request = ObstructionRequest.from_dict(request_data)
+            self._logger.info(f"[CONTROLLER] Parsing {len(request_data.get('mesh', []))} vertices: {(time.time()-parse_start)*1000:.2f}ms")
 
             # Delegate to service layer (use EFFICIENT method with filters)
+            service_start = time.time()
             result = self._raytrace_service.calculate_obstruction_efficient(request)
+            self._logger.info(f"[CONTROLLER] Service calculation: {(time.time()-service_start)*1000:.2f}ms")
+            self._logger.info(f"[CONTROLLER] Total controller time: {(time.time()-controller_start)*1000:.2f}ms")
 
             # Format response
             return {
@@ -488,7 +498,7 @@ class ObstructionController:
 
             if missing_fields:
                 raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-
+            self._logger.info("checked fields")
             # Validate mesh format
             mesh = request_data[RequestField.MESH.value]
             if not isinstance(mesh, list):
@@ -510,7 +520,7 @@ class ObstructionController:
 
             # Validate window center doesn't lie on mesh
             self._validate_window_not_on_mesh(request_data)
-
+            self._logger.info("validate window on  mesh done")
             # Set default direction_angle to 0 for parsing
             if RequestField.DIRECTION_ANGLE.value not in request_data:
                 request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
@@ -538,6 +548,7 @@ class ObstructionController:
                     raise ValueError("end_angle_degrees must be a number")
 
             # Use direct async calculation instead of HTTP requests
+            self._logger.info("set loop")
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:

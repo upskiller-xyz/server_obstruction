@@ -171,7 +171,7 @@ class GeometricValidator:
         tolerance: float = None
     ) -> Optional[Triangle]:
         """
-        Find the first triangle that contains the given point
+        Find the first triangle that contains the given point (vectorized)
 
         Args:
             point: Point to check
@@ -181,9 +181,67 @@ class GeometricValidator:
         Returns:
             First triangle containing the point, or None if not found
         """
-        for triangle in triangles:
-            if GeometricValidator.is_point_on_triangle(point, triangle, tolerance):
-                return triangle
+        if tolerance is None:
+            tolerance = MathConstants.EPSILON
+
+        n_triangles = len(triangles)
+        if n_triangles == 0:
+            return None
+
+        # Build vertices array
+        vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
+        for i, t in enumerate(triangles):
+            vertices_array[i, 0] = t.v1.to_array()
+            vertices_array[i, 1] = t.v2.to_array()
+            vertices_array[i, 2] = t.v3.to_array()
+
+        point_arr = point.to_array()
+
+        # Vectorized plane distance check
+        v1 = vertices_array[:, 0, :]
+        v2 = vertices_array[:, 1, :]
+        v3 = vertices_array[:, 2, :]
+
+        # Compute plane normals
+        edge1 = v2 - v1
+        edge2 = v3 - v1
+        normals = np.cross(edge1, edge2)
+        normal_lengths = np.linalg.norm(normals, axis=1, keepdims=True)
+
+        # Handle degenerate triangles
+        valid_mask = normal_lengths.flatten() > 1e-10
+        if not valid_mask.any():
+            return None
+
+        normals = normals / np.maximum(normal_lengths, 1e-10)
+
+        # Compute distances to planes
+        point_to_v1 = point_arr - v1
+        distances = np.abs(np.sum(point_to_v1 * normals, axis=1))
+
+        # Filter triangles by plane distance
+        on_plane_mask = (distances <= tolerance) & valid_mask
+
+        if not on_plane_mask.any():
+            return None
+
+        # Barycentric coordinates for triangles on plane
+        on_plane_indices = np.where(on_plane_mask)[0]
+
+        epsilon = -MathConstants.EPSILON
+
+        for idx in on_plane_indices:
+            v1_pt = vertices_array[idx, 0]
+            v2_pt = vertices_array[idx, 1]
+            v3_pt = vertices_array[idx, 2]
+
+            u, v, w = GeometricValidator._calculate_barycentric_coordinates(
+                point_arr, v1_pt, v2_pt, v3_pt
+            )
+
+            if u >= epsilon and v >= epsilon and w >= epsilon:
+                return triangles[idx]
+
         return None
 
     @staticmethod

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 import numpy as np
+from src.components.constants import MathConstants
 
 
 class CoordinateSystem:
@@ -229,7 +230,6 @@ class AngleCalculator:
             Angle in radians (0 to π/2)
         """
         # Import here to avoid circular dependency
-        from src.components.constants import MathConstants
 
         # Handle case where point is directly above (infinite angle)
         if horizontal_distance < MathConstants.EPSILON:
@@ -256,7 +256,6 @@ class AngleCalculator:
             Angle in radians (0 to π/2)
         """
         # Import here to avoid circular dependency
-        from src.components.constants import MathConstants
 
         # Point directly overhead
         if horizontal_distance < MathConstants.EPSILON:
@@ -297,14 +296,17 @@ class Mesh:
         if len(vertices) % 3 != 0:
             raise ValueError("Number of vertices must be divisible by 3")
 
-        triangles = []
-        for i in range(0, len(vertices), 3):
-            v1 = Point3D(*vertices[i])
-            v2 = Point3D(*vertices[i + 1])
-            v3 = Point3D(*vertices[i + 2])
-            triangles.append(Triangle(v1, v2, v3))
+        # OPTIMIZATION: Use tuple comprehension (avoids list append overhead)
+        triangles = tuple(
+            Triangle(
+                Point3D(*vertices[i]),
+                Point3D(*vertices[i + 1]),
+                Point3D(*vertices[i + 2])
+            )
+            for i in range(0, len(vertices), 3)
+        )
 
-        return cls(triangles=tuple(triangles))
+        return cls(triangles=triangles)
 
     def get_all_points(self) -> List[Point3D]:
         """Get all unique points in the mesh"""
