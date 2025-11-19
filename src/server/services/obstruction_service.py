@@ -315,7 +315,7 @@ class ObstructionService:
         )
 
         below_count = len(request.mesh.triangles) - len(coarse_filtered)
-        request.mesh = Mesh(tuple(coarse_filtered))
+        filtered_mesh = Mesh(tuple(coarse_filtered))
 
         coarse_time = time.time() - coarse_start
         self._logger.info(
@@ -347,7 +347,7 @@ class ObstructionService:
 
             # Create async task for calculation (horizon and zenith run in parallel within)
             task = self._calculate_direction_async(
-                request.mesh,
+                filtered_mesh,
                 request.window.center,
                 normal,
                 direction_angle
