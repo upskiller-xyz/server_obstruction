@@ -10,6 +10,7 @@ set -e
 #   --skip-ssl          Skip SSL certificate setup
 #   --domain DOMAIN     Set the domain name for nginx configuration
 #   --port PORT         Set the application port (default: 8081)
+#   --debug             Enable debug logging (verbose output)
 
 # Color codes for output
 RED='\033[0;31m'
@@ -22,6 +23,7 @@ SKIP_NGINX=false
 SKIP_SSL=true
 DOMAIN=""
 APP_PORT=8081
+DEBUG_MODE=false
 INSTALL_DIR="/opt/obstruction-server"
 SERVICE_USER="obstruction"
 SERVICE_NAME="obstruction-server"
@@ -44,6 +46,10 @@ while [[ $# -gt 0 ]]; do
         --port)
             APP_PORT="$2"
             shift 2
+            ;;
+        --debug)
+            DEBUG_MODE=true
+            shift
             ;;
         *)
             echo "Unknown option: $1"
@@ -171,29 +177,25 @@ sudo -u "$SERVICE_USER" "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/req
 # Create environment file
 echo -e "${YELLOW}[9/10] Configuring environment...${NC}"
 if [ ! -f "$INSTALL_DIR/.env" ]; then
-    cat > "$INSTALL_DIR/.env" << EOF
-# Obstruction Server Configuration
-PORT=$APP_PORT
+    if [ "$DEBUG_MODE" = true ]; then
+        echo -e "${YELLOW}Configuring DEBUG mode environment${NC}"
+        cp "$INSTALL_DIR/deployment/.env.production.debug" "$INSTALL_DIR/.env"
+    else
+        echo -e "${YELLOW}Configuring PRODUCTION mode environment${NC}"
+        cp "$INSTALL_DIR/deployment/.env.production" "$INSTALL_DIR/.env"
+    fi
 
-# Flask Configuration
-FLASK_ENV=production
-FLASK_DEBUG=False
+    # Update port in .env file
+    sed -i "s/PORT=8081/PORT=$APP_PORT/g" "$INSTALL_DIR/.env"
 
-# Server Configuration
-WORKERS=4
-THREADS=8
-TIMEOUT=900
-
-# CUDA/GPU Configuration (disable for CPU-only VM)
-CUDA_VISIBLE_DEVICES=-1
-TF_CPP_MIN_LOG_LEVEL=3
-OPENCV_IO_ENABLE_OPENEXR=0
-OMP_NUM_THREADS=1
-EOF
     chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/.env"
     echo -e "${GREEN}Created environment file${NC}"
 else
     echo -e "${GREEN}Environment file already exists${NC}"
+    if [ "$DEBUG_MODE" = true ]; then
+        echo -e "${YELLOW}Warning: Debug mode requested but .env already exists${NC}"
+        echo -e "${YELLOW}To enable debug mode, remove .env and re-run with --debug${NC}"
+    fi
 fi
 
 # Create log directory
@@ -265,6 +267,13 @@ echo -e "Service Name: ${GREEN}$SERVICE_NAME${NC}"
 echo -e "Service User: ${GREEN}$SERVICE_USER${NC}"
 echo -e "Application Port: ${GREEN}$APP_PORT${NC}"
 echo -e "Log Directory: ${GREEN}/var/log/obstruction-server${NC}"
+if [ "$DEBUG_MODE" = true ]; then
+    echo -e "Debug Mode: ${YELLOW}ENABLED${NC}"
+    echo -e "  ${YELLOW}⚠ Debug mode provides verbose logging for troubleshooting${NC}"
+    echo -e "  ${YELLOW}⚠ Not recommended for production use${NC}"
+else
+    echo -e "Debug Mode: ${GREEN}DISABLED${NC} (production mode)"
+fi
 echo ""
 echo -e "${YELLOW}Useful Commands:${NC}"
 echo -e "  View service status:  ${GREEN}systemctl status $SERVICE_NAME${NC}"

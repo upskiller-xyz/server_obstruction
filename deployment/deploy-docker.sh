@@ -8,6 +8,7 @@ set -e
 #   --with-nginx        Deploy with nginx reverse proxy
 #   --port PORT         Set the host port (default: 8081)
 #   --build             Force rebuild the Docker image
+#   --debug             Enable debug logging (verbose output)
 
 # Color codes
 RED='\033[0;31m'
@@ -19,6 +20,7 @@ NC='\033[0m'
 WITH_NGINX=false
 HOST_PORT=8081
 FORCE_BUILD=false
+DEBUG_MODE=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -33,6 +35,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --build)
             FORCE_BUILD=true
+            shift
+            ;;
+        --debug)
+            DEBUG_MODE=true
             shift
             ;;
         *)
@@ -96,21 +102,46 @@ cd "$SCRIPT_DIR"
 
 # Update port in docker-compose.yml
 echo -e "${YELLOW}Configuring port mapping: $HOST_PORT:8080${NC}"
-sed -i "s/\"[0-9]*:8080\"/\"$HOST_PORT:8080\"/g" docker-compose.yml
+sed -i.bak "s/\"[0-9]*:8080\"/\"$HOST_PORT:8080\"/g" docker-compose.yml
 
-# Create .env.docker if it doesn't exist
-if [ ! -f .env.docker ]; then
-    echo -e "${YELLOW}Creating .env.docker file...${NC}"
-    cat > .env.docker << EOF
+# Configure environment file based on debug mode
+if [ "$DEBUG_MODE" = true ]; then
+    echo -e "${YELLOW}Configuring DEBUG mode environment${NC}"
+    if [ -f .env.docker.debug ]; then
+        cp .env.docker.debug .env.docker
+    else
+        cat > .env.docker << EOF
+# Docker Environment Configuration - DEBUG MODE
+PORT=8080
+FLASK_ENV=development
+FLASK_DEBUG=True
+LOG_LEVEL=DEBUG
+DEBUG_REQUESTS=True
+GUNICORN_LOG_LEVEL=debug
+CUDA_VISIBLE_DEVICES=-1
+TF_CPP_MIN_LOG_LEVEL=2
+OPENCV_IO_ENABLE_OPENEXR=0
+OMP_NUM_THREADS=1
+PYTHONUNBUFFERED=1
+EOF
+    fi
+else
+    if [ ! -f .env.docker ]; then
+        echo -e "${YELLOW}Configuring PRODUCTION mode environment${NC}"
+        cat > .env.docker << EOF
 # Docker Environment Configuration
 PORT=8080
 FLASK_ENV=production
 FLASK_DEBUG=False
+LOG_LEVEL=INFO
+DEBUG_REQUESTS=False
+GUNICORN_LOG_LEVEL=info
 CUDA_VISIBLE_DEVICES=-1
 TF_CPP_MIN_LOG_LEVEL=3
 OPENCV_IO_ENABLE_OPENEXR=0
 OMP_NUM_THREADS=1
 EOF
+    fi
 fi
 
 # Create logs directory
@@ -173,6 +204,13 @@ echo -e "Host Port: ${GREEN}$HOST_PORT${NC}"
 echo -e "Container Port: ${GREEN}8080${NC}"
 if [ "$WITH_NGINX" = true ]; then
     echo -e "Nginx: ${GREEN}enabled (ports 80, 443)${NC}"
+fi
+if [ "$DEBUG_MODE" = true ]; then
+    echo -e "Debug Mode: ${YELLOW}ENABLED${NC}"
+    echo -e "  ${YELLOW}⚠ Debug mode provides verbose logging for troubleshooting${NC}"
+    echo -e "  ${YELLOW}⚠ Not recommended for production use${NC}"
+else
+    echo -e "Debug Mode: ${GREEN}DISABLED${NC} (production mode)"
 fi
 echo ""
 echo -e "${YELLOW}Useful Commands:${NC}"

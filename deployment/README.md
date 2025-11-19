@@ -67,6 +67,9 @@ sudo bash deploy-docker.sh --port 8082
 
 # Force rebuild
 sudo bash deploy-docker.sh --build
+
+# Enable debug logging (for troubleshooting)
+sudo bash deploy-docker.sh --debug
 ```
 
 See [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) for detailed documentation.
@@ -88,6 +91,9 @@ sudo bash deploy.sh --domain your-domain.com
 
 # Custom port
 sudo bash deploy.sh --port 8082
+
+# Enable debug logging (for troubleshooting)
+sudo bash deploy.sh --debug
 ```
 
 See [VM_DEPLOYMENT.md](VM_DEPLOYMENT.md) for detailed documentation.
@@ -136,10 +142,34 @@ curl http://localhost:8081/
 # {"status": "ready", "timestamp": "2025-01-01T00:00:00Z"}
 ```
 
+## Debug Logging
+
+Both deployment methods support debug mode for troubleshooting:
+
+```bash
+# Docker
+sudo bash deploy-docker.sh --debug
+
+# Native
+sudo bash deploy.sh --debug
+```
+
+Debug mode provides:
+- Verbose application logs
+- Detailed request/response logging
+- Stack traces for errors
+- Performance timing information
+
+See [DEBUG_LOGGING.md](DEBUG_LOGGING.md) for complete debug logging guide.
+
+⚠ **Warning:** Debug mode is for troubleshooting only. Not recommended for production.
+
 ## Documentation
 
 For detailed documentation, see:
-- **[VM_DEPLOYMENT.md](VM_DEPLOYMENT.md)** - Complete deployment guide
+- **[DEBUG_LOGGING.md](DEBUG_LOGGING.md)** - Debug logging guide
+- **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** - Docker deployment guide
+- **[VM_DEPLOYMENT.md](VM_DEPLOYMENT.md)** - Native deployment guide
 - **[../README.md](../README.md)** - Project overview and API documentation
 - **[../docs/api.md](../docs/api.md)** - API reference
 
