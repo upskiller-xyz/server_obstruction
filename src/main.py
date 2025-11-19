@@ -48,6 +48,7 @@ class ServerApplication:
         from src.server.enums import LogLevel
         from src.server.controllers.base_controller import ServerController
         from src.server.services.obstruction_service import ObstructionServiceFactory
+        from src.server.services.parallel_obstruction_service import ParallelObstructionServiceFactory
         from src.server.controllers.obstruction_controller import ObstructionController
 
         # Logger
@@ -56,10 +57,15 @@ class ServerApplication:
         # Raytracing service (using Factory Pattern)
         self._raytrace_service = ObstructionServiceFactory.create_default_service(self._logger)
 
+        # Parallel obstruction service (optional - configured per request)
+        # Microservice URL will be provided in request data
+        self._parallel_service = None
+
         # Raytracing controller
         self._raytrace_controller = ObstructionController(
             raytrace_service=self._raytrace_service,
-            logger=self._logger
+            logger=self._logger,
+            parallel_service=self._parallel_service
         )
 
         # Services for base controller
@@ -83,6 +89,7 @@ class ServerApplication:
         self._app.add_url_rule("/obstruction", "obstruction", self._obstruction, methods=["POST"])
         self._app.add_url_rule("/zenith_angle", "zenith_angle", self._zenith_angle, methods=["POST"])
         self._app.add_url_rule("/obstruction_all", "obstruction_all", self._obstruction_all, methods=["POST"])
+        self._app.add_url_rule("/obstruction_parallel", "obstruction_parallel", self._obstruction_parallel, methods=["POST"])
         self._app.add_url_rule("/route_example", "route_example", self._route_example, methods=["POST"])
 
     def _get_status(self) -> Dict[str, Any]:
@@ -235,6 +242,79 @@ class ServerApplication:
             }), HTTPStatus.BAD_REQUEST.value
         except Exception as e:
             self._logger.error(f"All-direction obstruction endpoint failed: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "error": f"Internal server error: {str(e)}"
+            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
+
+    def _obstruction_parallel(self) -> Dict[str, Any]:
+        """
+        Parallel multi-direction obstruction calculation endpoint
+
+        Calculates obstruction angles for 64 directions in parallel by making
+        HTTP requests to a microservice endpoint. The microservice URL must be
+        provided in the request body.
+
+        Request body must include:
+        - x, y, z: window center coordinates
+        - mesh: list of vertex coordinates
+        - microservice_url: URL of the /obstruction endpoint to call in parallel
+        - num_directions (optional): number of directions (default 64)
+        - start_angle_degrees (optional): start angle (default 17.5°)
+        - end_angle_degrees (optional): end angle (default 162.5°)
+        - auth_token (optional): Bearer token for GCP authentication
+        """
+        try:
+            # Get JSON data from request
+            if not request.is_json:
+                raise BadRequest("Content-Type must be application/json")
+
+            request_data = request.get_json()
+
+            if not request_data:
+                raise BadRequest("Request body cannot be empty")
+
+            # Extract microservice URL from request (default to internal /obstruction endpoint)
+            microservice_url = request_data.get("microservice_url")
+            if not microservice_url:
+                # Use internal endpoint - construct from request context
+                microservice_url = f"{request.scheme}://{request.host}/obstruction"
+                self._logger.info(f"Using internal obstruction endpoint: {microservice_url}")
+
+            # Extract optional auth token (only for external calls)
+            auth_token = request_data.get("auth_token")
+
+            # Create parallel service dynamically for this request
+            from src.server.services.parallel_obstruction_service import ParallelObstructionServiceFactory
+
+            parallel_service = ParallelObstructionServiceFactory.create_service(
+                microservice_url=microservice_url,
+                logger=self._logger,
+                auth_token=auth_token
+            )
+
+            # Temporarily assign parallel service to controller
+            self._raytrace_controller._parallel_service = parallel_service
+
+            # Delegate to obstruction controller
+            result = self._raytrace_controller.calculate_parallel_multi_direction(request_data)
+
+            # Clear parallel service after use
+            self._raytrace_controller._parallel_service = None
+
+            # Check for errors
+            if result.get("status") == "error":
+                return jsonify(result), HTTPStatus.BAD_REQUEST.value
+
+            return jsonify(result)
+
+        except BadRequest as e:
+            return jsonify({
+                "status": "error",
+                "error": str(e)
+            }), HTTPStatus.BAD_REQUEST.value
+        except Exception as e:
+            self._logger.error(f"Parallel obstruction endpoint failed: {str(e)}")
             return jsonify({
                 "status": "error",
                 "error": f"Internal server error: {str(e)}"

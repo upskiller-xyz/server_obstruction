@@ -58,6 +58,7 @@ class ResponseField(Enum):
     HORIZON = "horizon"
     ZENITH = "zenith"
     DIRECTION_ANGLE = "direction_angle"
+    DIRECTION_ANGLE_DEGREES = "direction_angle_degrees"
     RESULTS = "results"
 
     # Result fields
