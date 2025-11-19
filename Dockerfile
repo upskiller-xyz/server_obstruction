@@ -18,6 +18,8 @@ RUN chmod 444 main.py
 RUN chmod 444 /requirements-prod.txt
 
 ENV PORT 8080
+ENV WORKERS 32
+ENV THREADS 2
 
 # Optimized for CPU-bound work with 32 cores:
 # - More workers (one per core for CPU work)
@@ -25,8 +27,8 @@ ENV PORT 8080
 # - Use sync worker class (simpler, more stable)
 CMD exec gunicorn \
     --bind :$PORT \
-    --workers 32 \
-    --threads 2 \
+    --workers $WORKERS \
+    --threads $THREADS \
     --worker-class sync \
     --timeout 900 \
     --max-requests 1000 \
