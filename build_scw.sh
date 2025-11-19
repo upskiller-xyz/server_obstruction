@@ -1,8 +1,14 @@
 export DAYLIGHT_SERVER_VERSION=$(cat src/__version__.py | cut -d '=' -f2 | xargs)
 source .env
-# scw registry namespace create name=${SCW_REGISTRY_NAMESPACE} project-id=${SCW_PROJECT_ID}
-docker build -t rg.fr-par.scw.cloud/${SCW_SERVER}/${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION} .
-docker push rg.fr-par.scw.cloud/${SCW_SERVER}/${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION}
+
+# Build image with local tag first
+docker build -t ${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION} .
+
+# Tag for Scaleway registry
+docker tag ${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION} rg.fr-par.scw.cloud/${SCW_REGISTRY_NAMESPACE}/${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION}
+
+# Push to Scaleway registry
+docker push rg.fr-par.scw.cloud/${SCW_REGISTRY_NAMESPACE}/${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION}
 # Försök hitta containern. -o json ger utdata som JSON. jq -e kollar om det 
 NAMESPACE_ID=$(scw container namespace list --output json | jq -r '.[0].id')
 
@@ -21,14 +27,14 @@ if [ "$CONTAINER_EXISTS" == "true" ]; then
         echo "Containern är i ett felaktigt tillstånd. Raderar och återskapar..."
         scw container container delete "$CONTAINER_ID" --wait
         echo "Skapar en ny container..."
-        scw container container create name=$SCW_SERVE_CONTAINER_NAME namespace-id=$NAMESPACE_ID registry-image=rg.fr-par.scw.cloud/${SCW_SERVER}/${IMAGE_NAME}:${DAYLIGHT_SERVER_VERSION}
+        scw container container create name=$SCW_SERVE_CONTAINER_NAME namespace-id=$NAMESPACE_ID registry-image=rg.fr-par.scw.cloud/${SCW_REGISTRY_NAMESPACE}/${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION}
     else
         echo "Uppdaterar befintlig container..."
         scw container container deploy "$CONTAINER_ID"
     fi
 else
       echo "Containern '$SCW_SERVE_CONTAINER_NAME' hittades inte. Skapar ny..."
-  scw container container create name=$SCW_SERVE_CONTAINER_NAME namespace-id=$NAMESPACE_ID registry-image=rg.fr-par.scw.cloud/${SCW_SERVER}/${IMAGE_NAME}:${DAYLIGHT_SERVER_VERSION}
+  scw container container create name=$SCW_SERVE_CONTAINER_NAME namespace-id=$NAMESPACE_ID registry-image=rg.fr-par.scw.cloud/${SCW_REGISTRY_NAMESPACE}/${SCW_IMAGE}:${DAYLIGHT_SERVER_VERSION}
 fi
 
 # echo "Container ID: $CONTAINER_ID"

@@ -186,6 +186,102 @@ print(f"Horizon: {result['data']['horizon']['obstruction_angle_degrees']:.2f}°"
 print(f"Zenith: {result['data']['zenith']['obstruction_angle_degrees']:.2f}°")
 ```
 
+#### Parallel Multi-Direction Obstruction Calculation
+Calculate obstruction angles for 64 directions in parallel using HTTP requests to a microservice:
+
+```python
+import requests
+
+payload = {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 1.5,
+    "mesh": [                # Triangle mesh vertices (groups of 3)
+        [5.0, -5.0, 0.0],
+        [5.0, 5.0, 0.0],
+        [5.0, -5.0, 3.0],
+        # ... more vertices
+    ],
+
+    # Microservice URL to call in parallel
+    "microservice_url": "http://your-service.run.app/obstruction",
+
+    # Optional: GCP authentication token
+    "auth_token": "your-gcp-bearer-token",
+
+    # Optional: Customize direction sampling (defaults shown)
+    "num_directions": 64,
+    "start_angle_degrees": 17.5,
+    "end_angle_degrees": 162.5
+}
+
+response = requests.post("http://localhost:8081/obstruction_parallel", json=payload)
+result = response.json()
+
+if result['status'] == 'success':
+    data = result['data']
+    print(f"Calculated {data['num_directions']} directions in {data['total_time_seconds']:.2f}s")
+    print(f"Horizon angles: {data['horizon_angles']}")
+    print(f"Zenith angles: {data['zenith_angles']}")
+```
+
+**Example Script**: See [parallel_request_example.py](example/parallel_request_example.py) for a complete working example.
+
+#### GCP Deployment Recommendations for Parallel Execution
+
+When deploying on Google Cloud Platform to handle parallel multi-direction requests:
+
+**Cloud Run Configuration:**
+- **Memory**: 2 GiB minimum (4 GiB recommended for large meshes)
+- **CPU**: 2 vCPUs minimum (4 vCPUs for better parallel performance)
+- **Concurrency**: 80-100 concurrent requests per instance
+- **Timeout**: 300 seconds (5 minutes) for complex calculations
+- **Min instances**: 1 (to avoid cold starts)
+- **Max instances**: 10-20 (depending on expected load)
+
+**Cloud Run Service YAML Example:**
+```yaml
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: obstruction-server
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "10"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/YOUR-PROJECT/obstruction-server
+        resources:
+          limits:
+            memory: 4Gi
+            cpu: "4"
+```
+
+**Authentication Setup:**
+```bash
+# Get GCP authentication token
+gcloud auth print-identity-token
+
+# Use in request
+AUTH_TOKEN=$(gcloud auth print-identity-token)
+curl -X POST https://your-service.run.app/obstruction_parallel \
+  -H "Authorization: Bearer $AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @request_payload.json
+```
+
+**Performance Tips:**
+- Each parallel request creates 64 concurrent HTTP calls
+- Total execution time ≈ single obstruction time (parallelized)
+- Monitor Cloud Run metrics for optimal instance sizing
+- Use Cloud CDN for mesh data caching if meshes are reused
+- Consider Cloud Load Balancing for high-traffic scenarios
+
 ### Deployment
 
 #### Environment Configuration

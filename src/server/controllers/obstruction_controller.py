@@ -1,6 +1,8 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+import asyncio
 from src.server.interfaces import ILogger
 from src.server.services.obstruction_service import ObstructionService
+from src.server.services.parallel_obstruction_service import ParallelObstructionService
 from src.components.obstruction_models import ObstructionRequest, ObstructionResult
 from src.components.constants import ResponseStatus, ResponseField, RequestField, ControllerStatus
 from src.components.validators import GeometricValidator, PointOnTriangleError
@@ -17,16 +19,23 @@ class ObstructionController:
     - Format responses
     """
 
-    def __init__(self, raytrace_service: ObstructionService, logger: ILogger):
+    def __init__(
+        self,
+        raytrace_service: ObstructionService,
+        logger: ILogger,
+        parallel_service: Optional[ParallelObstructionService] = None
+    ):
         """
         Initialize controller with dependencies
 
         Args:
             raytrace_service: Service for obstruction calculation operations
             logger: Structured logger
+            parallel_service: Optional service for parallel multi-direction calculations
         """
         self._raytrace_service = raytrace_service
         self._logger = logger
+        self._parallel_service = parallel_service
 
     def calculate_obstruction(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -435,6 +444,143 @@ class ObstructionController:
             }
         except Exception as e:
             self._logger.error(f"All-direction obstruction calculation failed: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
+            }
+
+    def calculate_parallel_multi_direction(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle parallel multi-direction obstruction calculation request
+
+        Calculates 64 obstruction angles in parallel by making HTTP requests
+        to a microservice endpoint. Uses asyncio and aiohttp for parallel execution.
+
+        Args:
+            request_data: Dictionary containing:
+                - x, y, z: window center coordinates
+                - mesh: list of vertex coordinates
+                - num_directions (optional): number of directions (default 64)
+                - start_angle_degrees (optional): start angle (default 17.5°)
+                - end_angle_degrees (optional): end angle (default 162.5°)
+                - microservice_url: URL of the obstruction calculation endpoint
+                - auth_token (optional): Bearer token for GCP authentication
+
+        Returns:
+            Dictionary with obstruction results for all 64 directions
+        """
+        try:
+            # Check if parallel service is available
+            if self._parallel_service is None:
+                raise ValueError(
+                    "Parallel obstruction service not configured. "
+                    "Please provide microservice_url in request."
+                )
+
+            # Validate required fields (direction_angle not required)
+            required_fields = [
+                RequestField.X.value,
+                RequestField.Y.value,
+                RequestField.Z.value,
+                RequestField.MESH.value
+            ]
+            missing_fields = [field for field in required_fields if field not in request_data]
+
+            if missing_fields:
+                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+
+            # Validate mesh format
+            mesh = request_data[RequestField.MESH.value]
+            if not isinstance(mesh, list):
+                raise ValueError("Mesh must be a list of vertices")
+
+            if len(mesh) == 0:
+                raise ValueError("Mesh cannot be empty")
+
+            # Handle mesh vertices not divisible by 3
+            if len(mesh) % 3 != 0:
+                extra_vertices = len(mesh) % 3
+                original_count = len(mesh)
+                request_data[RequestField.MESH.value] = mesh[:-extra_vertices]
+                self._logger.warning(
+                    f"Mesh had {original_count} vertices (not divisible by 3). "
+                    f"Trimmed {extra_vertices} extra vertex/vertices. "
+                    f"Proceeding with {len(request_data[RequestField.MESH.value])} vertices."
+                )
+
+            # Validate window center doesn't lie on mesh
+            self._validate_window_not_on_mesh(request_data)
+
+            # Set default direction_angle to 0 for parsing
+            if RequestField.DIRECTION_ANGLE.value not in request_data:
+                request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
+
+            # Parse request into domain model
+            request = ObstructionRequest.from_dict(request_data)
+
+            # Get optional parameters
+            num_directions = request_data.get("num_directions", None)
+            start_angle_degrees = request_data.get("start_angle_degrees", None)
+            end_angle_degrees = request_data.get("end_angle_degrees", None)
+
+            # Validate num_directions if provided
+            if num_directions is not None:
+                if not isinstance(num_directions, int) or num_directions < 1:
+                    raise ValueError("num_directions must be a positive integer")
+
+            # Validate angle ranges if provided
+            if start_angle_degrees is not None:
+                if not isinstance(start_angle_degrees, (int, float)):
+                    raise ValueError("start_angle_degrees must be a number")
+
+            if end_angle_degrees is not None:
+                if not isinstance(end_angle_degrees, (int, float)):
+                    raise ValueError("end_angle_degrees must be a number")
+
+            # Use direct async calculation instead of HTTP requests
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                results = loop.run_until_complete(
+                    self._raytrace_service.calculate_all_directions_async(
+                        request, num_directions, start_angle_degrees, end_angle_degrees
+                    )
+                )
+            finally:
+                loop.close()
+
+            # Format response
+            return {
+                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
+                ResponseField.DATA.value: results
+            }
+
+        except PointOnTriangleError as e:
+            self._logger.warning(f"Window center lies on mesh: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: str(e),
+                ResponseField.WINDOW_CENTER.value: {
+                    RequestField.X.value: e.point.x,
+                    RequestField.Y.value: e.point.y,
+                    RequestField.Z.value: e.point.z
+                },
+                ResponseField.TRIANGLE.value: {
+                    ResponseField.VERTICES.value: [
+                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
+                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
+                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
+                    ]
+                }
+            }
+        except ValueError as e:
+            self._logger.warning(f"Invalid request data: {str(e)}")
+            return {
+                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
+                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
+            }
+        except Exception as e:
+            self._logger.error(f"Parallel multi-direction calculation failed: {str(e)}")
             return {
                 ResponseField.STATUS.value: ResponseStatus.ERROR.value,
                 ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
