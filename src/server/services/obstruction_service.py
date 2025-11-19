@@ -368,26 +368,21 @@ class ObstructionService:
 
     async def _calculate_direction_async(self, mesh, center, normal, direction_angle):
         """Asynchronous calculation for a single direction with parallel horizon/zenith"""
-        # Filter triangles behind window for THIS direction (applies to both horizon and zenith)
-        filtered_triangles = TriangleFilter.filter_by_direction(
-            mesh.triangles,
-            center,
-            normal
-        )
-        filtered_mesh = Mesh(tuple(filtered_triangles))
+        # Mesh is already pre-filtered globally (height + base direction)
+        # Skip per-direction filtering to avoid rebuilding vertices array 64 times
 
         loop = asyncio.get_event_loop()
 
-        # Calculate horizon and zenith in parallel using the direction-filtered mesh
+        # Calculate horizon and zenith in parallel
         horizon_task = loop.run_in_executor(
             None,
             self._calculate_horizon_sync,
-            filtered_mesh, center, normal
+            mesh, center, normal
         )
         zenith_task = loop.run_in_executor(
             None,
             self._calculate_zenith_sync,
-            filtered_mesh, center, normal
+            mesh, center, normal
         )
 
         horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)
@@ -401,12 +396,12 @@ class ObstructionService:
     def _calculate_horizon_sync(self, mesh, center, normal):
         """Synchronous horizon calculation (for thread pool)"""
         calculator = IntersectionObstructionCalculator()
-        return calculator.calculate_obstruction_angle_from_mesh(mesh, center, normal)
+        return calculator._calculate_with_filtered_mesh(mesh, center, normal)
 
     def _calculate_zenith_sync(self, mesh, center, normal):
         """Synchronous zenith calculation (for thread pool)"""
         calculator = IntersectionZenithCalculator()
-        return calculator.calculate_zenith_angle_from_mesh(mesh, center, normal)
+        return calculator._calculate_with_filtered_mesh(mesh, center, normal)
 
     def calculate_all_directions(
         self,
