@@ -20,6 +20,112 @@ class TriangleFilter:
     """Filters triangles based on spatial criteria for efficient obstruction calculation"""
 
     @staticmethod
+    def filter_by_height_and_direction(
+        triangles: Tuple[Triangle, ...],
+        window_center: Point3D,
+        window_normal: Vector3D
+    ) -> List[Triangle]:
+        """
+        Quick coarse filter: Remove triangles below and behind window (VECTORIZED)
+
+        This is the fastest pre-filter to run before more expensive operations.
+        Uses NumPy for speed.
+
+        Args:
+            triangles: All mesh triangles
+            window_center: Window center point
+            window_normal: Window viewing direction
+
+        Returns:
+            Filtered list of triangles (above window, not entirely behind)
+        """
+        n_triangles = len(triangles)
+        if n_triangles == 0:
+            return []
+
+        # Build vertices array (vectorized)
+        vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
+        for i, t in enumerate(triangles):
+            vertices_array[i, 0] = t.v1.to_array()
+            vertices_array[i, 1] = t.v2.to_array()
+            vertices_array[i, 2] = t.v3.to_array()
+
+        window_arr = window_center.to_array()
+
+        # Filter 1: Height - max Z of triangle > window Z
+        max_z_per_triangle = vertices_array[:, :, 2].max(axis=1)
+        above_mask = max_z_per_triangle > window_arr[2]
+
+        # Filter 2: Direction - at least one vertex not behind window
+        normal_arr = window_normal.to_array()
+        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
+        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+
+        if normal_horizontal_mag > 1e-6:
+            normal_horizontal = normal_horizontal / normal_horizontal_mag
+            vecs = vertices_array - window_arr
+            forward_distances = np.dot(vecs, normal_horizontal)
+            # Triangle kept if ANY vertex is not behind (>= -epsilon)
+            not_behind_mask = (forward_distances >= -1e-6).any(axis=1)
+            keep_mask = above_mask & not_behind_mask
+        else:
+            # Viewing straight up/down - keep all above
+            keep_mask = above_mask
+
+        # Build filtered list
+        filtered = [triangles[i] for i in range(n_triangles) if keep_mask[i]]
+
+        below_count = int((~above_mask).sum())
+        behind_count = int(n_triangles - keep_mask.sum() - below_count) if normal_horizontal_mag > 1e-6 else 0
+
+        logger.info(
+            f"        [COARSE-FILTER] Removed {below_count} below + {behind_count} behind "
+            f"({len(filtered)}/{n_triangles} remaining)"
+        )
+
+        return filtered
+
+    @staticmethod
+    def filter_by_height_only(
+        triangles: Tuple[Triangle, ...],
+        window_center: Point3D
+    ) -> List[Triangle]:
+        """
+        Quick filter: Remove triangles below window only (VECTORIZED)
+
+        Use this when direction varies (e.g., multi-direction calculations).
+
+        Args:
+            triangles: All mesh triangles
+            window_center: Window center point
+
+        Returns:
+            Filtered list of triangles above window
+        """
+        n_triangles = len(triangles)
+        if n_triangles == 0:
+            return []
+
+        # Vectorized height check
+        vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
+        for i, t in enumerate(triangles):
+            vertices_array[i, 0] = t.v1.to_array()
+            vertices_array[i, 1] = t.v2.to_array()
+            vertices_array[i, 2] = t.v3.to_array()
+
+        max_z_per_triangle = vertices_array[:, :, 2].max(axis=1)
+        above_mask = max_z_per_triangle > window_center.z
+
+        filtered = [triangles[i] for i in range(n_triangles) if above_mask[i]]
+
+        logger.info(
+            f"        [HEIGHT-FILTER] Removed {int((~above_mask).sum())} below window "
+            f"({len(filtered)}/{n_triangles} remaining)"
+        )
+
+        return filtered
+
+    @staticmethod
     def filter_for_both(
         triangles: Tuple[Triangle, ...],
         window_center: Point3D,
@@ -570,8 +676,6 @@ class HorizonIntersectionCalculator:
         Returns:
             Tuple of (max_angle_radians, highest_point, intersection_count)
         """
-        import time
-        import logging
         logger = logging.getLogger(__name__)
 
         algo_start = time.time()
@@ -667,8 +771,6 @@ class HorizonIntersectionCalculator:
             Tuple of (max_angle_radians, highest_point, intersection_count)
             Returns (None, None, 0) if no obstruction found
         """
-        import time
-        import logging
         logger = logging.getLogger(__name__)
 
         algo_start = time.time()
@@ -785,8 +887,6 @@ class ZenithIntersectionCalculator:
         Returns:
             Tuple of (max_angle_radians, furthest_point, intersection_count)
         """
-        import time
-        import logging
         logger = logging.getLogger(__name__)
 
         algo_start = time.time()
@@ -891,8 +991,6 @@ class ZenithIntersectionCalculator:
         Returns:
             Tuple of (max_angle_radians, furthest_point, intersection_count)
         """
-        import time
-        import logging
         logger = logging.getLogger(__name__)
 
         algo_start = time.time()
@@ -1040,10 +1138,8 @@ class CombinedIntersectionCalculator:
         zenith_calc = ZenithIntersectionCalculator()
 
         # Create temporary meshes with filtered triangles
-        from src.components.geometry import Mesh as MeshClass
-
-        horizon_mesh = MeshClass(tuple(horizon_triangles))
-        zenith_mesh = MeshClass(tuple(zenith_triangles))
+        horizon_mesh = Mesh(tuple(horizon_triangles))
+        zenith_mesh = Mesh(tuple(zenith_triangles))
 
         # Calculate horizon (using already-filtered triangles, so it skips Step 0)
         horizon_angle, horizon_point, horizon_count = horizon_calc._calculate_with_filtered_triangles(

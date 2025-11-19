@@ -22,11 +22,17 @@ logging.basicConfig(
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+import multiprocessing
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.exceptions import BadRequest
-
-from src.server.enums import ContentType, HTTPStatus
+from http import HTTPStatus
+from src.server.services.logging import StructuredLogger
+from src.server.enums import LogLevel, ContentType
+from src.server.controllers.base_controller import ServerController
+from src.server.services.obstruction_service import ObstructionServiceFactory
+from src.server.services.parallel_obstruction_service import ParallelObstructionServiceFactory
+from src.server.controllers.obstruction_controller import ObstructionController
 
 
 
@@ -44,14 +50,6 @@ class ServerApplication:
 
     def _setup_dependencies(self) -> None:
         """Setup all dependencies using dependency injection"""
-        from src.server.services.logging import StructuredLogger
-        from src.server.enums import LogLevel
-        from src.server.controllers.base_controller import ServerController
-        from src.server.services.obstruction_service import ObstructionServiceFactory
-        from src.server.services.parallel_obstruction_service import ParallelObstructionServiceFactory
-        from src.server.controllers.obstruction_controller import ObstructionController
-        import multiprocessing
-
         # Logger
         self._logger = StructuredLogger("Server", LogLevel.INFO)
 
@@ -323,7 +321,7 @@ class ServerApplication:
 
             # Extract optional auth token (only for external calls)
             auth_token = request_data.get("auth_token")
-
+            
             # Create parallel service dynamically for this request
             from src.server.services.parallel_obstruction_service import ParallelObstructionServiceFactory
 
@@ -332,10 +330,10 @@ class ServerApplication:
                 logger=self._logger,
                 auth_token=auth_token
             )
-
+            self._logger.info("start parakkek service")
             # Temporarily assign parallel service to controller
             self._raytrace_controller._parallel_service = parallel_service
-
+            self._logger.info("start calculation")
             # Delegate to obstruction controller
             result = self._raytrace_controller.calculate_parallel_multi_direction(request_data)
 

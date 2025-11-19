@@ -1,4 +1,5 @@
 from typing import Dict, Any, Optional
+import time
 import asyncio
 from src.server.interfaces import ILogger
 from src.server.services.obstruction_service import ObstructionService
@@ -64,7 +65,6 @@ class ObstructionController:
             ]
         }
         """
-        import time
         controller_start = time.time()
 
         try:
@@ -498,7 +498,7 @@ class ObstructionController:
 
             if missing_fields:
                 raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-
+            self._logger.info("checked fields")
             # Validate mesh format
             mesh = request_data[RequestField.MESH.value]
             if not isinstance(mesh, list):
@@ -520,7 +520,7 @@ class ObstructionController:
 
             # Validate window center doesn't lie on mesh
             self._validate_window_not_on_mesh(request_data)
-
+            self._logger.info("validate window on  mesh done")
             # Set default direction_angle to 0 for parsing
             if RequestField.DIRECTION_ANGLE.value not in request_data:
                 request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
@@ -548,6 +548,7 @@ class ObstructionController:
                     raise ValueError("end_angle_degrees must be a number")
 
             # Use direct async calculation instead of HTTP requests
+            self._logger.info("set loop")
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:

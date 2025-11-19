@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 import numpy as np
+from src.components.constants import MathConstants
 
 
 class CoordinateSystem:
@@ -229,7 +230,6 @@ class AngleCalculator:
             Angle in radians (0 to π/2)
         """
         # Import here to avoid circular dependency
-        from src.components.constants import MathConstants
 
         # Handle case where point is directly above (infinite angle)
         if horizontal_distance < MathConstants.EPSILON:
@@ -256,7 +256,6 @@ class AngleCalculator:
             Angle in radians (0 to π/2)
         """
         # Import here to avoid circular dependency
-        from src.components.constants import MathConstants
 
         # Point directly overhead
         if horizontal_distance < MathConstants.EPSILON:

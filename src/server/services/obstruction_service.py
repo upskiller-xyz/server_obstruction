@@ -1,16 +1,18 @@
 from typing import Dict, Any, List
 import time
 import math
+import asyncio
 import numpy as np
 from src.server.interfaces import ILogger
-from src.components.obstruction_models import ObstructionRequest, ObstructionResult
+from src.components.obstruction_models import ObstructionRequest, ObstructionResult, Window
 from src.components.projection import IProjectionCalculator, OrthographicProjectionCalculator
 from src.components.obstruction_calculator import (
     IObstructionCalculator, HorizonObstructionCalculator, ZenithAngleCalculator,
     IntersectionObstructionCalculator, IntersectionZenithCalculator
 )
 from src.components.constants import ResponseField, ResponseStatus, AllDirectionDefaults
-from src.components.geometry import Vector3D
+from src.components.geometry import Vector3D, Mesh
+from src.components.plane_intersection import TriangleFilter
 
 
 class ObstructionService:
@@ -50,6 +52,7 @@ class ObstructionService:
 
         This method uses plane-triangle intersections instead of projecting all points.
         It's significantly faster because:
+        - Pre-filters triangles behind/below window
         - Only processes triangles that intersect the viewing plane
         - No 2D projection step needed
         - Direct angle calculation from 3D intersection points
@@ -65,12 +68,22 @@ class ObstructionService:
         """
         start_time = time.time()
         self._logger.info(
-            f"[TIMING] Starting EFFICIENT horizon obstruction calculation for window at "
-            f"({request.window.center.x}, {request.window.center.y}, {request.window.center.z})"
+            f"[CALC-START] Starting calculation with {len(request.mesh.triangles)} triangles"
         )
 
         try:
-            # Use intersection-based calculator directly
+            # PRE-FILTER: Remove triangles behind/below window (vectorized)
+            coarse_start = time.time()
+            coarse_filtered = TriangleFilter.filter_by_height_and_direction(
+                request.mesh.triangles,
+                request.window.center,
+                request.window.normal
+            )
+            request.mesh = Mesh(tuple(coarse_filtered))
+            coarse_time = time.time() - coarse_start
+            self._logger.info(f"[PRE-FILTER] Completed in {coarse_time*1000:.2f}ms")
+
+            # Use intersection-based calculator with pre-filtered mesh
             calculator = IntersectionObstructionCalculator()
             result = calculator.calculate_obstruction_angle_from_mesh(
                 request.mesh,
@@ -220,48 +233,19 @@ class ObstructionService:
         Returns:
             Dictionary with 'horizon' and 'zenith' ObstructionResults
         """
-        from src.components.plane_intersection import TriangleFilter
-        import numpy as np
-
         overall_start = time.time()
         self._logger.info(f"[CALC-START] Starting calculation with {len(request.mesh.triangles)} triangles")
 
-        # PRE-STEP: Quick coarse filter - discard triangles entirely behind window
+        # PRE-STEP: Quick coarse filter using vectorized method
         coarse_start = time.time()
-        window_arr = request.window.center.to_array()
-        normal_arr = request.window.normal.to_array()
-        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
-        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
-
-        if normal_horizontal_mag > 1e-6:
-            normal_horizontal = normal_horizontal / normal_horizontal_mag
-
-            # Quick filter: keep only triangles where AT LEAST ONE vertex is in front
-            coarse_filtered = []
-            behind_count = 0
-
-            for triangle in request.mesh.triangles:
-                # Check if any vertex is in front of window
-                for vertex in [triangle.v1, triangle.v2, triangle.v3]:
-                    vec_to_vertex = vertex.to_array() - window_arr
-                    forward_dist = float(np.dot(vec_to_vertex, normal_horizontal))
-
-                    if forward_dist > -1e-6:  # At least one vertex not behind
-                        coarse_filtered.append(triangle)
-                        break
-                else:
-                    behind_count += 1
-
-            from src.components.geometry import Mesh
-            request.mesh = Mesh(tuple(coarse_filtered))
-
-            coarse_time = time.time() - coarse_start
-            self._logger.info(
-                f"[PRE-FILTER] Removed {behind_count} triangles behind window "
-                f"({len(coarse_filtered)} remaining, {coarse_time*1000:.2f}ms)"
-            )
-        else:
-            self._logger.info("[PRE-FILTER] Skipping (viewing straight up/down)")
+        coarse_filtered = TriangleFilter.filter_by_height_and_direction(
+            request.mesh.triangles,
+            request.window.center,
+            request.window.normal
+        )
+        request.mesh = Mesh(tuple(coarse_filtered))
+        coarse_time = time.time() - coarse_start
+        self._logger.info(f"[PRE-FILTER] Completed in {coarse_time*1000:.2f}ms")
 
         # OPTIMIZATION: Filter triangles ONCE for both calculations
         filter_start = time.time()
@@ -278,7 +262,6 @@ class ObstructionService:
         )
 
         # Create filtered mesh objects for each calculator
-        from src.components.geometry import Mesh
         horizon_mesh = Mesh(triangles=tuple(horizon_triangles))
         zenith_mesh = Mesh(triangles=tuple(zenith_triangles))
 
@@ -312,10 +295,6 @@ class ObstructionService:
         Uses asyncio to run calculations in parallel without HTTP overhead.
         Much faster than making HTTP requests to itself.
         """
-        import asyncio
-        from src.components.obstruction_models import Window
-        from src.components.geometry import Vector3D
-
         # Apply defaults
         if num_directions is None:
             num_directions = AllDirectionDefaults.NUM_DIRECTIONS
@@ -325,6 +304,24 @@ class ObstructionService:
             end_angle_degrees = AllDirectionDefaults.END_ANGLE_DEGREES
 
         start_time = time.time()
+        self._logger.info(f"[PARALLEL] Starting with {len(request.mesh.triangles)} triangles") 
+
+        # PRE-FILTER ONCE: Remove triangles below window (applies to all directions)
+        coarse_start = time.time()
+
+        coarse_filtered = TriangleFilter.filter_by_height_only(
+            request.mesh.triangles,
+            request.window.center
+        )
+
+        below_count = len(request.mesh.triangles) - len(coarse_filtered)
+        request.mesh = Mesh(tuple(coarse_filtered))
+
+        coarse_time = time.time() - coarse_start
+        self._logger.info(
+            f"[PARALLEL-PRE-FILTER] Removed {below_count} triangles below window "
+            f"({len(coarse_filtered)} remaining, {coarse_time*1000:.2f}ms)"
+        )
 
         # Get base direction
         normal_arr = request.window.normal.to_array()
@@ -340,19 +337,16 @@ class ObstructionService:
             relative_angle = start_angle_rad + (i * angle_step)
             absolute_angle = base_direction_angle - (math.pi / 2) + relative_angle
             direction_angles.append(absolute_angle)
-
-        # Calculate each direction in parallel using thread pool
-        loop = asyncio.get_event_loop()
+        self._logger.info("setup dirs")
+        # Calculate each direction in parallel (each with parallel horizon/zenith)
         tasks = []
-
+        self._logger.info("start real loops")
         for direction_angle in direction_angles:
             # Create window normal for this direction
             normal = Vector3D.from_horizontal_angle(direction_angle)
 
-            # Create async task for calculation
-            task = loop.run_in_executor(
-                None,
-                self._calculate_direction_sync,
+            # Create async task for calculation (horizon and zenith run in parallel within)
+            task = self._calculate_direction_async(
                 request.mesh,
                 request.window.center,
                 normal,
@@ -370,23 +364,39 @@ class ObstructionService:
             ResponseField.RESULTS.value: results
         }
 
-    def _calculate_direction_sync(self, mesh, center, normal, direction_angle):
-        """Synchronous calculation for a single direction (for thread pool)"""
-        horizon_calculator = IntersectionObstructionCalculator()
-        horizon_result = horizon_calculator.calculate_obstruction_angle_from_mesh(
+    async def _calculate_direction_async(self, mesh, center, normal, direction_angle):
+        """Asynchronous calculation for a single direction with parallel horizon/zenith"""
+        loop = asyncio.get_event_loop()
+
+        # Calculate horizon and zenith in parallel
+        horizon_task = loop.run_in_executor(
+            None,
+            self._calculate_horizon_sync,
+            mesh, center, normal
+        )
+        zenith_task = loop.run_in_executor(
+            None,
+            self._calculate_zenith_sync,
             mesh, center, normal
         )
 
-        zenith_calculator = IntersectionZenithCalculator()
-        zenith_result = zenith_calculator.calculate_zenith_angle_from_mesh(
-            mesh, center, normal
-        )
+        horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)
 
         return {
             ResponseField.DIRECTION_ANGLE.value: direction_angle,
             ResponseField.HORIZON.value: horizon_result.to_dict(),
             ResponseField.ZENITH.value: zenith_result.to_dict()
         }
+
+    def _calculate_horizon_sync(self, mesh, center, normal):
+        """Synchronous horizon calculation (for thread pool)"""
+        calculator = IntersectionObstructionCalculator()
+        return calculator.calculate_obstruction_angle_from_mesh(mesh, center, normal)
+
+    def _calculate_zenith_sync(self, mesh, center, normal):
+        """Synchronous zenith calculation (for thread pool)"""
+        calculator = IntersectionZenithCalculator()
+        return calculator.calculate_zenith_angle_from_mesh(mesh, center, normal)
 
     def calculate_all_directions(
         self,
