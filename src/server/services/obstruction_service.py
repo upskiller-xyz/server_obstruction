@@ -83,9 +83,9 @@ class ObstructionService:
             coarse_time = time.time() - coarse_start
             self._logger.info(f"[PRE-FILTER] Completed in {coarse_time*1000:.2f}ms")
 
-            # Use intersection-based calculator with pre-filtered mesh
+            # Use intersection-based calculator with pre-filtered mesh (skips Step 0)
             calculator = IntersectionObstructionCalculator()
-            result = calculator.calculate_obstruction_angle_from_mesh(
+            result = calculator._calculate_with_filtered_mesh(
                 request.mesh,
                 request.window.center,
                 request.window.normal
@@ -476,15 +476,15 @@ class ObstructionService:
             # Create window normal for this direction
             normal = Vector3D.from_horizontal_angle(direction_angle)
 
-            # Use EFFICIENT intersection calculator for horizon
+            # Use prefiltered calculator (skips Step 0 filtering)
             horizon_calculator = IntersectionObstructionCalculator()
-            horizon_result = horizon_calculator.calculate_obstruction_angle_from_mesh(
+            horizon_result = horizon_calculator._calculate_with_filtered_mesh(
                 request.mesh, request.window.center, normal
             )
 
-            # Use EFFICIENT intersection calculator for zenith
+            # Use prefiltered calculator (skips Step 0 filtering)
             zenith_calculator = IntersectionZenithCalculator()
-            zenith_result = zenith_calculator.calculate_zenith_angle_from_mesh(
+            zenith_result = zenith_calculator._calculate_with_filtered_mesh(
                 request.mesh, request.window.center, normal
             )
 
