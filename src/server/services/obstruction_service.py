@@ -306,20 +306,21 @@ class ObstructionService:
         start_time = time.time()
         self._logger.info(f"[PARALLEL] Starting with {len(request.mesh.triangles)} triangles") 
 
-        # PRE-FILTER ONCE: Remove triangles below window (applies to all directions)
+        # PRE-FILTER ONCE: Remove triangles below AND behind window (using base direction)
         coarse_start = time.time()
 
-        coarse_filtered = TriangleFilter.filter_by_height_only(
+        coarse_filtered = TriangleFilter.filter_by_height_and_direction(
             request.mesh.triangles,
-            request.window.center
+            request.window.center,
+            request.window.normal
         )
 
-        below_count = len(request.mesh.triangles) - len(coarse_filtered)
+        removed_count = len(request.mesh.triangles) - len(coarse_filtered)
         filtered_mesh = Mesh(tuple(coarse_filtered))
 
         coarse_time = time.time() - coarse_start
         self._logger.info(
-            f"[PARALLEL-PRE-FILTER] Removed {below_count} triangles below window "
+            f"[PARALLEL-PRE-FILTER] Removed {removed_count} triangles below/behind window "
             f"({len(coarse_filtered)} remaining, {coarse_time*1000:.2f}ms)"
         )
 
@@ -352,8 +353,9 @@ class ObstructionService:
                 normal,
                 direction_angle
             )
+            self._logger.info("create task for {}".format(direction_angle))
             tasks.append(task)
-
+        self._logger.info("created tasks")
         # Execute all in parallel
         results = await asyncio.gather(*tasks)
 
@@ -367,7 +369,7 @@ class ObstructionService:
     async def _calculate_direction_async(self, mesh, center, normal, direction_angle):
         """Asynchronous calculation for a single direction with parallel horizon/zenith"""
         loop = asyncio.get_event_loop()
-
+        self._logger.info("start tasks inside")
         # Calculate horizon and zenith in parallel
         horizon_task = loop.run_in_executor(
             None,
