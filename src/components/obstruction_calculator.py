@@ -8,7 +8,7 @@ from src.components.triangle_processing import (
     HorizonTriangleProcessor, ZenithTriangleProcessor, TriangleProcessor, PlaneIntersectionFilter
 )
 from src.components.constants import MathConstants, ThresholdConstants
-from src.components.plane_intersection import HorizonIntersectionCalculator, ZenithIntersectionCalculator
+from src.components.plane_intersection import HorizonIntersectionCalculator, ZenithIntersectionCalculator, CombinedIntersectionCalculator
 
 logger = logging.getLogger(__name__)
 

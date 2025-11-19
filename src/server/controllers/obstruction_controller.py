@@ -64,15 +64,25 @@ class ObstructionController:
             ]
         }
         """
+        import time
+        controller_start = time.time()
+
         try:
             # Validate required fields
+            validation_start = time.time()
             self._validate_request(request_data)
+            self._logger.info(f"[CONTROLLER] Validation: {(time.time()-validation_start)*1000:.2f}ms")
 
             # Parse request into domain model
+            parse_start = time.time()
             request = ObstructionRequest.from_dict(request_data)
+            self._logger.info(f"[CONTROLLER] Parsing {len(request_data.get('mesh', []))} vertices: {(time.time()-parse_start)*1000:.2f}ms")
 
             # Delegate to service layer (use EFFICIENT method with filters)
+            service_start = time.time()
             result = self._raytrace_service.calculate_obstruction_efficient(request)
+            self._logger.info(f"[CONTROLLER] Service calculation: {(time.time()-service_start)*1000:.2f}ms")
+            self._logger.info(f"[CONTROLLER] Total controller time: {(time.time()-controller_start)*1000:.2f}ms")
 
             # Format response
             return {

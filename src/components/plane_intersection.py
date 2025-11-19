@@ -998,3 +998,64 @@ class ZenithIntersectionCalculator:
         logger.info(f"        [ZENITH-EFFICIENT] ✓ TOTAL TIME: {total_time*1000:.2f}ms")
 
         return min_zenith_angle, closest_point, total_intersections
+
+
+class CombinedIntersectionCalculator:
+    """
+    OPTIMIZED: Calculate both horizon and zenith in one pass
+
+    Avoids duplicate filtering (saves ~6+ seconds per calculation!)
+    """
+
+    @staticmethod
+    def calculate_both_from_mesh(
+        mesh: Mesh,
+        window_center: Point3D,
+        window_normal: Vector3D
+    ) -> Tuple[Optional[float], Optional[Point3D], Optional[float], Optional[Point3D], int]:
+        """
+        Calculate BOTH horizon and zenith angles in a single optimized pass
+
+        Returns:
+            Tuple of (horizon_angle, horizon_point, zenith_angle, zenith_point, projected_count)
+        """
+        algo_start = time.time()
+
+        # STEP 0: Filter ONCE for both horizon and zenith (OPTIMIZED!)
+        step_start = time.time()
+        total_triangles = len(mesh.triangles)
+
+        horizon_triangles, zenith_triangles = TriangleFilter.filter_for_both(
+            mesh.triangles, window_center, window_normal, min_horizontal_distance=1.0
+        )
+
+        filter_time = time.time() - step_start
+        logger.info(
+            f"        [COMBINED] Step 0/4: Filtered {len(horizon_triangles)} horizon + "
+            f"{len(zenith_triangles)} zenith triangles from {total_triangles} in {filter_time*1000:.2f}ms"
+        )
+
+        # Now calculate both angles using filtered triangles
+        horizon_calc = HorizonIntersectionCalculator()
+        zenith_calc = ZenithIntersectionCalculator()
+
+        # Create temporary meshes with filtered triangles
+        from src.components.geometry import Mesh as MeshClass
+
+        horizon_mesh = MeshClass(tuple(horizon_triangles))
+        zenith_mesh = MeshClass(tuple(zenith_triangles))
+
+        # Calculate horizon (using already-filtered triangles, so it skips Step 0)
+        horizon_angle, horizon_point, horizon_count = horizon_calc._calculate_with_filtered_triangles(
+            horizon_triangles, window_center, window_normal
+        )
+
+        # Calculate zenith (using already-filtered triangles, so it skips Step 0)
+        zenith_angle, zenith_point, zenith_count = zenith_calc._calculate_with_filtered_triangles(
+            zenith_triangles, window_center, window_normal
+        )
+
+        total_time = time.time() - algo_start
+        logger.info(f"        [COMBINED] ✓ TOTAL TIME (both angles): {total_time*1000:.2f}ms")
+
+        return horizon_angle, horizon_point, zenith_angle, zenith_point, max(horizon_count, zenith_count)

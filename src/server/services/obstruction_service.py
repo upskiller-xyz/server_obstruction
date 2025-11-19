@@ -221,20 +221,60 @@ class ObstructionService:
             Dictionary with 'horizon' and 'zenith' ObstructionResults
         """
         from src.components.plane_intersection import TriangleFilter
+        import numpy as np
 
-        start_time = time.time()
+        overall_start = time.time()
+        self._logger.info(f"[CALC-START] Starting calculation with {len(request.mesh.triangles)} triangles")
+
+        # PRE-STEP: Quick coarse filter - discard triangles entirely behind window
+        coarse_start = time.time()
+        window_arr = request.window.center.to_array()
+        normal_arr = request.window.normal.to_array()
+        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
+        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
+
+        if normal_horizontal_mag > 1e-6:
+            normal_horizontal = normal_horizontal / normal_horizontal_mag
+
+            # Quick filter: keep only triangles where AT LEAST ONE vertex is in front
+            coarse_filtered = []
+            behind_count = 0
+
+            for triangle in request.mesh.triangles:
+                # Check if any vertex is in front of window
+                for vertex in [triangle.v1, triangle.v2, triangle.v3]:
+                    vec_to_vertex = vertex.to_array() - window_arr
+                    forward_dist = float(np.dot(vec_to_vertex, normal_horizontal))
+
+                    if forward_dist > -1e-6:  # At least one vertex not behind
+                        coarse_filtered.append(triangle)
+                        break
+                else:
+                    behind_count += 1
+
+            from src.components.geometry import Mesh
+            request.mesh = Mesh(tuple(coarse_filtered))
+
+            coarse_time = time.time() - coarse_start
+            self._logger.info(
+                f"[PRE-FILTER] Removed {behind_count} triangles behind window "
+                f"({len(coarse_filtered)} remaining, {coarse_time*1000:.2f}ms)"
+            )
+        else:
+            self._logger.info("[PRE-FILTER] Skipping (viewing straight up/down)")
 
         # OPTIMIZATION: Filter triangles ONCE for both calculations
+        filter_start = time.time()
         horizon_triangles, zenith_triangles = TriangleFilter.filter_for_both(
             request.mesh.triangles,
             request.window.center,
             request.window.normal,
             min_horizontal_distance=1.0
         )
-        filter_time = time.time() - start_time
+        filter_time = time.time() - filter_start
         self._logger.info(
-            f"[BOTH-ANGLES] Combined filter: {len(horizon_triangles)} horizon, "
-            f"{len(zenith_triangles)} zenith triangles in {filter_time*1000:.2f}ms"
+            f"[COMBINED-FILTER] {len(horizon_triangles)} horizon, "
+            f"{len(zenith_triangles)} zenith in {filter_time*1000:.2f}ms"
         )
 
         # Create filtered mesh objects for each calculator
