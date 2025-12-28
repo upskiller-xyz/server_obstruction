@@ -8,9 +8,9 @@ services:
     container_name: obstruction-server
     restart: unless-stopped
     ports:
-      - "8081:8080"  # Map host port 8081 to container port 8080
+      - "8081:8081"  # Map host port 8081 to container port 8081
     environment:
-      - PORT=8080
+      - PORT=8081
       - WORKERS=${WORKERS:-32}
       - THREADS=${THREADS:-2}
       - FLASK_ENV=production
@@ -25,7 +25,7 @@ services:
       # Optional: Mount logs directory for persistence
       - ./logs:/var/log/obstruction-server
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
       interval: 30s
       timeout: 10s
       retries: 3

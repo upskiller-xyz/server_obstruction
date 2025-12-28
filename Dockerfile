@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r /requirements-prod.txt
 RUN chmod 444 main.py
 RUN chmod 444 /requirements-prod.txt
 
-ENV PORT 8080
+ENV PORT 8081
 ENV WORKERS 32
 ENV THREADS 2
 

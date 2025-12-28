@@ -59,19 +59,44 @@ class CheckpointModelLoader(ModelLoader):
 
 ### Enum Usage
 ```python
-# Good Example
-class ModelStatus(Enum):
-    LOADING = "loading"
-    READY = "ready"
+# Good Example - Define enums for all string constants
+from enum import Enum
+
+class HTTPMethod(Enum):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+
+class EndpointPath(Enum):
+    ROOT = "/"
+    USERS = "/users"
+    LOGIN = "/login"
+
+class ResponseStatus(Enum):
+    SUCCESS = "success"
     ERROR = "error"
 
-# Bad Example
-status = "loading"  # Magic string
+# Use enum values instead of strings
+method = HTTPMethod.POST.value
+status = ResponseStatus.SUCCESS.value
+
+# Bad Example - Magic strings
+method = "POST"  # Don't do this!
+status = "success"  # Don't do this!
 ```
 
-### Strategy Pattern
+### Strategy Pattern with Enums
 ```python
-# Good Example
+# Good Example - Route configuration using Strategy Pattern
+route_config = [
+    (EndpointPath.ROOT.value, EndpointName.STATUS.value, self._get_status, [HTTPMethod.GET.value]),
+    (EndpointPath.USERS.value, EndpointName.USERS.value, self._get_users, [HTTPMethod.GET.value]),
+]
+
+for path, name, handler, methods in route_config:
+    self._app.add_url_rule(path, name, handler, methods=methods)
+
+# Good Example - Response handlers using Strategy Pattern
 response_handlers = {
     ModelStatus.LOADING: self._handle_loading,
     ModelStatus.READY: self._handle_ready,
@@ -79,11 +104,25 @@ response_handlers = {
 }
 handler = response_handlers.get(status)
 
-# Bad Example
+# Bad Example - if-else chains
 if status == "loading":
     # handle loading
 elif status == "ready":
     # handle ready
+```
+
+### Available Enumerators in constants.py
+```python
+from src.components.constants import (
+    HTTPMethod,      # GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD
+    HTTPStatus,      # OK=200, BAD_REQUEST=400, INTERNAL_SERVER_ERROR=500, etc.
+    ContentType,     # JSON, TEXT, HTML, XML
+    EndpointName,    # Endpoint function names (get_status, horizon_angle, etc.)
+    EndpointPath,    # Endpoint URL paths ("/", "/horizon_angle", etc.)
+    ResponseStatus,  # SUCCESS, ERROR
+    ResponseField,   # STATUS, DATA, ERROR, etc.
+    RequestField     # X, Y, Z, MESH, DIRECTION_ANGLE
+)
 ```
 
 ## Implementation Guidelines
