@@ -1,5 +1,5 @@
 """Validators for geometric constraints and data integrity"""
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 import numpy as np
 from src.components.geometry import Point3D, Triangle
 from src.components.constants import MathConstants
@@ -73,7 +73,7 @@ class GeometricValidator:
         # Calculate barycentric coordinates
         denom = d00 * d11 - d01 * d01
 
-        if abs(denom) < MathConstants.EPSILON:
+        if abs(denom) < MathConstants.EPSILON.value:
             # Degenerate triangle
             return (0.0, 0.0, 0.0)
 
@@ -106,7 +106,7 @@ class GeometricValidator:
         normal = np.cross(e1, e2)
 
         normal_mag = np.linalg.norm(normal)
-        if normal_mag < MathConstants.EPSILON:
+        if normal_mag < MathConstants.EPSILON.value:
             # Degenerate triangle
             return float('inf')
 
@@ -134,13 +134,13 @@ class GeometricValidator:
         Args:
             point: Point to check
             triangle: Triangle to check against
-            tolerance: Distance tolerance (default: MathConstants.EPSILON)
+            tolerance: Distance tolerance (default: MathConstants.EPSILON.value)
 
         Returns:
             True if point lies on triangle, False otherwise
         """
         if tolerance is None:
-            tolerance = MathConstants.EPSILON
+            tolerance = MathConstants.EPSILON.value
 
         # Convert to numpy arrays
         p = point.to_array()
@@ -158,7 +158,7 @@ class GeometricValidator:
 
         # Point is inside triangle if all barycentric coordinates are non-negative
         # Allow small negative values due to floating point errors
-        epsilon = -MathConstants.EPSILON
+        epsilon = -MathConstants.EPSILON.value
         if u >= epsilon and v >= epsilon and w >= epsilon:
             return True
 
@@ -167,7 +167,7 @@ class GeometricValidator:
     @staticmethod
     def find_triangle_containing_point(
         point: Point3D,
-        triangles: Tuple[Triangle, ...],
+        triangles: List[Triangle],
         tolerance: float = None
     ) -> Optional[Triangle]:
         """
@@ -176,13 +176,13 @@ class GeometricValidator:
         Args:
             point: Point to check
             triangles: Tuple of triangles to search
-            tolerance: Distance tolerance (default: MathConstants.EPSILON)
+            tolerance: Distance tolerance (default: MathConstants.EPSILON.value)
 
         Returns:
             First triangle containing the point, or None if not found
         """
         if tolerance is None:
-            tolerance = MathConstants.EPSILON
+            tolerance = MathConstants.EPSILON.value
 
         n_triangles = len(triangles)
         if n_triangles == 0:
@@ -228,7 +228,7 @@ class GeometricValidator:
         # Barycentric coordinates for triangles on plane
         on_plane_indices = np.where(on_plane_mask)[0]
 
-        epsilon = -MathConstants.EPSILON
+        epsilon = -MathConstants.EPSILON.value
 
         for idx in on_plane_indices:
             v1_pt = vertices_array[idx, 0]
@@ -247,7 +247,7 @@ class GeometricValidator:
     @staticmethod
     def validate_point_not_on_mesh(
         point: Point3D,
-        triangles: Tuple[Triangle, ...],
+        triangles: List[Triangle],
         tolerance: float = None
     ) -> None:
         """
@@ -256,7 +256,7 @@ class GeometricValidator:
         Args:
             point: Point to validate (e.g., window center)
             triangles: Mesh triangles
-            tolerance: Distance tolerance (default: MathConstants.EPSILON)
+            tolerance: Distance tolerance (default: MathConstants.EPSILON.value)
 
         Raises:
             PointOnTriangleError: If point lies on any triangle

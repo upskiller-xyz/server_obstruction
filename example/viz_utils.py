@@ -223,7 +223,7 @@ class MeshRenderer:
         triangles = [mesh_vertices[i:i+3] for i in range(0, len(mesh_vertices), 3)]
         return Poly3DCollection(
             triangles,
-            alpha=0.6,
+            alpha=0.2,
             facecolor=Color.SKYBLUE.value,
             edgecolor=Color.DARKBLUE.value,
             linewidths=1.5

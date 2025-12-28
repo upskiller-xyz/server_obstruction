@@ -77,7 +77,7 @@ class ProjectionPlane:
         plane_normal_arr = np.cross(direction_arr, CoordinateSystem.UP)
         plane_normal_mag = np.linalg.norm(plane_normal_arr)
 
-        if plane_normal_mag < MathConstants.EPSILON:
+        if plane_normal_mag < MathConstants.EPSILON.value:
             # Direction is parallel to world up (looking straight up/down)
             # Use forward direction as reference instead
             plane_normal_arr = np.cross(direction_arr, CoordinateSystem.FORWARD)
@@ -114,10 +114,9 @@ class ObstructionResult:
     obstruction_angle_degrees: float
     obstruction_angle_radians: float
     highest_point: Optional[Point3D]
-    projected_point_count: int
 
     @classmethod
-    def no_obstruction(cls, highest_point: Optional[Point3D] = None, projected_point_count: int = 0) -> 'ObstructionResult':
+    def no_obstruction(cls, highest_point: Optional[Point3D] = None) -> 'ObstructionResult':
         """
         Create a result indicating no obstruction found
 
@@ -131,8 +130,7 @@ class ObstructionResult:
         return cls(
             obstruction_angle_degrees=0.0,
             obstruction_angle_radians=0.0,
-            highest_point=highest_point,
-            projected_point_count=projected_point_count
+            highest_point=highest_point
         )
 
     def to_dict(self) -> dict:
@@ -144,6 +142,5 @@ class ObstructionResult:
                 RequestField.X.value: self.highest_point.x,
                 RequestField.Y.value: self.highest_point.y,
                 RequestField.Z.value: self.highest_point.z
-            } if self.highest_point else None,
-            ResponseField.PROJECTED_POINT_COUNT.value: self.projected_point_count
+            } if self.highest_point else None
         }

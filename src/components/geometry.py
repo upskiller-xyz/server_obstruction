@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import Callable, Dict, List, Tuple, Optional
 import numpy as np
-from src.components.constants import MathConstants
+from src.components.constants import ANGLES, MathConstants
 
 
 class CoordinateSystem:
@@ -213,9 +213,11 @@ class AngleCalculator:
             Angle in degrees
         """
         return float(np.degrees(radians))
+    
+    
 
     @staticmethod
-    def calculate_obstruction_angle(
+    def horizon_angle(
         vertical_distance: float,
         horizontal_distance: float
     ) -> float:
@@ -232,14 +234,14 @@ class AngleCalculator:
         # Import here to avoid circular dependency
 
         # Handle case where point is directly above (infinite angle)
-        if horizontal_distance < MathConstants.EPSILON:
+        if horizontal_distance < MathConstants.EPSILON.value:
             return float(np.pi / 2)  # 90 degrees
 
         # Calculate angle using arctan
         return float(np.arctan(vertical_distance / horizontal_distance))
 
     @staticmethod
-    def calculate_zenith_angle(
+    def zenith_angle(
         vertical_distance: float,
         horizontal_distance: float
     ) -> float:
@@ -258,11 +260,22 @@ class AngleCalculator:
         # Import here to avoid circular dependency
 
         # Point directly overhead
-        if horizontal_distance < MathConstants.EPSILON:
+        if horizontal_distance < MathConstants.EPSILON.value:
             return 0.0
 
         elevation_angle = float(np.arctan(vertical_distance / horizontal_distance))
         return (np.pi / 2) - elevation_angle
+    
+    _content: Dict[ANGLES, Callable] = {
+        ANGLES.HORIZON : horizon_angle,
+        ANGLES.ZENITH : zenith_angle
+    }
+    
+    @classmethod
+    def call(cls, vertical_distance:float, horizontal_distance:float, angle:ANGLES=ANGLES.HORIZON)->float:
+        method = cls._content.get(angle, cls.horizon_angle)
+        return method(vertical_distance, horizontal_distance)
+
 
 
 @dataclass(frozen=True)
@@ -275,12 +288,16 @@ class Triangle:
     def vertices(self) -> List[Point3D]:
         """Return list of vertices"""
         return [self.v1, self.v2, self.v3]
+    
+    @property
+    def highest(self)->float:
+        return max(self.v1.z, self.v2.z, self.v3.z)
 
 
 @dataclass(frozen=True)
 class Mesh:
     """3D mesh composed of triangles"""
-    triangles: Tuple[Triangle, ...]
+    triangles: List[Triangle]
 
     @classmethod
     def from_vertices(cls, vertices: List[List[float]]) -> 'Mesh':

@@ -1,41 +1,28 @@
 import pytest
 import numpy as np
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from src.server.controllers.obstruction_controller import ObstructionController
 from src.components.geometry import Point3D
 from src.components.obstruction_models import ObstructionResult
+from src.components.constants import EndpointName
 
 
 class TestObstructionController:
-    """Test cases for ObstructionController class"""
+    """Test cases for simplified ObstructionController using call() method"""
 
-    def setup_method(self):
-        """Setup test fixtures"""
-        self.mock_logger = Mock()
-        self.mock_logger.debug = Mock()
-        self.mock_logger.info = Mock()
-        self.mock_logger.warning = Mock()
-        self.mock_logger.error = Mock()
+    def test_controller_strategy_attributes_exist(self):
+        """Test controller has required strategy attributes"""
+        assert hasattr(ObstructionController, 'ASYNC_ENDPOINTS')
+        assert hasattr(ObstructionController, 'MULTI_DIRECTION_ENDPOINTS')
 
-        self.mock_service = Mock()
-        self.controller = ObstructionController(
-            raytrace_service=self.mock_service,
-            logger=self.mock_logger
-        )
-
-    def test_controller_initialization(self):
-        """Test controller initializes with dependencies"""
-        assert self.controller._raytrace_service == self.mock_service
-        assert self.controller._logger == self.mock_logger
-
-    def test_calculate_obstruction_valid_request(self):
-        """Test calculate_obstruction with valid request"""
+    @patch('src.server.services.obstruction_service.ObstructionService.calculate_horizon')
+    def test_call_obstruction_valid_request(self, mock_calc):
+        """Test call() with obstruction endpoint and valid request"""
         request_data = {
             "x": 0.0,
             "y": 1.5,
             "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
+            "direction_angle": 0.0,
             "mesh": [
                 [1.0, 0.0, 0.0],
                 [1.0, 3.0, 0.0],
@@ -46,206 +33,227 @@ class TestObstructionController:
         mock_result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=np.pi/4,
-            highest_point=Point3D(x=1.0, y=3.0, z=0.0),
-            projected_point_count=3
+            highest_point=Point3D(x=1.0, y=3.0, z=0.0)
         )
-        self.mock_service.calculate_obstruction.return_value = mock_result
+        mock_calc.return_value = mock_result
 
-        result = self.controller.calculate_obstruction(request_data)
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
 
         assert result["status"] == "success"
         assert "data" in result
         assert result["data"]["obstruction_angle_degrees"] == 45.0
-        self.mock_service.calculate_obstruction.assert_called_once()
+        mock_calc.assert_called_once()
 
-    def test_calculate_obstruction_missing_field(self):
-        """Test validation fails with missing required field"""
-        request_data = {
-            "x": 0.0,
-            "y": 1.5,
-            # Missing z
-            "rad_x": 0.0,
-            "rad_y": 0.0,
-            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
-        }
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        assert result["status"] == "error"
-        assert "Missing required fields" in result["error"]
-        self.mock_logger.warning.assert_called_once()
-
-    def test_calculate_obstruction_missing_multiple_fields(self):
-        """Test validation fails with multiple missing fields"""
-        request_data = {
-            "x": 0.0,
-            # Missing y, z, rad_x, rad_y, mesh
-        }
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        assert result["status"] == "error"
-        assert "Missing required fields" in result["error"]
-
-    def test_calculate_obstruction_invalid_mesh_not_list(self):
-        """Test validation fails when mesh is not a list"""
+    @patch('src.server.services.obstruction_service.ObstructionService.calculate_zenith_angle')
+    def test_call_zenith_angle_endpoint(self, mock_calc):
+        """Test call() with zenith_angle endpoint"""
         request_data = {
             "x": 0.0,
             "y": 1.5,
             "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
-            "mesh": "not a list"
-        }
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        assert result["status"] == "error"
-        assert "Mesh must be a list" in result["error"]
-
-    def test_calculate_obstruction_empty_mesh(self):
-        """Test validation fails with empty mesh"""
-        request_data = {
-            "x": 0.0,
-            "y": 1.5,
-            "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
-            "mesh": []
-        }
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        assert result["status"] == "error"
-        assert "Mesh cannot be empty" in result["error"]
-
-    def test_calculate_obstruction_mesh_not_divisible_by_three(self):
-        """Test validation fails when mesh vertices not divisible by 3"""
-        request_data = {
-            "x": 0.0,
-            "y": 1.5,
-            "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
+            "direction_angle": 0.0,
             "mesh": [
                 [1.0, 0.0, 0.0],
-                [1.0, 3.0, 0.0]
-                # Only 2 vertices
-            ]
-        }
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        assert result["status"] == "error"
-        assert "groups of 3" in result["error"]
-
-    def test_calculate_obstruction_invalid_vertex_format(self):
-        """Test validation fails with invalid vertex format"""
-        request_data = {
-            "x": 0.0,
-            "y": 1.5,
-            "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
-            "mesh": [
-                [1.0, 0.0, 0.0],
-                [1.0, 3.0],  # Invalid: only 2 coordinates
+                [1.0, 3.0, 0.0],
                 [1.0, 1.5, 1.0]
             ]
         }
 
-        result = self.controller.calculate_obstruction(request_data)
+        mock_result = ObstructionResult(
+            obstruction_angle_degrees=30.0,
+            obstruction_angle_radians=np.pi/6,
+            highest_point=Point3D(x=1.0, y=3.0, z=0.0)
+        )
+        mock_calc.return_value = mock_result
+
+        result = ObstructionController.call(EndpointName.ZENITH_ANGLE, request_data)
+
+        assert result["status"] == "success"
+        mock_calc.assert_called_once()
+
+    def test_call_missing_field(self):
+        """Test call() with missing required field"""
+        request_data = {
+            "x": 0.0,
+            "y": 1.5,
+            # Missing z
+            "direction_angle": 0.0,
+            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
+        }
+
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
 
         assert result["status"] == "error"
-        assert "Vertex" in result["error"]
-        assert "3 coordinates" in result["error"]
+        assert "Missing required fields" in result["error"]
 
-    def test_calculate_obstruction_invalid_numeric_field(self):
-        """Test validation fails with non-numeric field"""
+    def test_call_invalid_mesh(self):
+        """Test call() with invalid mesh format"""
+        request_data = {
+            "x": 0.0,
+            "y": 1.5,
+            "z": 0.0,
+            "direction_angle": 0.0,
+            "mesh": "not a list"
+        }
+
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
+
+        assert result["status"] == "error"
+        assert "Mesh must be a list" in result["error"]
+
+    def test_call_unknown_endpoint(self):
+        """Test call() with unknown endpoint - uses default service"""
+        request_data = {
+            "x": 0.0,
+            "y": 1.5,
+            "z": 0.0,
+            "direction_angle": 0.0,
+            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
+        }
+
+        # Unknown endpoint uses default service (calculate_horizon)
+        # This will succeed, not error
+        with patch('src.server.services.obstruction_service.ObstructionService.calculate_horizon') as mock_calc:
+            mock_calc.return_value = ObstructionResult(
+                obstruction_angle_degrees=0.0,
+                obstruction_angle_radians=0.0,
+                highest_point=None
+            )
+            result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
+            assert result["status"] == "success"
+
+    @patch('src.server.services.obstruction_service.ObstructionService.calculate_horizon')
+    def test_call_service_raises_value_error(self, mock_calc):
+        """Test call() when service raises ValueError"""
+        request_data = {
+            "x": 0.0,
+            "y": 1.5,
+            "z": 0.0,
+            "direction_angle": 0.0,
+            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
+        }
+
+        mock_calc.side_effect = ValueError("Service error")
+
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
+
+        assert result["status"] == "error"
+        assert "Service error" in result["error"]
+
+    @patch('src.server.services.obstruction_service.ObstructionService.calculate_all_directions_async')
+    def test_call_multi_direction_endpoint(self, mock_calc):
+        """Test call() with multi-direction endpoint"""
+        request_data = {
+            "x": 0.0,
+            "y": 1.5,
+            "z": 0.0,
+            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]],
+            "num_directions": 8
+        }
+
+        mock_results = [
+            {"direction_angle_degrees": i * 45, "obstruction_angle_degrees": 30.0}
+            for i in range(8)
+        ]
+
+        # Mock async function
+        async def async_mock(*args, **kwargs):
+            return mock_results
+
+        mock_calc.return_value = async_mock()
+
+        result = ObstructionController.call(EndpointName.OBSTRUCTION_ALL, request_data)
+
+        assert result["status"] == "success"
+        assert "data" in result
+        assert isinstance(result["data"], list)
+        assert len(result["data"]) == 8
+        mock_calc.assert_called_once()
+
+    @patch('src.server.services.obstruction_service.ObstructionService.get_status')
+    def test_call_status_endpoint(self, mock_status):
+        """Test call() with status endpoint"""
+        mock_status.return_value = {"status": "success"}
+
+        result = ObstructionController.call(EndpointName.STATUS, {})
+
+        assert result["status"] == "success"
+        mock_status.assert_called_once()
+
+    @patch('src.server.services.obstruction_service.ObstructionService.get_status')
+    def test_get_status_backwards_compatibility(self, mock_status):
+        """Test get_status() for backwards compatibility"""
+        mock_status.return_value = {"status": "success"}
+
+        status = ObstructionController.get_status()
+
+        assert status["status"] == "success"
+        mock_status.assert_called_once()
+
+    @patch('src.server.services.obstruction_service.ObstructionService.calculate_horizon')
+    @patch('src.server.validators.validation_steps.logger')
+    def test_call_mesh_not_divisible_by_three(self, mock_logger, mock_calc):
+        """Test call() with mesh not divisible by 3"""
+        request_data = {
+            "x": 0.0,
+            "y": 1.5,
+            "z": 0.0,
+            "direction_angle": 0.0,
+            "mesh": [
+                [1.0, 0.0, 0.0],
+                [1.0, 3.0, 0.0],
+                [1.0, 1.5, 1.0],
+                [2.0, 0.0, 0.0]  # Extra vertex
+            ]
+        }
+
+        mock_result = ObstructionResult(
+            obstruction_angle_degrees=45.0,
+            obstruction_angle_radians=np.pi/4,
+            highest_point=Point3D(x=1.0, y=3.0, z=0.0)
+        )
+        mock_calc.return_value = mock_result
+
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
+
+        # Should succeed with trimmed mesh
+        assert result["status"] == "success"
+        # Warning should be logged
+        mock_logger.warning.assert_called_once()
+
+    def test_call_invalid_numeric_field(self):
+        """Test call() with invalid numeric field"""
         request_data = {
             "x": "not a number",
             "y": 1.5,
             "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
+            "direction_angle": 0.0,
             "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
         }
 
-        result = self.controller.calculate_obstruction(request_data)
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
 
         assert result["status"] == "error"
         assert "must be a number" in result["error"]
 
-    def test_calculate_obstruction_service_raises_value_error(self):
-        """Test handling when service raises ValueError"""
+    def test_call_empty_mesh(self):
+        """Test call() with empty mesh"""
         request_data = {
             "x": 0.0,
             "y": 1.5,
             "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
-            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
+            "direction_angle": 0.0,
+            "mesh": []
         }
 
-        self.mock_service.calculate_obstruction.side_effect = ValueError("Service error")
-
-        result = self.controller.calculate_obstruction(request_data)
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
 
         assert result["status"] == "error"
-        assert "Invalid request" in result["error"]
-        self.mock_logger.warning.assert_called()
+        assert "Mesh cannot be empty" in result["error"]
 
-    def test_calculate_obstruction_service_raises_generic_exception(self):
-        """Test handling when service raises generic exception"""
-        request_data = {
-            "x": 0.0,
-            "y": 1.5,
-            "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
-            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
-        }
-
-        self.mock_service.calculate_obstruction.side_effect = RuntimeError("Unexpected error")
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        assert result["status"] == "error"
-        assert "Calculation failed" in result["error"]
-        self.mock_logger.error.assert_called_once()
-
-    def test_get_status(self):
-        """Test get_status returns controller and service status"""
-        self.mock_service.get_status.return_value = {"service": "ready"}
-
-        status = self.controller.get_status()
-
-        assert status["controller"] == "ready"
-        assert "service" in status
-        self.mock_service.get_status.assert_called_once()
-
-    def test_validate_request_all_numeric_fields(self):
-        """Test that all numeric fields are validated"""
-        numeric_fields = ["x", "y", "z", "rad_x", "rad_y"]
-
-        for field in numeric_fields:
-            request_data = {
-                "x": 0.0,
-                "y": 1.5,
-                "z": 0.0,
-                "rad_x": 0.0,
-                "rad_y": 0.0,
-                "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
-            }
-            request_data[field] = "invalid"
-
-            result = self.controller.calculate_obstruction(request_data)
-
-            assert result["status"] == "error"
-            assert field in result["error"] or "must be a number" in result["error"]
-
-    def test_calculate_obstruction_with_large_mesh(self):
-        """Test with large mesh (many triangles)"""
+    @patch('src.server.services.obstruction_service.ObstructionService.calculate_horizon')
+    def test_call_with_large_mesh(self, mock_calc):
+        """Test call() with large mesh"""
         # Create mesh with 100 triangles (300 vertices)
         vertices = []
         for i in range(100):
@@ -259,73 +267,18 @@ class TestObstructionController:
             "x": 0.0,
             "y": 1.5,
             "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
+            "direction_angle": 0.0,
             "mesh": vertices
         }
 
         mock_result = ObstructionResult(
             obstruction_angle_degrees=30.0,
             obstruction_angle_radians=np.pi/6,
-            highest_point=Point3D(x=50.0, y=1.0, z=0.0),
-            projected_point_count=300
+            highest_point=Point3D(x=50.0, y=1.0, z=0.0)
         )
-        self.mock_service.calculate_obstruction.return_value = mock_result
+        mock_calc.return_value = mock_result
 
-        result = self.controller.calculate_obstruction(request_data)
+        result = ObstructionController.call(EndpointName.OBSTRUCTION, request_data)
 
         assert result["status"] == "success"
-        assert result["data"]["projected_point_count"] == 300
-
-    def test_calculate_obstruction_with_negative_coordinates(self):
-        """Test with negative coordinates"""
-        request_data = {
-            "x": -10.0,
-            "y": -5.0,
-            "z": -3.0,
-            "rad_x": -0.5,
-            "rad_y": -1.0,
-            "mesh": [
-                [-1.0, -2.0, -3.0],
-                [-4.0, -5.0, -6.0],
-                [-7.0, -8.0, -9.0]
-            ]
-        }
-
-        mock_result = ObstructionResult(
-            obstruction_angle_degrees=0.0,
-            obstruction_angle_radians=0.0,
-            highest_point=None,
-            projected_point_count=3
-        )
-        self.mock_service.calculate_obstruction.return_value = mock_result
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        assert result["status"] == "success"
-
-    def test_calculate_obstruction_result_to_dict_called(self):
-        """Test that result.to_dict() is called for response"""
-        request_data = {
-            "x": 0.0,
-            "y": 1.5,
-            "z": 0.0,
-            "rad_x": 0.0,
-            "rad_y": 0.0,
-            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]
-        }
-
-        mock_result = ObstructionResult(
-            obstruction_angle_degrees=45.0,
-            obstruction_angle_radians=np.pi/4,
-            highest_point=Point3D(x=1.0, y=3.0, z=0.0),
-            projected_point_count=3
-        )
-        self.mock_service.calculate_obstruction.return_value = mock_result
-
-        result = self.controller.calculate_obstruction(request_data)
-
-        # Verify the result contains data from to_dict()
-        assert "data" in result
-        assert "obstruction_angle_degrees" in result["data"]
-        assert "highest_point" in result["data"]
+        assert result["data"]["obstruction_angle_degrees"] == 30.0

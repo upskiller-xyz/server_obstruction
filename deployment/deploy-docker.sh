@@ -101,8 +101,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Update port in docker-compose.yml
-echo -e "${YELLOW}Configuring port mapping: $HOST_PORT:8080${NC}"
-sed -i.bak "s/\"[0-9]*:8080\"/\"$HOST_PORT:8080\"/g" docker-compose.yml
+echo -e "${YELLOW}Configuring port mapping: $HOST_PORT:8081${NC}"
+sed -i.bak "s/\"[0-9]*:8081\"/\"$HOST_PORT:8081\"/g" docker-compose.yml
 
 # Configure environment file based on debug mode
 if [ "$DEBUG_MODE" = true ]; then
@@ -112,7 +112,7 @@ if [ "$DEBUG_MODE" = true ]; then
     else
         cat > .env.docker << EOF
 # Docker Environment Configuration - DEBUG MODE
-PORT=8080
+PORT=8081
 FLASK_ENV=development
 FLASK_DEBUG=True
 LOG_LEVEL=DEBUG
@@ -130,7 +130,7 @@ else
         echo -e "${YELLOW}Configuring PRODUCTION mode environment${NC}"
         cat > .env.docker << EOF
 # Docker Environment Configuration
-PORT=8080
+PORT=8081
 FLASK_ENV=production
 FLASK_DEBUG=False
 LOG_LEVEL=INFO
@@ -213,7 +213,7 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "Container: ${GREEN}obstruction-server${NC}"
 echo -e "Host Port: ${GREEN}$HOST_PORT${NC}"
-echo -e "Container Port: ${GREEN}8080${NC}"
+echo -e "Container Port: ${GREEN}8081${NC}"
 if [ "$WITH_NGINX" = true ]; then
     echo -e "Nginx: ${GREEN}enabled (ports 80, 443)${NC}"
 fi
