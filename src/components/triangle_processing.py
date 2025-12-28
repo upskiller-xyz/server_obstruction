@@ -53,7 +53,7 @@ class Triangle:
         normal = np.cross(edge1, edge2)
         magnitude = np.linalg.norm(normal)
 
-        if magnitude < MathConstants.EPSILON:
+        if magnitude < MathConstants.EPSILON.value:
             # Degenerate triangle
             return CoordinateSystem.UP.copy()
 

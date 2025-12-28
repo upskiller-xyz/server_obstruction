@@ -7,8 +7,9 @@ from src.components.geometry import Point3D, Vector3D, CoordinateSystem, AngleCa
 from src.components.triangle_processing import (
     HorizonTriangleProcessor, ZenithTriangleProcessor, TriangleProcessor, PlaneIntersectionFilter
 )
-from src.components.constants import MathConstants, ThresholdConstants
-from src.components.plane_intersection import HorizonIntersectionCalculator, ZenithIntersectionCalculator, CombinedIntersectionCalculator
+from src.components.constants import ANGLES, MathConstants, ThresholdConstants
+from src.components.zenith_intersection import ZenithIntersectionCalculator
+from src.components.horizon_intersection import HorizonIntersectionCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class HorizontalDistanceCalculator:
         # Vector from window to point
         point_vec = point.to_array() - window_center.to_array()
 
-        if normal_horizontal_mag < MathConstants.EPSILON:
+        if normal_horizontal_mag < MathConstants.EPSILON.value:
             # Viewing straight up or down, use direct horizontal distance
             point_horizontal = CoordinateSystem.remove_vertical_component(point_vec)
             return float(np.linalg.norm(point_horizontal))
@@ -59,9 +60,10 @@ class HorizontalDistanceCalculator:
 class IObstructionCalculator(ABC):
     """Interface for obstruction angle calculations"""
 
+    @classmethod
     @abstractmethod
     def calculate_obstruction_angle(
-        self,
+        cls,
         projected_points: List[ProjectedPoint],
         window_center: Point3D,
         window_normal: Vector3D
@@ -88,8 +90,9 @@ class HorizonObstructionCalculator(IObstructionCalculator):
     height to the line connecting the reference point to the highest point.
     """
 
+    @classmethod
     def calculate_obstruction_angle(
-        self,
+        cls,
         projected_points: List[ProjectedPoint],
         window_center: Point3D,
         window_normal: Vector3D
@@ -123,7 +126,7 @@ class HorizonObstructionCalculator(IObstructionCalculator):
         triangles = processor.process(projected_points)
 
         if not triangles:
-            return ObstructionResult.no_obstruction(projected_point_count=len(projected_points))
+            return ObstructionResult.no_obstruction()
 
         # Get first (highest) triangle's points
         vertical_points = [point for triangle in triangles for point in triangle.points]
@@ -138,8 +141,7 @@ class HorizonObstructionCalculator(IObstructionCalculator):
         # If highest point is below window, no obstruction
         if vertical_distance <= 0:
             return ObstructionResult.no_obstruction( 
-                highest_point=highest_3d,
-                projected_point_count=len(projected_points)
+                highest_point=highest_3d
             )
 
         # Calculate horizontal distance using HorizontalDistanceCalculator
@@ -148,16 +150,15 @@ class HorizonObstructionCalculator(IObstructionCalculator):
         )
 
         # Calculate angle using AngleCalculator
-        angle_radians = AngleCalculator.calculate_obstruction_angle(
-            vertical_distance, horizontal_distance
+        angle_radians = AngleCalculator.call(
+            vertical_distance, horizontal_distance, ANGLES.HORIZON
         )
         angle_degrees = AngleCalculator.radians_to_degrees(angle_radians)
 
         return ObstructionResult(
             obstruction_angle_degrees=angle_degrees,
             obstruction_angle_radians=angle_radians,
-            highest_point=highest_3d,
-            projected_point_count=len(projected_points)
+            highest_point=highest_3d
         )
 
 
@@ -170,8 +171,9 @@ class ZenithAngleCalculator(IObstructionCalculator):
     Angle is measured from 90° (straight up) downward.
     """
 
+    @classmethod
     def calculate_obstruction_angle(
-        self,
+        cls,
         projected_points: List[ProjectedPoint],
         window_center: Point3D,
         window_normal: Vector3D
@@ -205,7 +207,7 @@ class ZenithAngleCalculator(IObstructionCalculator):
         triangles = processor.process(projected_points)
 
         if not triangles:
-            return ObstructionResult.no_obstruction(projected_point_count=len(projected_points))
+            return ObstructionResult.no_obstruction()
 
         # Get all points from filtered triangles
         overhead_points = [point for triangle in triangles for point in triangle.points]
@@ -219,9 +221,7 @@ class ZenithAngleCalculator(IObstructionCalculator):
                 min_vertical_distance = vert_dist
 
         if min_vertical_distance == float('inf'):
-            return ObstructionResult.no_obstruction(
-                projected_point_count=len(projected_points)
-            )
+            return ObstructionResult.no_obstruction()
 
         # Step 2: Within the closest mesh, find the furthest point along view direction
         # Use a small tolerance for "same vertical distance"
@@ -245,7 +245,7 @@ class ZenithAngleCalculator(IObstructionCalculator):
             )
 
             # Calculate zenith angle for this point
-            angle = AngleCalculator.calculate_zenith_angle(vert_dist, horiz_dist)
+            angle = AngleCalculator.call(vert_dist, horiz_dist, ANGLES.ZENITH)
 
             # Keep point with maximum angle (furthest horizontally)
             if angle > max_angle:
@@ -254,9 +254,7 @@ class ZenithAngleCalculator(IObstructionCalculator):
 
         # If no valid point found
         if furthest_overhead is None:
-            return ObstructionResult.no_obstruction(
-                projected_point_count=len(projected_points)
-            )
+            return ObstructionResult.no_obstruction()
 
         lowest_3d = furthest_overhead.original
         logger.info(f"Selected point from closest mesh (Z={lowest_3d.z:.1f}) with maximum angle: ({lowest_3d.x:.1f}, {lowest_3d.y:.1f}, {lowest_3d.z:.1f})")
@@ -268,16 +266,15 @@ class ZenithAngleCalculator(IObstructionCalculator):
         )
 
         # Calculate zenith angle using AngleCalculator
-        angle_radians = AngleCalculator.calculate_zenith_angle(
-            vertical_distance, horizontal_distance
+        angle_radians = AngleCalculator.call(
+            vertical_distance, horizontal_distance, ANGLES.ZENITH
         )
         angle_degrees = AngleCalculator.radians_to_degrees(angle_radians)
 
         return ObstructionResult(
             obstruction_angle_degrees=angle_degrees,
             obstruction_angle_radians=angle_radians,
-            highest_point=lowest_3d,
-            projected_point_count=len(projected_points)
+            highest_point=lowest_3d
         )
 
 
@@ -289,8 +286,9 @@ class WorstCaseObstructionCalculator(IObstructionCalculator):
     the maximum angle found.
     """
 
+    @classmethod
     def calculate_obstruction_angle(
-        self,
+        cls,
         projected_points: List[ProjectedPoint],
         window_center: Point3D,
         window_normal: Vector3D
@@ -321,7 +319,7 @@ class WorstCaseObstructionCalculator(IObstructionCalculator):
         plane_normal = plane_normal_vec.to_array()
         plane_filter = PlaneIntersectionFilter(
             window_center, window_normal, plane_normal,
-            threshold=ThresholdConstants.PLANE_THRESHOLD_WIDE
+            threshold=ThresholdConstants.PLANE_THRESHOLD_WIDE.value
         )
         processor.add_filter(plane_filter)
 
@@ -329,7 +327,7 @@ class WorstCaseObstructionCalculator(IObstructionCalculator):
         triangles = processor.process(projected_points)
 
         if not triangles:
-            return ObstructionResult.no_obstruction(projected_point_count=len(projected_points))
+            return ObstructionResult.no_obstruction()
 
         # Extract all points from filtered triangles
         filtered_points = [point for triangle in triangles for point in triangle.points]
@@ -353,8 +351,8 @@ class WorstCaseObstructionCalculator(IObstructionCalculator):
             )
 
             # Calculate angle for this point
-            angle = AngleCalculator.calculate_obstruction_angle(
-                vertical_distance, horizontal_distance
+            angle = AngleCalculator.call(
+                vertical_distance, horizontal_distance, ANGLES.HORIZON
             )
 
             # Update if this is worse
@@ -367,216 +365,93 @@ class WorstCaseObstructionCalculator(IObstructionCalculator):
         return ObstructionResult(
             obstruction_angle_degrees=angle_degrees,
             obstruction_angle_radians=max_angle,
-            highest_point=worst_point.original,
-            projected_point_count=len(projected_points)
+            highest_point=worst_point.original
         )
 
 
-class IntersectionObstructionCalculator(IObstructionCalculator):
-    """
-    EFFICIENT plane-intersection based obstruction calculator
-
-    Instead of projecting all mesh points onto a 2D plane, this calculator:
-    1. Creates a vertical plane through the window in the viewing direction
-    2. Finds only the triangles that intersect this plane
-    3. Calculates angles for intersection points
-    4. Returns the maximum angle (highest obstruction)
-
-    This is much more efficient than the projection approach because:
-    - Only processes triangles that intersect the viewing plane
-    - No 2D projection needed
-    - Direct angle calculation from 3D intersection points
-    - Can use early termination if angles are sorted
-    """
-
-    def calculate_obstruction_angle(
-        self,
-        projected_points: List[ProjectedPoint],
-        window_center: Point3D,
-        window_normal: Vector3D
-    ) -> ObstructionResult:
-        """
-        Calculate obstruction angle using plane-triangle intersections
-
-        NOTE: This method signature includes projected_points for interface compatibility,
-        but they are not used. The calculation works directly with the mesh.
-
-        Args:
-            projected_points: Not used (for interface compatibility)
-            window_center: 3D position of window center (required)
-            window_normal: Viewing direction unit vector (required)
-
-        Returns:
-            ObstructionResult with angle and metadata
-        """
-        # This implementation requires access to the mesh
-        # For now, return no obstruction - this will be called from service layer
-        logger.warning("IntersectionObstructionCalculator.calculate_obstruction_angle called without mesh")
-        return ObstructionResult.no_obstruction()
-
-    def calculate_obstruction_angle_from_mesh(
-        self,
-        mesh: Mesh,
-        window_center: Point3D,
-        window_normal: Vector3D
-    ) -> ObstructionResult:
-        """
-        Calculate obstruction angle directly from mesh using plane intersections
-
-        Args:
-            mesh: 3D mesh
-            window_center: 3D position of window center
-            window_normal: Viewing direction unit vector
-
-        Returns:
-            ObstructionResult with angle and metadata
-        """
-        if window_center is None or window_normal is None:
-            raise ValueError("window_center and window_normal are required")
-
-        # Use the efficient intersection calculator
-        max_angle, highest_point, intersection_count = (
-            HorizonIntersectionCalculator.calculate_max_obstruction_angle(
-                mesh, window_center, window_normal
-            )
-        )
-
-        if max_angle is None:
-            return ObstructionResult.no_obstruction()
-
-        angle_degrees = AngleCalculator.radians_to_degrees(max_angle)
-
-        return ObstructionResult(
-            obstruction_angle_degrees=angle_degrees,
-            obstruction_angle_radians=max_angle,
-            highest_point=highest_point,
-            projected_point_count=intersection_count
-        )
-
-    def _calculate_with_filtered_mesh(
-        self,
-        mesh: Mesh,
-        window_center: Point3D,
-        window_normal: Vector3D
-    ) -> ObstructionResult:
-        """
-        Calculate obstruction angle from PRE-FILTERED mesh (skips filtering step)
-
-        Use this method when the mesh triangles have already been filtered by
-        TriangleFilter.filter_for_both() or similar to avoid duplicate filtering.
-
-        Args:
-            mesh: Pre-filtered 3D mesh
-            window_center: 3D position of window center
-            window_normal: Viewing direction unit vector
-
-        Returns:
-            ObstructionResult with angle and metadata
-        """
-        if window_center is None or window_normal is None:
-            raise ValueError("window_center and window_normal are required")
-
-        # Use prefiltered method that skips Step 0
-        max_angle, highest_point, intersection_count = (
-            HorizonIntersectionCalculator.calculate_max_obstruction_angle_prefiltered(
-                list(mesh.triangles), window_center, window_normal
-            )
-        )
-
-        if max_angle is None:
-            return ObstructionResult.no_obstruction()
-
-        angle_degrees = AngleCalculator.radians_to_degrees(max_angle)
-
-        return ObstructionResult(
-            obstruction_angle_degrees=angle_degrees,
-            obstruction_angle_radians=max_angle,
-            highest_point=highest_point,
-            projected_point_count=intersection_count
-        )
+# class IntersectionObstructionCalculator(IObstructionCalculator):
 
 
-class IntersectionZenithCalculator(IObstructionCalculator):
-    """
-    EFFICIENT zenith calculator using plane-triangle intersections
-    """
+#     @classmethod
+#     def call(
+#         cls,
+#         mesh: Mesh,
+#         window_center: Point3D,
+#         window_normal: Vector3D
+#     ) -> ObstructionResult:
+#         """
+#         Calculate obstruction angle directly from mesh using plane intersections
 
-    def calculate_obstruction_angle(
-        self,
-        projected_points: List[ProjectedPoint],
-        window_center: Point3D,
-        window_normal: Vector3D
-    ) -> ObstructionResult:
-        """For interface compatibility - not used"""
-        logger.warning("IntersectionZenithCalculator.calculate_obstruction_angle called without mesh")
-        return ObstructionResult.no_obstruction()
+#         Args:
+#             mesh: 3D mesh
+#             window_center: 3D position of window center
+#             window_normal: Viewing direction unit vector
 
-    def calculate_zenith_angle_from_mesh(
-        self,
-        mesh: Mesh,
-        window_center: Point3D,
-        window_normal: Vector3D
-    ) -> ObstructionResult:
-        """Calculate zenith angle directly from mesh using plane intersections"""
-        if window_center is None or window_normal is None:
-            raise ValueError("window_center and window_normal are required")
+#         Returns:
+#             ObstructionResult with angle and metadata
+#         """
+#         if window_center is None or window_normal is None:
+#             raise ValueError("window_center and window_normal are required")
 
-        max_angle, furthest_point, intersection_count = (
-            ZenithIntersectionCalculator.calculate_max_zenith_angle(
-                mesh, window_center, window_normal
-            )
-        )
+#         # Use the efficient intersection calculator
+#         max_angle, highest_point = (
+#             HorizonIntersectionCalculator.call(
+#                 mesh.triangles, window_center, window_normal
+#             )
+#         )
 
-        if max_angle is None:
-            return ObstructionResult.no_obstruction()
+#         if max_angle is None:
+#             return ObstructionResult.no_obstruction()
 
-        angle_degrees = AngleCalculator.radians_to_degrees(max_angle)
+#         angle_degrees = AngleCalculator.radians_to_degrees(max_angle)
 
-        return ObstructionResult(
-            obstruction_angle_degrees=angle_degrees,
-            obstruction_angle_radians=max_angle,
-            highest_point=furthest_point,
-            projected_point_count=intersection_count
-        )
+#         return ObstructionResult(
+#             obstruction_angle_degrees=angle_degrees,
+#             obstruction_angle_radians=max_angle,
+#             highest_point=highest_point
+#         )
 
-    def _calculate_with_filtered_mesh(
-        self,
-        mesh: Mesh,
-        window_center: Point3D,
-        window_normal: Vector3D
-    ) -> ObstructionResult:
-        """
-        Calculate zenith angle from PRE-FILTERED mesh (skips filtering step)
 
-        Use this method when the mesh triangles have already been filtered by
-        TriangleFilter.filter_for_both() or similar to avoid duplicate filtering.
+# class IntersectionZenithCalculator(IObstructionCalculator):
+#     """
+#     EFFICIENT zenith calculator using plane-triangle intersections
+#     """
 
-        Args:
-            mesh: Pre-filtered 3D mesh
-            window_center: 3D position of window center
-            window_normal: Viewing direction unit vector
+#     @classmethod
+#     def calculate_obstruction_angle(
+#         cls,
+#         projected_points: List[ProjectedPoint],
+#         window_center: Point3D,
+#         window_normal: Vector3D
+#     ) -> ObstructionResult:
+#         """For interface compatibility - not used"""
+#         logger.warning("IntersectionZenithCalculator.calculate_obstruction_angle called without mesh")
+#         return ObstructionResult.no_obstruction()
 
-        Returns:
-            ObstructionResult with angle and metadata
-        """
-        if window_center is None or window_normal is None:
-            raise ValueError("window_center and window_normal are required")
+#     @classmethod
+#     def call(
+#         cls,
+#         mesh: Mesh,
+#         window_center: Point3D,
+#         window_normal: Vector3D
+#     ) -> ObstructionResult:
+#         """Calculate zenith angle directly from mesh using plane intersections"""
+#         if window_center is None or window_normal is None:
+#             raise ValueError("window_center and window_normal are required")
 
-        # Use prefiltered method that skips Step 0
-        max_angle, furthest_point, intersection_count = (
-            ZenithIntersectionCalculator.calculate_max_zenith_angle_prefiltered(
-                list(mesh.triangles), window_center, window_normal
-            )
-        )
+#         max_angle, furthest_point = (
+#             ZenithIntersectionCalculator.call(
+#                 list(mesh.triangles), window_center, window_normal
+#             )
+#         )
 
-        if max_angle is None:
-            return ObstructionResult.no_obstruction()
+#         if max_angle is None:
+#             return ObstructionResult.no_obstruction()
 
-        angle_degrees = AngleCalculator.radians_to_degrees(max_angle)
+#         angle_degrees = AngleCalculator.radians_to_degrees(max_angle)
 
-        return ObstructionResult(
-            obstruction_angle_degrees=angle_degrees,
-            obstruction_angle_radians=max_angle,
-            highest_point=furthest_point,
-            projected_point_count=intersection_count
-        )
+#         return ObstructionResult(
+#             obstruction_angle_degrees=angle_degrees,
+#             obstruction_angle_radians=max_angle,
+#             highest_point=furthest_point
+#         )

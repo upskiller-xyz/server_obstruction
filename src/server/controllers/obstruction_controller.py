@@ -1,605 +1,168 @@
-from typing import Dict, Any, Optional
-import time
+"""Simplified obstruction controller using Strategy Pattern"""
+
+from typing import Dict, Any
 import asyncio
-from src.server.interfaces import ILogger
+import logging
+from src.server.controllers.endpoint_config import ServiceMethod
+from src.server.maps import EndpointResponseMap
 from src.server.services.obstruction_service import ObstructionService
-from src.server.services.parallel_obstruction_service import ParallelObstructionService
-from src.components.obstruction_models import ObstructionRequest, ObstructionResult
-from src.components.constants import ResponseStatus, ResponseField, RequestField, ControllerStatus
-from src.components.validators import GeometricValidator, PointOnTriangleError
-from src.components.geometry import Point3D, Mesh
+from src.server.builders import ErrorResponseBuilder
+from src.server.validators.request_validator import RequestValidator
+from src.components.obstruction_models import ObstructionRequest
+from src.components.constants import (RequestField, OptionalRequestField,  EndpointName
+)
+from src.components.validators import PointOnTriangleError
+
+logger = logging.getLogger(__name__)
 
 
 class ObstructionController:
     """
-    Controller for obstruction calculation endpoints
+    Simplified controller using Strategy Pattern
 
     Responsibilities (Single Responsibility Principle):
-    - Parse and validate request data
-    - Delegate calculations to service layer
-    - Format responses
+    - Route endpoints to appropriate service methods
+    - Validate requests based on endpoint type
+    - Format responses based on result type
+
+    Strategy Pattern:
+    - Validation strategies: Different validation steps per endpoint
+    - Service strategies: Different service methods per endpoint
+    - Response strategies: Different response builders per result type
     """
 
-    def __init__(
-        self,
-        raytrace_service: ObstructionService,
-        logger: ILogger,
-        parallel_service: Optional[ParallelObstructionService] = None
-    ):
+
+    # Strategy Pattern: Map endpoints to response formatting methods
+    
+
+    # Endpoints that require async processing
+    ASYNC_ENDPOINTS = {EndpointName.OBSTRUCTION_PARALLEL}
+
+    # Endpoints that require multi-direction parameter processing
+    MULTI_DIRECTION_ENDPOINTS = {
+        EndpointName.OBSTRUCTION_ALL,
+        EndpointName.OBSTRUCTION_PARALLEL
+    }
+
+    @classmethod
+    def call(cls, endpoint: EndpointName, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Initialize controller with dependencies
+        Main entry point for all controller operations
+
+        Strategy Pattern implementation:
+        1. Validate request using endpoint-specific validation pipeline
+        2. Call endpoint-specific service method
+        3. Format response using endpoint-specific formatter
 
         Args:
-            raytrace_service: Service for obstruction calculation operations
-            logger: Structured logger
-            parallel_service: Optional service for parallel multi-direction calculations
-        """
-        self._raytrace_service = raytrace_service
-        self._logger = logger
-        self._parallel_service = parallel_service
-
-    def calculate_obstruction(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle raytrace calculation request
-
-        Args:
-            request_data: Dictionary containing:
-                - x, y, z: window center coordinates
-                - direction_angle: horizontal rotation angle in radians
-                - mesh: list of vertex coordinates
+            endpoint: Endpoint name enum
+            request_data: Request data dictionary
 
         Returns:
-            Dictionary with calculation results or error
-
-        Example request:
-        {
-            "x": 0.0,
-            "y": 1.5,
-            "z": 0.0,
-            "direction_angle": 0.0,
-            "mesh": [
-                [1.0, 0.0, 0.0],
-                [1.0, 3.0, 0.0],
-                [1.0, 1.5, 1.0],
-                ...
-            ]
-        }
-        """
-        controller_start = time.time()
-
-        try:
-            # Validate required fields
-            validation_start = time.time()
-            self._validate_request(request_data)
-            self._logger.info(f"[CONTROLLER] Validation: {(time.time()-validation_start)*1000:.2f}ms")
-
-            # Parse request into domain model
-            parse_start = time.time()
-            request = ObstructionRequest.from_dict(request_data)
-            self._logger.info(f"[CONTROLLER] Parsing {len(request_data.get('mesh', []))} vertices: {(time.time()-parse_start)*1000:.2f}ms")
-
-            # Delegate to service layer (use EFFICIENT method with filters)
-            service_start = time.time()
-            result = self._raytrace_service.calculate_obstruction_efficient(request)
-            self._logger.info(f"[CONTROLLER] Service calculation: {(time.time()-service_start)*1000:.2f}ms")
-            self._logger.info(f"[CONTROLLER] Total controller time: {(time.time()-controller_start)*1000:.2f}ms")
-
-            # Format response
-            return {
-                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
-                ResponseField.DATA.value: result.to_dict()
-            }
-
-        except PointOnTriangleError as e:
-            self._logger.warning(f"Window center lies on mesh: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: str(e),
-                ResponseField.WINDOW_CENTER.value: {
-                    RequestField.X.value: e.point.x,
-                    RequestField.Y.value: e.point.y,
-                    RequestField.Z.value: e.point.z
-                },
-                ResponseField.TRIANGLE.value: {
-                    ResponseField.VERTICES.value: [
-                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
-                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
-                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
-                    ]
-                }
-            }
-        except ValueError as e:
-            self._logger.warning(f"Invalid request data: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
-            }
-        except Exception as e:
-            self._logger.error(f"Obstruction calculation failed: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
-            }
-
-    def _validate_request(self, data: Dict[str, Any]) -> None:
-        """
-        Validate request data
-
-        Args:
-            data: Request data dictionary
+            Formatted response dictionary
 
         Raises:
-            ValueError: If required fields are missing or invalid
+            ValueError: If endpoint is not recognized
         """
-        # Check required position fields
-        required_fields = [
-            RequestField.X.value,
-            RequestField.Y.value,
-            RequestField.Z.value,
-            RequestField.DIRECTION_ANGLE.value,
-            RequestField.MESH.value
-        ]
-        missing_fields = [field for field in required_fields if field not in data]
+        try:
 
-        if missing_fields:
-            raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+            # Step 1: Validate request using Strategy Pattern
+            RequestValidator.call(endpoint, request_data)
 
-        # Validate mesh format
-        mesh = data[RequestField.MESH.value]
-        if not isinstance(mesh, list):
-            raise ValueError("Mesh must be a list of vertices")
+            # Step 2: Call service method (creates request internally if needed)
+            result = cls._call_service(endpoint, request_data)
 
-        if len(mesh) == 0:
-            raise ValueError("Mesh cannot be empty")
+            # Step 3: Format response using Strategy Pattern
+            return cls._format_response(endpoint, result)
 
-        # Handle mesh vertices not divisible by 3
-        if len(mesh) % 3 != 0:
-            extra_vertices = len(mesh) % 3
-            original_count = len(mesh)
-            # Trim extra vertices (1-2 vertices)
-            data[RequestField.MESH.value] = mesh[:-extra_vertices]
-            self._logger.warning(
-                f"Mesh had {original_count} vertices (not divisible by 3). "
-                f"Trimmed {extra_vertices} extra vertex/vertices. "
-                f"Proceeding with {len(data[RequestField.MESH.value])} vertices."
+        except PointOnTriangleError as e:
+            logger.warning(f"Window center lies on mesh: {str(e)}")
+            return ErrorResponseBuilder.point_on_triangle_error(e)
+        except ValueError as e:
+            logger.warning(f"Invalid request data: {str(e)}")
+            return ErrorResponseBuilder.validation_error(str(e))
+        except Exception as e:
+            logger.error(f"{endpoint.value} failed: {str(e)}")
+            return ErrorResponseBuilder.calculation_error(str(e), endpoint.value)
+
+    @classmethod
+    def _call_service(cls, endpoint: EndpointName, request_data: Dict[str, Any]) -> Any:
+        """
+        Call appropriate service method based on endpoint
+
+        Args:
+            endpoint: Endpoint name
+            request_data: Request data dictionary
+
+        Returns:
+            Service method result
+        """
+        # Special case: status endpoint doesn't need request parsing
+        if endpoint == EndpointName.STATUS:
+            return ObstructionService.get_status()
+
+        # Prepare request for multi-direction endpoints
+        if endpoint in cls.MULTI_DIRECTION_ENDPOINTS:
+            return cls._parallel(endpoint, request_data)
+
+        # Parse request for single-direction endpoints
+        request = ObstructionRequest.from_dict(request_data)
+        return ServiceMethod.get(endpoint)(request)
+
+
+    @classmethod
+    def _parallel(cls, endpoint: EndpointName, request_data: Dict[str, Any]) -> Any:
+        """
+        Call service method for multi-direction endpoints
+
+        Args:
+            endpoint: Endpoint name
+            request_data: Request data dictionary
+
+        Returns:
+            Service method result
+        """
+        # Set default direction_angle for parsing
+        if RequestField.DIRECTION_ANGLE.value not in request_data:
+            request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
+
+        # Parse request and optional parameters
+        request = ObstructionRequest.from_dict(request_data)
+        num_directions = request_data.get(OptionalRequestField.NUM_DIRECTIONS.value, None)
+        start_angle_degrees = request_data.get(OptionalRequestField.START_ANGLE_DEGREES.value, None)
+        end_angle_degrees = request_data.get(OptionalRequestField.END_ANGLE_DEGREES.value, None)
+
+        # Get service method
+        service_method = ServiceMethod.get(endpoint)
+
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(
+                service_method(request, num_directions, start_angle_degrees, end_angle_degrees)
             )
+        finally:
+            loop.close()
+        return result
+    
 
-        # Validate each vertex
-        for i, vertex in enumerate(mesh):
-            if not isinstance(vertex, (list, tuple)) or len(vertex) != 3:
-                raise ValueError(
-                    f"Vertex {i} must be a list/tuple of 3 coordinates [x, y, z]"
-                )
-
-        # Validate numeric fields
-        numeric_fields = [
-            RequestField.X.value,
-            RequestField.Y.value,
-            RequestField.Z.value,
-            RequestField.DIRECTION_ANGLE.value
-        ]
-
-        for field in numeric_fields:
-            if field in data:  # Only validate if present
-                try:
-                    float(data[field])
-                except (TypeError, ValueError):
-                    raise ValueError(f"Field '{field}' must be a number")
-
-        # Validate window center doesn't lie on mesh
-        self._validate_window_not_on_mesh(data)
-
-    def _validate_window_not_on_mesh(self, data: Dict[str, Any]) -> None:
+    @classmethod
+    def _format_response(cls, endpoint: EndpointName, result: Any) -> Dict[str, Any]:
         """
-        Validate that window center point doesn't lie on any mesh triangle
+        Format response based on endpoint type
 
         Args:
-            data: Request data dictionary
-
-        Raises:
-            PointOnTriangleError: If window center lies on a mesh triangle
-        """
-        # Extract window center
-        window_center = Point3D(
-            x=float(data[RequestField.X.value]),
-            y=float(data[RequestField.Y.value]),
-            z=float(data[RequestField.Z.value])
-        )
-
-        # Create mesh from vertices
-        mesh = Mesh.from_vertices(data[RequestField.MESH.value])
-
-        # Validate window center doesn't lie on any triangle
-        GeometricValidator.validate_point_not_on_mesh(
-            window_center,
-            mesh.triangles
-        )
-
-    def calculate_zenith_angle(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle zenith angle calculation request
-
-        Args:
-            request_data: Dictionary containing:
-                - x, y, z: window center coordinates
-                - direction_angle: horizontal rotation angle in radians
-                - mesh: list of vertex coordinates
+            endpoint: Endpoint name
+            result: Result from service method
 
         Returns:
-            Dictionary with zenith angle results or error
+            Formatted response dictionary
         """
-        try:
-            # Validate required fields
-            self._validate_request(request_data)
+        return EndpointResponseMap.get(endpoint)(result)
+    
 
-            # Parse request into domain model
-            request = ObstructionRequest.from_dict(request_data)
-
-            # Delegate to service layer
-            result = self._raytrace_service.calculate_zenith_angle(request)
-
-            # Format response
-            return {
-                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
-                ResponseField.DATA.value: result.to_dict()
-            }
-
-        except PointOnTriangleError as e:
-            self._logger.warning(f"Window center lies on mesh: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: str(e),
-                ResponseField.WINDOW_CENTER.value: {
-                    RequestField.X.value: e.point.x,
-                    RequestField.Y.value: e.point.y,
-                    RequestField.Z.value: e.point.z
-                },
-                ResponseField.TRIANGLE.value: {
-                    ResponseField.VERTICES.value: [
-                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
-                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
-                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
-                    ]
-                }
-            }
-        except ValueError as e:
-            self._logger.warning(f"Invalid request data: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
-            }
-        except Exception as e:
-            self._logger.error(f"Zenith angle calculation failed: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
-            }
-
-    def calculate_both_angles(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle obstruction calculation request (both horizon and zenith angles)
-
-        Args:
-            request_data: Dictionary containing:
-                - x, y, z: window center coordinates
-                - direction_angle: horizontal rotation angle in radians
-                - mesh: list of vertex coordinates
-
-        Returns:
-            Dictionary with both horizon and zenith angle results or error
-        """
-        try:
-            # Validate required fields
-            self._validate_request(request_data)
-
-            # Parse request into domain model
-            request = ObstructionRequest.from_dict(request_data)
-
-            # Delegate to service layer
-            results = self._raytrace_service.calculate_both_angles(request)
-
-            # Format response
-            return {
-                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
-                ResponseField.DATA.value: {
-                    ResponseField.HORIZON.value: results[ResponseField.HORIZON.value].to_dict(),
-                    ResponseField.ZENITH.value: results[ResponseField.ZENITH.value].to_dict()
-                }
-            }
-
-        except PointOnTriangleError as e:
-            self._logger.warning(f"Window center lies on mesh: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: str(e),
-                ResponseField.WINDOW_CENTER.value: {
-                    RequestField.X.value: e.point.x,
-                    RequestField.Y.value: e.point.y,
-                    RequestField.Z.value: e.point.z
-                },
-                ResponseField.TRIANGLE.value: {
-                    ResponseField.VERTICES.value: [
-                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
-                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
-                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
-                    ]
-                }
-            }
-        except ValueError as e:
-            self._logger.warning(f"Invalid request data: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
-            }
-        except Exception as e:
-            self._logger.error(f"Both angles calculation failed: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
-            }
-
-    def calculate_all_directions(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle all-direction obstruction calculation request
-
-        Calculates obstruction angles in a semicircle from the window.
-        By default samples 64 directions from 17.5° to 162.5° relative to window normal.
-
-        Args:
-            request_data: Dictionary containing:
-                - x, y, z: window center coordinates
-                - mesh: list of vertex coordinates
-                - num_directions (optional): number of directions to sample (default 64)
-                - start_angle_degrees (optional): start angle relative to window normal (default 17.5°)
-                - end_angle_degrees (optional): end angle relative to window normal (default 162.5°)
-
-        Returns:
-            Dictionary with obstruction results for all directions or error
-        """
-        try:
-            # Validate required fields (direction_angle not required for this endpoint)
-            required_fields = [
-                RequestField.X.value,
-                RequestField.Y.value,
-                RequestField.Z.value,
-                RequestField.MESH.value
-            ]
-            missing_fields = [field for field in required_fields if field not in request_data]
-
-            if missing_fields:
-                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-
-            # Validate mesh format
-            mesh = request_data[RequestField.MESH.value]
-            if not isinstance(mesh, list):
-                raise ValueError("Mesh must be a list of vertices")
-
-            if len(mesh) == 0:
-                raise ValueError("Mesh cannot be empty")
-
-            # Handle mesh vertices not divisible by 3
-            if len(mesh) % 3 != 0:
-                extra_vertices = len(mesh) % 3
-                original_count = len(mesh)
-                request_data[RequestField.MESH.value] = mesh[:-extra_vertices]
-                self._logger.warning(
-                    f"Mesh had {original_count} vertices (not divisible by 3). "
-                    f"Trimmed {extra_vertices} extra vertex/vertices. "
-                    f"Proceeding with {len(request_data[RequestField.MESH.value])} vertices."
-                )
-
-            # Validate window center doesn't lie on mesh
-            self._validate_window_not_on_mesh(request_data)
-
-            # Set default direction_angle to 0 for parsing
-            if RequestField.DIRECTION_ANGLE.value not in request_data:
-                request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
-
-            # Parse request into domain model
-            request = ObstructionRequest.from_dict(request_data)
-
-            # Get optional parameters
-            num_directions = request_data.get("num_directions", None)
-            start_angle_degrees = request_data.get("start_angle_degrees", None)
-            end_angle_degrees = request_data.get("end_angle_degrees", None)
-
-            # Validate num_directions if provided
-            if num_directions is not None:
-                if not isinstance(num_directions, int) or num_directions < 1:
-                    raise ValueError("num_directions must be a positive integer")
-
-            # Validate angle ranges if provided
-            if start_angle_degrees is not None:
-                if not isinstance(start_angle_degrees, (int, float)):
-                    raise ValueError("start_angle_degrees must be a number")
-
-            if end_angle_degrees is not None:
-                if not isinstance(end_angle_degrees, (int, float)):
-                    raise ValueError("end_angle_degrees must be a number")
-
-            # Delegate to service layer
-            results = self._raytrace_service.calculate_all_directions(
-                request, num_directions, start_angle_degrees, end_angle_degrees
-            )
-
-            # Format response
-            return {
-                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
-                ResponseField.DATA.value: results
-            }
-
-        except PointOnTriangleError as e:
-            self._logger.warning(f"Window center lies on mesh: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: str(e),
-                ResponseField.WINDOW_CENTER.value: {
-                    RequestField.X.value: e.point.x,
-                    RequestField.Y.value: e.point.y,
-                    RequestField.Z.value: e.point.z
-                },
-                ResponseField.TRIANGLE.value: {
-                    ResponseField.VERTICES.value: [
-                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
-                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
-                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
-                    ]
-                }
-            }
-        except ValueError as e:
-            self._logger.warning(f"Invalid request data: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
-            }
-        except Exception as e:
-            self._logger.error(f"All-direction obstruction calculation failed: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
-            }
-
-    def calculate_parallel_multi_direction(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle parallel multi-direction obstruction calculation request
-
-        Calculates 64 obstruction angles in parallel by making HTTP requests
-        to a microservice endpoint. Uses asyncio and aiohttp for parallel execution.
-
-        Args:
-            request_data: Dictionary containing:
-                - x, y, z: window center coordinates
-                - mesh: list of vertex coordinates
-                - num_directions (optional): number of directions (default 64)
-                - start_angle_degrees (optional): start angle (default 17.5°)
-                - end_angle_degrees (optional): end angle (default 162.5°)
-                - microservice_url: URL of the obstruction calculation endpoint
-                - auth_token (optional): Bearer token for GCP authentication
-
-        Returns:
-            Dictionary with obstruction results for all 64 directions
-        """
-        try:
-            # Check if parallel service is available
-            if self._parallel_service is None:
-                raise ValueError(
-                    "Parallel obstruction service not configured. "
-                    "Please provide microservice_url in request."
-                )
-
-            # Validate required fields (direction_angle not required)
-            required_fields = [
-                RequestField.X.value,
-                RequestField.Y.value,
-                RequestField.Z.value,
-                RequestField.MESH.value
-            ]
-            missing_fields = [field for field in required_fields if field not in request_data]
-
-            if missing_fields:
-                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-            self._logger.info("checked fields")
-            # Validate mesh format
-            mesh = request_data[RequestField.MESH.value]
-            if not isinstance(mesh, list):
-                raise ValueError("Mesh must be a list of vertices")
-
-            if len(mesh) == 0:
-                raise ValueError("Mesh cannot be empty")
-
-            # Handle mesh vertices not divisible by 3
-            if len(mesh) % 3 != 0:
-                extra_vertices = len(mesh) % 3
-                original_count = len(mesh)
-                request_data[RequestField.MESH.value] = mesh[:-extra_vertices]
-                self._logger.warning(
-                    f"Mesh had {original_count} vertices (not divisible by 3). "
-                    f"Trimmed {extra_vertices} extra vertex/vertices. "
-                    f"Proceeding with {len(request_data[RequestField.MESH.value])} vertices."
-                )
-
-            # Validate window center doesn't lie on mesh
-            self._validate_window_not_on_mesh(request_data)
-            self._logger.info("validate window on  mesh done")
-            # Set default direction_angle to 0 for parsing
-            if RequestField.DIRECTION_ANGLE.value not in request_data:
-                request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
-
-            # Parse request into domain model
-            request = ObstructionRequest.from_dict(request_data)
-
-            # Get optional parameters
-            num_directions = request_data.get("num_directions", None)
-            start_angle_degrees = request_data.get("start_angle_degrees", None)
-            end_angle_degrees = request_data.get("end_angle_degrees", None)
-
-            # Validate num_directions if provided
-            if num_directions is not None:
-                if not isinstance(num_directions, int) or num_directions < 1:
-                    raise ValueError("num_directions must be a positive integer")
-
-            # Validate angle ranges if provided
-            if start_angle_degrees is not None:
-                if not isinstance(start_angle_degrees, (int, float)):
-                    raise ValueError("start_angle_degrees must be a number")
-
-            if end_angle_degrees is not None:
-                if not isinstance(end_angle_degrees, (int, float)):
-                    raise ValueError("end_angle_degrees must be a number")
-
-            # Use direct async calculation instead of HTTP requests
-            self._logger.info("set loop")
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                results = loop.run_until_complete(
-                    self._raytrace_service.calculate_all_directions_async(
-                        request, num_directions, start_angle_degrees, end_angle_degrees
-                    )
-                )
-            finally:
-                loop.close()
-
-            # Format response
-            return {
-                ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
-                ResponseField.DATA.value: results
-            }
-
-        except PointOnTriangleError as e:
-            self._logger.warning(f"Window center lies on mesh: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: str(e),
-                ResponseField.WINDOW_CENTER.value: {
-                    RequestField.X.value: e.point.x,
-                    RequestField.Y.value: e.point.y,
-                    RequestField.Z.value: e.point.z
-                },
-                ResponseField.TRIANGLE.value: {
-                    ResponseField.VERTICES.value: [
-                        {RequestField.X.value: e.triangle.v1.x, RequestField.Y.value: e.triangle.v1.y, RequestField.Z.value: e.triangle.v1.z},
-                        {RequestField.X.value: e.triangle.v2.x, RequestField.Y.value: e.triangle.v2.y, RequestField.Z.value: e.triangle.v2.z},
-                        {RequestField.X.value: e.triangle.v3.x, RequestField.Y.value: e.triangle.v3.y, RequestField.Z.value: e.triangle.v3.z}
-                    ]
-                }
-            }
-        except ValueError as e:
-            self._logger.warning(f"Invalid request data: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Invalid request: {str(e)}"
-            }
-        except Exception as e:
-            self._logger.error(f"Parallel multi-direction calculation failed: {str(e)}")
-            return {
-                ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-                ResponseField.ERROR.value: f"Calculation failed: {str(e)}"
-            }
-
-    def get_status(self) -> Dict[str, Any]:
-        """Get controller status"""
-        return {
-            ResponseField.CONTROLLER.value: ControllerStatus.READY.value,
-            ResponseField.SERVICE.value: self._raytrace_service.get_status()
-        }
+    @classmethod
+    def get_status(cls) -> Dict[str, Any]:
+        """Get controller status (for backwards compatibility)"""
+        return cls.call(EndpointName.STATUS, {})

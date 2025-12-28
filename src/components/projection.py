@@ -53,13 +53,16 @@ class IProjectionCalculator(ABC):
 
 class OrthographicProjectionCalculator(IProjectionCalculator):
     """
-    Orthographic projection calculator
+    Static orthographic projection calculator
 
     Projects 3D geometry onto a vertical plane using orthographic projection.
     The plane is vertical and contains the window's viewing direction.
+
+    All methods are classmethods (no instance state).
     """
 
-    def create_projection_plane(self, window: Window) -> ProjectionPlane:
+    @classmethod
+    def create_projection_plane(cls, window: Window) -> ProjectionPlane:
         """
         Create vertical projection plane from window
 
@@ -75,7 +78,7 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
         plane_normal = ProjectionPlane.calculate_plane_normal(direction)
 
         # Calculate u-axis (horizontal component of viewing direction)
-        u_axis_arr = self._calculate_horizontal_component(direction.to_array())
+        u_axis_arr = cls._calculate_horizontal_component(direction.to_array())
         u_axis = Vector3D.from_array(u_axis_arr)
 
         # The vertical axis is always world up
@@ -88,7 +91,8 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
             normal=plane_normal  # Geometric normal to the plane
         )
 
-    def _calculate_horizontal_component(self, direction_arr: np.ndarray) -> np.ndarray:
+    @classmethod
+    def _calculate_horizontal_component(cls, direction_arr: np.ndarray) -> np.ndarray:
         """
         Extract horizontal component of direction vector
 
@@ -101,13 +105,14 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
         direction_horizontal = CoordinateSystem.remove_vertical_component(direction_arr)
         direction_horizontal_mag = np.linalg.norm(direction_horizontal)
 
-        if direction_horizontal_mag > MathConstants.EPSILON:
+        if direction_horizontal_mag > MathConstants.EPSILON.value:
             return direction_horizontal / direction_horizontal_mag
-        
+
         # Viewing straight up/down, use default forward direction
         return CoordinateSystem.FORWARD.copy()
 
-    def project_point(self, point: Point3D, plane: ProjectionPlane) -> ProjectedPoint:
+    @classmethod
+    def project_point(cls, point: Point3D, plane: ProjectionPlane) -> ProjectedPoint:
         """
         Project point onto plane using orthographic projection
 
@@ -126,7 +131,8 @@ class OrthographicProjectionCalculator(IProjectionCalculator):
 
         return ProjectedPoint(u=u, v=v, original=point)
 
-    def project_mesh(self, mesh: Mesh, plane: ProjectionPlane) -> List[ProjectedPoint]:
+    @classmethod
+    def project_mesh(cls, mesh: Mesh, plane: ProjectionPlane) -> List[ProjectedPoint]:
         """Project all mesh vertices onto the plane"""
         points = mesh.get_all_points()
-        return [self.project_point(point, plane) for point in points]
+        return [cls.project_point(point, plane) for point in points]
