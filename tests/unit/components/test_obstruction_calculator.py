@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
-from src.components.geometry import Point3D, Vector3D
-from src.components.obstruction_models import ProjectedPoint
+from src.components.geometry import Point3D, Vector3D, ProjectedPoint
 from src.components.obstruction_calculator import (
     HorizonObstructionCalculator,
     WorstCaseObstructionCalculator,

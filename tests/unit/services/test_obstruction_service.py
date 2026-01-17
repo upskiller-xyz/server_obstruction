@@ -1,16 +1,11 @@
 import pytest
 import numpy as np
-from unittest.mock import Mock, MagicMock
-from src.server.services.obstruction_service import ObstructionService, ObstructionServiceFactory
-from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.obstruction_models import (
-    Window,
-    ObstructionRequest,
-    ObstructionResult,
-    ProjectionPlane,
-    ProjectedPoint
+from unittest.mock import Mock
+from src.server.services.obstruction_service import ObstructionService
+from src.components.geometry import Point3D, Vector3D, Mesh, ProjectedPoint
+from src.components.obstruction_models import Window, ObstructionRequest,ObstructionResult
 )
-from src.components.projection import OrthographicProjectionCalculator
+from src.components.projection_calculator import OrthographicProjectionCalculator
 from src.components.obstruction_calculator import HorizonObstructionCalculator
 
 
