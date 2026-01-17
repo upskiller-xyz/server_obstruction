@@ -1,7 +1,7 @@
 import math
 import numpy as np
 from typing import List
-from src.components.constants import AllDirectionDefaults
+from src.server.base.constants import AllDirectionDefaults
 
 
 class DirectionCalculator:
@@ -21,9 +21,9 @@ class DirectionCalculator:
     @staticmethod
     def calculate_direction_angles(
         base_direction_radians: float,
-        num_directions: int = None,
-        start_angle_degrees: float = None,
-        end_angle_degrees: float = None
+        num_directions: int | None = None,
+        start_angle_degrees: float | None = None,
+        end_angle_degrees: float | None = None
     ) -> np.ndarray:
         """
         Calculate absolute direction angles for multi-direction obstruction
@@ -39,11 +39,11 @@ class DirectionCalculator:
         """
         # Apply defaults using Enumerator Pattern
         if num_directions is None:
-            num_directions = AllDirectionDefaults.NUM_DIRECTIONS
+            num_directions = AllDirectionDefaults.NUM_DIRECTIONS.value
         if start_angle_degrees is None:
-            start_angle_degrees = AllDirectionDefaults.START_ANGLE_DEGREES
+            start_angle_degrees = AllDirectionDefaults.START_ANGLE_DEGREES.value
         if end_angle_degrees is None:
-            end_angle_degrees = AllDirectionDefaults.END_ANGLE_DEGREES
+            end_angle_degrees = AllDirectionDefaults.END_ANGLE_DEGREES.value
 
         # Convert to radians
         start_angle_rad = math.radians(start_angle_degrees)
@@ -61,9 +61,9 @@ class DirectionCalculator:
     @staticmethod
     def get_direction_angles_degrees(
         base_direction_radians: float,
-        num_directions: int = None,
-        start_angle_degrees: float = None,
-        end_angle_degrees: float = None
+        num_directions: int | None = None,
+        start_angle_degrees: float | None = None,
+        end_angle_degrees: float | None = None
     ) -> List[float]:
         """
         Get direction angles in degrees (for response formatting)

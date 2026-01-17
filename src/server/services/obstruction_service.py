@@ -4,16 +4,14 @@ import math
 import asyncio
 import logging
 
-from src.components.zenith_intersection import ZenithIntersectionCalculator
 logger = logging.getLogger(__name__)
 
-from src.components.horizon_intersection import HorizonIntersectionCalculator
-from src.components.obstruction_models import ObstructionRequest, ObstructionResult, Window
-from src.components.projection import OrthographicProjectionCalculator
-from src.components.obstruction_calculator import (HorizonObstructionCalculator, ZenithAngleCalculator)
-from src.components.constants import ResponseField, ResponseStatus, AllDirectionDefaults
-from src.components.geometry import Vector3D, Mesh
-from src.components.triangle_filter import ZenithTriangleFilter, HorizonTriangleFilter, VerticalSurfaceFilter
+from src.components.calculators.intersection_calculator import IntersectionCalculator
+from src.components.models import ObstructionRequest, ObstructionResult, Window
+
+from src.server.base.constants import ANGLES, ResponseField, ResponseStatus, AllDirectionDefaults
+from src.components.geometry import Mesh
+from src.components.filter import CompositeTriangleFilter, DistanceTriangleFilter, CoarseTriangleFilter
 
 
 class ObstructionService:
@@ -53,14 +51,11 @@ class ObstructionService:
         )
 
         try:
-            # HorizonIntersectionCalculator now handles vertical surface filtering internally
-            result = HorizonIntersectionCalculator.call(
+            result = IntersectionCalculator.call(
                 request.mesh,
-                request.window.center,
-                request.window.normal
-            )
+                request.window,
+                ANGLES.HORIZON)
             
-
             return result
 
         except Exception as e:
@@ -118,17 +113,14 @@ class ObstructionService:
         )
 
         try:
-            zenith_triangles = ZenithTriangleFilter.call(
+            zenith_triangles = DistanceTriangleFilter.call(
                 request.mesh.triangles,
-                request.window.center,
-                request.window.normal
+                request.window, angle_type=ANGLES.ZENITH
             )
             zenith_mesh = Mesh(triangles=zenith_triangles)
-            result = ZenithIntersectionCalculator.call(
-            zenith_mesh, request.window.center, request.window.normal
-        )
+            result = IntersectionCalculator.call(
+            zenith_mesh, request.window, angle_type=ANGLES.ZENITH)
             
-
             total_time = time.time() - start_time
             logger.info(
                 f"[TIMING] Zenith angle complete: {result.obstruction_angle_degrees:.2f}° "
@@ -190,10 +182,9 @@ class ObstructionService:
         # PRE-FILTER ONCE: Remove triangles below AND behind window (using base direction)
         coarse_start = time.time()
 
-        coarse_filtered = ZenithTriangleFilter.call(
+        coarse_filtered = CoarseTriangleFilter.call(
             request.mesh.triangles,
-            request.window.center,
-            request.window.normal
+            request.window
         )
 
         removed_count = len(request.mesh.triangles) - len(coarse_filtered)
@@ -207,12 +198,11 @@ class ObstructionService:
 
         
         direction_angles = cls._get_directions(request.window, start_angle_degrees, end_angle_degrees, num_directions)
-
         # Calculate each direction in parallel (each with parallel horizon/zenith)
+        # window_normal = Vector3D.from_horizontal_angle(direction_angle),
         tasks = [cls.calculate_direction_async(
                 filtered_mesh,
-                request.window.center,
-                Vector3D.from_horizontal_angle(direction_angle),
+                request.window,
                 direction_angle
             ) for direction_angle in direction_angles]
         
@@ -226,29 +216,31 @@ class ObstructionService:
             ResponseField.RESULTS.value: results
         }
     @classmethod
-    async def calculate_direction_async(cls, mesh, center, normal, direction_angle):
+    async def calculate_direction_async(cls, mesh:Mesh, window_orig:Window, direction_angle:float):
         """Asynchronous calculation for a single direction with parallel horizon/zenith"""
         # Filter triangles behind window for THIS specific direction
         # This reduces triangles from ~1200 to ~700
-        filtered_triangles = ZenithTriangleFilter.call(
+        window = Window.set_angle(window_orig, direction_angle)
+
+        h_filtered, v_filtered = CompositeTriangleFilter.call(
             mesh.triangles,
-            center,
-            normal
+            window
         )
-        filtered_mesh = Mesh(filtered_triangles)
+        
+        h_filtered = Mesh(h_filtered)
+        v_filtered = Mesh(v_filtered)
 
         loop = asyncio.get_event_loop()
 
         # Calculate horizon and zenith in parallel with direction-filtered mesh
+        # Note: Wrap classmethod calls in lambdas for executor compatibility
         horizon_task = loop.run_in_executor(
             None,
-            HorizonIntersectionCalculator.call,
-            filtered_mesh, center, normal
+            lambda: IntersectionCalculator.call(h_filtered, window, ANGLES.HORIZON)
         )
         zenith_task = loop.run_in_executor(
             None,
-            ZenithIntersectionCalculator.call,
-            filtered_mesh, center, normal
+            lambda: IntersectionCalculator.call(v_filtered, window, ANGLES.ZENITH)
         )
 
         horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)
@@ -259,9 +251,6 @@ class ObstructionService:
             ResponseField.ZENITH.value: zenith_result.to_dict()
         }
     
-
-    
-
     @classmethod
     def get_status(cls) -> Dict[str, Any]:
         """Get service status"""

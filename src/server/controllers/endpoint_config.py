@@ -4,7 +4,7 @@ from typing import Dict, Callable
 from enum import Enum
 from src.utils.extended_enum import ExtendedEnumMixin
 from src.utils.standard_map import StandardMap
-from src.components.constants import EndpointName, HTTPMethod
+from src.server.base.constants import EndpointName, HTTPMethod
 from src.server.services.obstruction_service import ObstructionService
 
 

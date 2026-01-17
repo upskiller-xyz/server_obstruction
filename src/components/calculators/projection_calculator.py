@@ -1,57 +1,11 @@
-from abc import ABC, abstractmethod
 from typing import List
 import numpy as np
-from src.components.geometry import Point3D, Vector3D, Mesh, CoordinateSystem
-from src.components.obstruction_models import Window, ProjectionPlane, ProjectedPoint
-from src.components.constants import MathConstants
+from src.components.geometry import Point3D, Vector3D, Mesh, CoordinateSystem, ProjectionPlane, ProjectedPoint
+from src.components.models import Window
+from src.server.base.constants import MathConstants
 
 
-class IProjectionCalculator(ABC):
-    """Interface for projection calculations"""
-
-    @abstractmethod
-    def create_projection_plane(self, window: Window) -> ProjectionPlane:
-        """
-        Create a vertical projection plane from window definition
-
-        Args:
-            window: Window with center point and normal direction
-
-        Returns:
-            ProjectionPlane definition
-        """
-        pass
-
-    @abstractmethod
-    def project_point(self, point: Point3D, plane: ProjectionPlane) -> ProjectedPoint:
-        """
-        Project a 3D point onto the projection plane
-
-        Args:
-            point: 3D point to project
-            plane: Projection plane
-
-        Returns:
-            ProjectedPoint with 2D coordinates on plane
-        """
-        pass
-
-    @abstractmethod
-    def project_mesh(self, mesh: Mesh, plane: ProjectionPlane) -> List[ProjectedPoint]:
-        """
-        Project all mesh points onto the projection plane
-
-        Args:
-            mesh: 3D mesh
-            plane: Projection plane
-
-        Returns:
-            List of projected points
-        """
-        pass
-
-
-class OrthographicProjectionCalculator(IProjectionCalculator):
+class OrthographicProjectionCalculator:
     """
     Static orthographic projection calculator
 

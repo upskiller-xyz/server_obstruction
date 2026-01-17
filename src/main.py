@@ -31,7 +31,7 @@ from flask import Flask, Response, request, jsonify
 from flask_cors import CORS
 from werkzeug.exceptions import BadRequest
 
-from src.components.constants import (
+from src.server.base.constants import (
     ResponseStatus, HTTPStatus, HTTPMethod, ContentType,
     EndpointName
 )

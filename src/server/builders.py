@@ -5,9 +5,9 @@ These classes use classmethods to build responses, following the principle:
 "Use classmethods for functionality that operates on the class"
 """
 from typing import Dict, Any, Optional
-from src.components.constants import ControllerStatus, ResponseStatus, ResponseField, RequestField
-from src.components.obstruction_models import ObstructionResult
-from src.components.validators import PointOnTriangleError
+from src.server.base.constants import ControllerStatus, ResponseStatus, ResponseField, RequestField
+from src.components.models import ObstructionResult
+from src.server.base.errors import PointOnTriangleError
 
 
 class ResponseBuilder:
@@ -185,13 +185,6 @@ class ErrorResponseBuilder:
             }
         }
 
-    # Strategy Pattern: Map error types to builder methods
-    ERROR_HANDLERS = {
-        PointOnTriangleError: point_on_triangle_error.__func__,
-        ValueError: validation_error.__func__,
-        Exception: calculation_error.__func__
-    }
-
     @classmethod
     def from_exception(
         cls,
@@ -208,15 +201,13 @@ class ErrorResponseBuilder:
         Returns:
             Dictionary with appropriate error response
         """
-        # Find handler for this exception type
-        for exc_type, handler in cls.ERROR_HANDLERS.items():
-            if isinstance(exception, exc_type):
-                if exc_type == PointOnTriangleError:
-                    return handler(cls, exception)
-                elif exc_type == ValueError:
-                    return handler(cls, str(exception))
-                else:
-                    return handler(cls, str(exception), operation or "Operation")
+        # Strategy Pattern: Map error types to handler methods
+        if isinstance(exception, PointOnTriangleError):
+            return cls.point_on_triangle_error(exception)
+        elif isinstance(exception, ValueError):
+            return cls.validation_error(str(exception))
+        elif isinstance(exception, Exception):
+            return cls.calculation_error(str(exception), operation or "Operation")
 
         # Fallback to generic error
         return cls.generic_error(str(exception))

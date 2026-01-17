@@ -1,8 +1,8 @@
 """Request validation logic for obstruction calculations"""
 
 from typing import Dict, Any, List, Type
-from src.components.constants import EndpointName
-from src.server.validators.validation_steps import (
+from src.server.base.constants import EndpointName
+from src.server.validators.steps import (
     ValidationStep,
     RequiredFieldsValidationStep,
     MultiDirectionRequiredFieldsValidationStep,
