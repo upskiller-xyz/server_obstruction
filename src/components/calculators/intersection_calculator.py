@@ -100,9 +100,9 @@ class IntersectionCalculator:
             return cls._no_intersection()
         
         fltr = cls._get_filter(angle_type)
-        relevant_triangels = DistanceTriangleFilter.call(triangles, window, angle_type)
+        relevant_triangles = DistanceTriangleFilter.call(triangles, window, angle_type)
         relevant_triangles = fltr.call(
-            relevant_triangels, window, angle_type
+            relevant_triangles, window, angle_type
         )
 
         if not relevant_triangles:
@@ -120,7 +120,6 @@ class IntersectionCalculator:
         for triangle in relevant_triangles:
 
             point = cls._get_intersection(triangle, plane, window, angle_type, max_height)
-            logger.info("pt {}".format(point))
             if point is None:
                 continue
             
@@ -171,9 +170,7 @@ class IntersectionCalculator:
         distances = DistanceCalculator.call(intersections, angle_type, window)
         if len(distances)<=0:
             return None
-        logger.info(distances)
-        logger.info(intersections)
-        ind = np.argmax(distances)
+        
         return intersections[ind]
     
     

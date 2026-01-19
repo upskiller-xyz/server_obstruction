@@ -90,13 +90,15 @@ class WithinDistanceFilter:
 
     @classmethod
     def _horizontal_l_condition(cls, dists: np.ndarray, param: float) -> np.ndarray:
-        """Large magnitude horizontal condition: distance > 0 and >= param"""
-        return (dists > 0) & (dists >= param)
+        """Large magnitude horizontal condition: min distance per triangle >= param"""
+        min_dists = dists.min(axis=1, keepdims=True)
+        return (min_dists > 0) & (min_dists >= param)
 
     @classmethod
     def _vertical_l_condition(cls, dists: np.ndarray, param: float) -> np.ndarray:
-        """Large magnitude vertical condition: distance > 0 and <= param"""
-        return (dists > 0) & (dists <= param)
+        """Large magnitude vertical condition: max distance per triangle <= param"""
+        max_dists = dists.max(axis=1, keepdims=True)
+        return (max_dists > 0) & (max_dists <= param)
 
     @classmethod
     def _large_magnitude(
@@ -129,4 +131,5 @@ class WithinDistanceFilter:
         # Normalize horizontal component
         normal_horizontal = normal_horizontal / magnitude
         dists = np.dot(vecs, normal_horizontal)
+        
         return _sm_map.get(angle_type, cls._horizontal_l_condition)(dists, param)

@@ -57,7 +57,6 @@ class DistanceTriangleFilter(TriangleFilter):
         cls._removed_stats(triangles, above_mask, mask, angle_type)
         # Combine filters
         keep_mask = above_mask & mask
-
         # Build result and log stats
         return cls._build_filtered_list(triangles, keep_mask)
 
