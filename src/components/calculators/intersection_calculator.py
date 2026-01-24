@@ -100,6 +100,7 @@ class IntersectionCalculator:
             return cls._no_intersection()
         
         fltr = cls._get_filter(angle_type)
+        
         relevant_triangles = DistanceTriangleFilter.call(triangles, window, angle_type)
         relevant_triangles = fltr.call(
             relevant_triangles, window, angle_type
@@ -116,7 +117,7 @@ class IntersectionCalculator:
         int_point = IntersectionResult(None, 0)
 
         max_height = window.center.z  # Track highest Z found so far
-
+        
         for triangle in relevant_triangles:
 
             point = cls._get_intersection(triangle, plane, window, angle_type, max_height)
@@ -142,7 +143,7 @@ class IntersectionCalculator:
 
         total_time = time.time() - algo_start
         logger.info(f"✓ TOTAL TIME: {total_time*1000:.2f}ms")
-
+        logger.debug("Final angle: {}\n Final point: {}".format(int_point.angle, int_point.point))
         return int_point
     
     @classmethod
@@ -157,11 +158,6 @@ class IntersectionCalculator:
         Returns:
             Highest intersection point, or None if no intersection or all points below max_height
         """
-        # Early termination: skip triangles entirely below current max height
-        if angle_type==ANGLES.HORIZON:
-            triangle_max_z = max(triangle.v1.z, triangle.v2.z, triangle.v3.z)
-            if triangle_max_z <= max_height:
-                return None
 
         intersections = PlaneTriangleIntersector.intersect_triangle_with_plane(triangle, plane)
 
@@ -171,6 +167,8 @@ class IntersectionCalculator:
         if len(distances)<=0:
             return None
         
+        # TODO: check the logic
+        ind = np.argmax(distances)
         return intersections[ind]
     
     

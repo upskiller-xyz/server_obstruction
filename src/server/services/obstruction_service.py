@@ -11,7 +11,7 @@ from src.components.models import ObstructionRequest, ObstructionResult, Window
 
 from src.server.base.constants import ANGLES, ResponseField, ResponseStatus, AllDirectionDefaults
 from src.components.geometry import Mesh
-from src.components.filter import CompositeTriangleFilter, DistanceTriangleFilter, CoarseTriangleFilter
+from src.components.filter import CompositeTriangleFilter, CoarseTriangleFilter
 
 
 class ObstructionService:
@@ -110,14 +110,11 @@ class ObstructionService:
         logger.info(
             f"[TIMING] Starting zenith angle calculation for window at "
             f"({request.window.center.x}, {request.window.center.y}, {request.window.center.z})"
+            f" with {len(request.mesh.triangles)} meshes."
         )
 
         try:
-            zenith_triangles = DistanceTriangleFilter.call(
-                request.mesh.triangles,
-                request.window, angle_type=ANGLES.ZENITH
-            )
-            zenith_mesh = Mesh(triangles=zenith_triangles)
+            zenith_mesh = Mesh(triangles=request.mesh.triangles)
             result = IntersectionCalculator.call(
             zenith_mesh, request.window, angle_type=ANGLES.ZENITH)
             

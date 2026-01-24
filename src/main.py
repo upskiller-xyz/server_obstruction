@@ -3,16 +3,22 @@ import sys
 import logging
 from pathlib import Path
 from typing import Dict, Any, Callable
+from dotenv import load_dotenv
 
 # Add project root to path FIRST
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# Load .env file from project root
+env_path = project_root / '.env'
+load_dotenv(dotenv_path=env_path)
 
 # Disable GPU/CUDA to prevent bus errors on WSL2
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OPENCV_IO_ENABLE_OPENEXR'] = '0'
 os.environ['OMP_NUM_THREADS'] = '1'
+
 
 # Configure root logger to show all logs from all modules
 logging.basicConfig(
@@ -195,7 +201,7 @@ class ServerLauncher:
         )
         app.app.logger.info(log_msg)
         # Disable reloader to prevent bus errors/hangs on WSL2
-        app.app.run(host=host, port=port, debug=debug, use_reloader=False)
+        app.app.run(host=host, port=port, debug=debug, use_reloader=debug)
 
 
 def main() -> None:
@@ -203,7 +209,8 @@ def main() -> None:
     launcher = ServerLauncher()
     application = launcher.create_application()
     port = int(os.getenv("PORT", 8081))
-    launcher.run_server(application, port=port, debug=True)
+    debug = bool(int(os.environ.get('DEBUG', 0)))
+    launcher.run_server(application, port=port, debug=debug)
 
 
 # Create app instance for gunicorn only when needed

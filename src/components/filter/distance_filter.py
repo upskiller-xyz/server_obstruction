@@ -51,7 +51,6 @@ class DistanceTriangleFilter(TriangleFilter):
         param = Settings().max_horizontal_distance
         if angle_type == ANGLES.HORIZON:
             param = Settings().min_horizontal_distance
-
         mask = WithinDistanceFilter.run(window, vecs, angle_type, param)
 
         cls._removed_stats(triangles, above_mask, mask, angle_type)
@@ -88,11 +87,11 @@ class DistanceTriangleFilter(TriangleFilter):
         settings = Settings()
         distance = settings.min_horizontal_distance if angle_type == ANGLES.HORIZON else settings.max_horizontal_distance
 
-        # logger.info(
-        #     f"        [DISTANCE-FILTER] Kept {stats['kept']}/{n_triangles} - "
-        #     f"Filtered: {stats['below']} below window, "
-        #     f"{stats['too_close_or_behind']} outside distance criteria ({distance}m)"
-        # )
+        logger.info(
+            f"        [DISTANCE-FILTER] Kept {stats['kept']}/{n_triangles} - "
+            f"Filtered: {stats['below']} below window, "
+            f"{stats['too_close_or_behind']} outside distance criteria ({distance}m)"
+        )
 
     @classmethod
     def _precompute(
