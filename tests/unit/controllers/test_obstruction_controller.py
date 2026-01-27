@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from src.server.controllers.obstruction_controller import ObstructionController
 from src.components.geometry import Point3D
 from src.components.obstruction_models import ObstructionResult
-from src.components.constants import EndpointName
+from src.server.base.constants import EndpointName
 
 
 class TestObstructionController:

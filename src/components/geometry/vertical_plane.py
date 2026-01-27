@@ -6,7 +6,8 @@ Defines a vertical plane passing through a point with a given direction.
 from dataclasses import dataclass
 import numpy as np
 from src.components.geometry import Point3D, Vector3D
-from src.components.constants import MathConstants
+from src.server.base.constants import MathConstants
+from src.components.models import Window
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ class VerticalPlane:
     normal: Vector3D  # Plane normal (perpendicular to direction and up)
 
     @classmethod
-    def from_window(cls, window_center: Point3D, window_normal: Vector3D) -> 'VerticalPlane':
+    def from_window(cls, window:Window) -> 'VerticalPlane':
         """
         Create vertical plane from window center and normal direction
 
@@ -40,7 +41,7 @@ class VerticalPlane:
         """
         # Plane normal is perpendicular to both viewing direction and up
         # normal = direction × up
-        direction_arr = window_normal.to_array()
+        direction_arr = window.normal.to_array()
         up = np.array([0.0, 0.0, 1.0])
 
         normal_arr = np.cross(direction_arr, up)
@@ -56,7 +57,7 @@ class VerticalPlane:
         normal_arr = normal_arr / normal_mag
 
         return cls(
-            origin=window_center,
-            direction=window_normal,
+            origin=window.center,
+            direction=window.normal,
             normal=Vector3D.from_array(normal_arr)
         )

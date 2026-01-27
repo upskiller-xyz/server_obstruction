@@ -1,10 +1,8 @@
 import pytest
 import numpy as np
-from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.obstruction_models import (
+from src.components.geometry import Point3D, Vector3D, ProjectedPoint,ProjectionPlane, Mesh
+from src.components.models import (
     Window,
-    ProjectedPoint,
-    ProjectionPlane,
     ObstructionRequest,
     ObstructionResult
 )

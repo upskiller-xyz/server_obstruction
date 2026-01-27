@@ -8,10 +8,10 @@ from src.server.maps import EndpointResponseMap
 from src.server.services.obstruction_service import ObstructionService
 from src.server.builders import ErrorResponseBuilder
 from src.server.validators.request_validator import RequestValidator
-from src.components.obstruction_models import ObstructionRequest
-from src.components.constants import (RequestField, OptionalRequestField,  EndpointName
+from src.components.models import ObstructionRequest
+from src.server.base.constants import (RequestField, OptionalRequestField,  EndpointName
 )
-from src.components.validators import PointOnTriangleError
+from src.server.base.errors import PointOnTriangleError
 
 logger = logging.getLogger(__name__)
 

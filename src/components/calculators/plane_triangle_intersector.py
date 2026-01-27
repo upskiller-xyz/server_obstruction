@@ -1,11 +1,15 @@
 from __future__ import annotations
 from typing import List, Optional
 import numpy as np
-from src.components.geometry import Point3D, Vector3D, Triangle, Mesh, AngleCalculator
-from src.components.constants import ANGLES, MathConstants
-from src.components.vertical_plane import VerticalPlane
-from src.components.intersection_point import IntersectionPoint
+from src.components.geometry import Point3D, Triangle, Mesh
+from src.components.geometry.vertical_plane import VerticalPlane
+from src.components.geometry.intersection_point import IntersectionPoint
+from src.components.calculators import AngleCalculator
+from src.server.base.constants import ANGLES, MathConstants
+from src.components.models import Window
 import logging
+
+from src.utils.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +21,7 @@ class PlaneTriangleIntersector:
     Uses the plane equation to find where triangle edges intersect
     the vertical plane, then calculates obstruction angles.
     """
+    
 
     @staticmethod
     def point_plane_distance(point: Point3D, plane: VerticalPlane) -> float:
@@ -96,29 +101,22 @@ class PlaneTriangleIntersector:
         d2 = cls.point_plane_distance(triangle.v2, plane)
         d3 = cls.point_plane_distance(triangle.v3, plane)
 
-        intersections = []
-
         # Check each edge
         edges = [
             (triangle.v1, triangle.v2, d1, d2),
             (triangle.v2, triangle.v3, d2, d3),
             (triangle.v3, triangle.v1, d3, d1)
         ]
+        intersections = [cls.intersect_edge_with_plane(p1, p2, dist1, dist2) for p1, p2, dist1, dist2 in edges]
 
-        for p1, p2, dist1, dist2 in edges:
-            intersection = cls.intersect_edge_with_plane(p1, p2, dist1, dist2)
-            if intersection is not None:
-                intersections.append(intersection)
-
-        return intersections
+        return [ii for ii in intersections if not ii is None]
 
     @classmethod
     def find_all_intersections(
         cls,
         mesh: Mesh,
         plane: VerticalPlane,
-        window_center: Point3D,
-        window_normal: Vector3D
+        window: Window
     ) -> List[IntersectionPoint]:
         """
         Find all plane-triangle intersections with calculated angles
@@ -134,34 +132,21 @@ class PlaneTriangleIntersector:
         """
         intersection_points = []
 
-        for triangle in mesh.triangles:
-            # Find intersection points for this triangle
+        def _intersect_triangle(triangle, plane)->List[IntersectionPoint]:
             points = cls.intersect_triangle_with_plane(triangle, plane)
+            angles = [cls.calculate_obstruction_angle(p, window) for p in points]
+            return [IntersectionPoint(p, triangle, a) for a,p in zip(angles, points) if not a is None and a > 0]
 
-            for point in points:
-                # Calculate obstruction angle for this intersection
-                angle = cls.calculate_obstruction_angle(
-                    point, window_center, window_normal
-                )
+        intersection_points = [_intersect_triangle(triangle, plane) for triangle in mesh.triangles]
+        return [item for sublist in intersection_points for item in sublist]
 
-                if angle is not None and angle > 0:
-                    intersection_points.append(
-                        IntersectionPoint(
-                            point=point,
-                            triangle=triangle,
-                            angle=angle
-                        )
-                    )
-
-        return intersection_points
-
-    @staticmethod
+    @classmethod
     def calculate_obstruction_angle(
+        cls,
         point: Point3D,
-        window_center: Point3D,
-        window_normal: Vector3D,
-        min_horizontal_distance: float = 1.0,
-        max_angle_degrees: float = 89.0  # Allow very steep angles for slanted roofs close to window
+        window:Window,
+        angle_type = ANGLES.HORIZON
+        
     ) -> Optional[float]:
         """
         Calculate obstruction angle from window to point with filtering
@@ -170,59 +155,59 @@ class PlaneTriangleIntersector:
             point: Intersection point
             window_center: Window center
             window_normal: Window viewing direction
-            min_horizontal_distance: Minimum horizontal distance (meters) to consider
-            max_angle_degrees: Maximum valid angle (degrees) - filters out roof
+            angle: type of the angle to calculate, member of ANGLES
 
         Returns:
             Obstruction angle in radians, or None if point is invalid
         """
         # Calculate vertical distance
-        vertical_distance = point.z - window_center.z
-
-        # Skip points below window (horizon should only see upward)
+        vertical_distance = point.z - window.center.z
+        # Skip points below window (both horizon and zenith should only look upwards)
         if vertical_distance <= 0:
             return None
-
+        
         # Calculate horizontal distance along viewing direction
         # Project vector from window to point onto horizontal plane
-        point_vec = point.to_array() - window_center.to_array()
-
-        # Get horizontal component of viewing direction
-        normal_arr = window_normal.to_array()
-        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
-        normal_horizontal_mag = np.linalg.norm(normal_horizontal)
-
-        if normal_horizontal_mag < MathConstants.EPSILON.value:
-            # Viewing straight up or down
-            point_horizontal = np.array([point_vec[0], point_vec[1], 0.0])
-            horizontal_distance = float(np.linalg.norm(point_horizontal))
-        else:
-            # Project onto horizontal viewing direction
-            normal_horizontal = normal_horizontal / normal_horizontal_mag
-            horizontal_distance = float(np.dot(point_vec, normal_horizontal))
-
-            # FILTER 0: Point must be IN FRONT of window (positive dot product)
-            if horizontal_distance <= 0:
-                return None  # Behind window
-
-        # FILTER 1: Skip points too close horizontally (likely same building/roof)
-        if horizontal_distance < min_horizontal_distance:
+        
+        horizontal_distance = cls._horizontal_distance( point, window)
+        _dists = {
+            ANGLES.HORIZON: Settings.min_horizontal_distance,
+            ANGLES.ZENITH: 0
+        }
+        
+        if horizontal_distance < _dists.get(angle_type, 0):
             return None
-
-        # Calculate angle
+        
         angle = AngleCalculator.call(
-            vertical_distance, horizontal_distance, ANGLES.ZENITH
+            vertical_distance, horizontal_distance, angle_type
         )
-
+        
         if angle is None:
             return None
 
         # FILTER 2: Skip angles too steep (likely roof, not horizon obstruction)
-        max_angle_rad = np.radians(max_angle_degrees)
+        max_angle_rad = np.radians(Settings.max_angle_degrees)
         if angle > max_angle_rad:
             return None
 
         return angle
+    
+    @classmethod
+    def _horizontal_distance(cls, point:Point3D, window: Window):
+        point_vec = point.to_array() - window.center.to_array()
+        # Get horizontal component of viewing direction
+        normal_arr = window.normal.to_array()
+        normal_horizontal = np.array([normal_arr[0], normal_arr[1], 0.0])
+        magnitude = np.linalg.norm(normal_horizontal)
+
+        if magnitude < MathConstants.EPSILON.value:
+            # Viewing straight up or down
+            point_horizontal = np.array([point_vec[0], point_vec[1], 0.0])
+            return float(np.linalg.norm(point_horizontal))
+        
+        # Project onto horizontal viewing direction
+        normal_horizontal = normal_horizontal / magnitude
+        return float(np.dot(point_vec, normal_horizontal))
 
 
 

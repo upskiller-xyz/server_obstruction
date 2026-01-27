@@ -8,7 +8,7 @@ from src.server.interfaces import ILogger
 from src.components.obstruction_models import ObstructionRequest
 from src.components.direction_calculator import DirectionCalculator
 from src.components.geometry import Vector3D
-from src.components.constants import ResponseField, AllDirectionDefaults
+from src.server.base.constants import ResponseField, AllDirectionDefaults
 
 
 class ParallelRequestBuilder:

@@ -3,7 +3,7 @@ from typing import Dict, Callable
 
 from src.server.builders import ResponseBuilder
 from ..utils.standard_map import StandardMap
-from ..components.constants import EndpointName
+from .base.constants import EndpointName
 
 
 class EndpointResponseMap(StandardMap):

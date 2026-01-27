@@ -1,12 +1,19 @@
 """Constants and enums for the obstruction calculation system"""
 
 from enum import Enum
-from ..utils.extended_enum import ExtendedEnumMixin
+from ...utils.extended_enum import ExtendedEnumMixin
 
 
 class ANGLES(ExtendedEnumMixin, Enum):
     ZENITH = "zenith"
     HORIZON = "horizon"
+
+
+class TriangleOrientation(ExtendedEnumMixin, Enum):
+    """Triangle surface orientation types"""
+    VERTICAL = "vertical"  # Walls, vertical surfaces
+    HORIZONTAL = "horizontal"  # Roofs, floors
+    SLANTED = "slanted"  # Neither vertical nor horizontal
 
 class HTTPMethod(ExtendedEnumMixin, Enum):
     """HTTP methods"""
@@ -51,10 +58,6 @@ class EndpointName(ExtendedEnumMixin, Enum):
     ZENITH_ANGLE = "zenith_angle"
     OBSTRUCTION_ALL = "obstruction_all"
     OBSTRUCTION_PARALLEL = "obstruction_parallel"
-
-
-
-
 
 class MathConstants(ExtendedEnumMixin, Enum):
     """Mathematical constants for calculations"""

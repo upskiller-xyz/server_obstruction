@@ -3,8 +3,9 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 import logging
-from src.components.constants import RequestField, OptionalRequestField
-from src.components.validators import GeometricValidator, PointOnTriangleError
+from src.server.base.constants import RequestField, OptionalRequestField
+from src.server.validators.geometry_validator import GeometryValidator
+
 from src.components.geometry import Point3D, Mesh
 
 logger = logging.getLogger(__name__)
@@ -151,7 +152,7 @@ class WindowNotOnMeshValidationStep(ValidationStep):
         mesh = Mesh.from_vertices(data[RequestField.MESH.value])
 
         # Validate window center doesn't lie on any triangle
-        GeometricValidator.validate_point_not_on_mesh(
+        GeometryValidator.validate_point_not_on_mesh(
             window_center,
             mesh.triangles
         )
