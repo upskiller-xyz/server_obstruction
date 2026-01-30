@@ -16,6 +16,17 @@ from src.components.geometry import Mesh
 from src.components.filter import CompositeTriangleFilter, CoarseTriangleFilter
 
 
+# Top-level functions for ProcessPoolExecutor (must be picklable)
+def _calculate_horizon_worker(mesh: Mesh, window: Window) -> ObstructionResult:
+    """Worker function for horizon calculation (picklable)"""
+    return IntersectionCalculator.call(mesh, window, ANGLES.HORIZON)
+
+
+def _calculate_zenith_worker(mesh: Mesh, window: Window) -> ObstructionResult:
+    """Worker function for zenith calculation (picklable)"""
+    return IntersectionCalculator.call(mesh, window, ANGLES.ZENITH)
+
+
 class ObstructionService:
     """
     Service orchestrating obstruction calculation operations
@@ -258,14 +269,18 @@ class ObstructionService:
         executor = cls._get_process_pool()
 
         # Calculate horizon and zenith in parallel using shared process pool
-        # The pool will efficiently schedule tasks across available CPU cores
+        # Use top-level functions instead of lambdas (lambdas can't be pickled)
         horizon_task = loop.run_in_executor(
             executor,
-            lambda: IntersectionCalculator.call(h_filtered, window, ANGLES.HORIZON)
+            _calculate_horizon_worker,
+            h_filtered,
+            window
         )
         zenith_task = loop.run_in_executor(
             executor,
-            lambda: IntersectionCalculator.call(v_filtered, window, ANGLES.ZENITH)
+            _calculate_zenith_worker,
+            v_filtered,
+            window
         )
 
         horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)
