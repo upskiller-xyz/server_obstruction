@@ -1,8 +1,10 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import time
 import math
 import asyncio
 import logging
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,26 @@ class ObstructionService:
     - Does not handle HTTP/request parsing
     - Does not perform low-level calculations
     """
+
+    # Shared ProcessPoolExecutor for all parallel calculations (Singleton Pattern)
+    _process_pool: Optional[ProcessPoolExecutor] = None
+    _max_workers: Optional[int] = None
+
+    @classmethod
+    def _get_process_pool(cls) -> ProcessPoolExecutor:
+        """
+        Get or create shared ProcessPoolExecutor instance (Singleton Pattern)
+
+        Uses CPU count - 1 to leave one core for system operations.
+        Minimum of 2 workers to ensure at least some parallelism.
+        """
+        if cls._process_pool is None:
+            cpu_count = multiprocessing.cpu_count()
+            # Use CPU count - 1, minimum 2 workers
+            cls._max_workers = max(2, cpu_count - 1)
+            cls._process_pool = ProcessPoolExecutor(max_workers=cls._max_workers)
+            logger.info(f"[PARALLEL-INIT] Created ProcessPoolExecutor with {cls._max_workers} workers (CPU count: {cpu_count})")
+        return cls._process_pool
 
     @classmethod
     def calculate_horizon(cls, request: ObstructionRequest) -> ObstructionResult:
@@ -214,7 +236,12 @@ class ObstructionService:
         }
     @classmethod
     async def calculate_direction_async(cls, mesh:Mesh, window_orig:Window, direction_angle:float):
-        """Asynchronous calculation for a single direction with parallel horizon/zenith"""
+        """
+        Asynchronous calculation for a single direction with parallel horizon/zenith
+
+        Uses shared ProcessPoolExecutor to avoid creating/destroying processes for each direction.
+        The pool will handle scheduling across available CPU cores efficiently.
+        """
         # Filter triangles behind window for THIS specific direction
         # This reduces triangles from ~1200 to ~700
         window = Window.set_angle(window_orig, direction_angle)
@@ -223,20 +250,21 @@ class ObstructionService:
             mesh.triangles,
             window
         )
-        
+
         h_filtered = Mesh(h_filtered)
         v_filtered = Mesh(v_filtered)
 
         loop = asyncio.get_event_loop()
+        executor = cls._get_process_pool()
 
-        # Calculate horizon and zenith in parallel with direction-filtered mesh
-        # Note: Wrap classmethod calls in lambdas for executor compatibility
+        # Calculate horizon and zenith in parallel using shared process pool
+        # The pool will efficiently schedule tasks across available CPU cores
         horizon_task = loop.run_in_executor(
-            None,
+            executor,
             lambda: IntersectionCalculator.call(h_filtered, window, ANGLES.HORIZON)
         )
         zenith_task = loop.run_in_executor(
-            None,
+            executor,
             lambda: IntersectionCalculator.call(v_filtered, window, ANGLES.ZENITH)
         )
 
