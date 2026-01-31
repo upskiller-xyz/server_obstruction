@@ -53,9 +53,9 @@ class EndpointName(ExtendedEnumMixin, Enum):
     """API endpoint names"""
     STATUS = "get_status"
     ROUTES = "routes"
-    HORIZON_ANGLE = "horizon_angle"
+    HORIZON_ANGLE = "horizon"
     OBSTRUCTION = "obstruction"
-    ZENITH_ANGLE = "zenith_angle"
+    ZENITH_ANGLE = "zenith"
     OBSTRUCTION_ALL = "obstruction_all"
     OBSTRUCTION_PARALLEL = "obstruction_parallel"
 
@@ -124,6 +124,8 @@ class ResponseField(ExtendedEnumMixin, Enum):
     DIRECTION_ANGLE = "direction_angle"
     DIRECTION_ANGLE_DEGREES = "direction_angle_degrees"
     RESULTS = "results"
+    NUM_DIRECTIONS = "num_directions"
+    TOTAL_TIME_SECONDS = "total_time_seconds"
 
     # Result fields
     OBSTRUCTION_ANGLE_DEGREES = "obstruction_angle_degrees"

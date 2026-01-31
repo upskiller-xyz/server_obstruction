@@ -107,14 +107,14 @@ def send_parallel_request(server_url: str, request_payload: dict):
             print(f"  - Total time: {data.get('total_time_seconds', 0):.2f}s")
 
             # Print sample of horizon angles
-            horizon_angles = data.get("horizon_angles", [])
+            horizon_angles = data.get("horizon", [])
             if horizon_angles:
                 print(f"\n  Horizon angles (first 5):")
                 for i, angle in enumerate(horizon_angles[:5]):
                     print(f"    Direction {i}: {angle:.2f}°")
 
             # Print sample of zenith angles
-            zenith_angles = data.get("zenith_angles", [])
+            zenith_angles = data.get("zenith", [])
             if zenith_angles:
                 print(f"\n  Zenith angles (first 5):")
                 for i, angle in enumerate(zenith_angles[:5]):
