@@ -56,7 +56,7 @@ class NonVerticalSurfaceFilter(TriangleFilter):
 
         # Filter by surface orientation - keep only vertical surfaces
         vertical_triangles = [x for x in filter(cls._is_vertical, filtered)]
-        logger.info(
+        logger.debug(
             f"        [NON-VERTICAL-FILTER] Kept {len(vertical_triangles)}/{len(filtered)} - "
             f"Filtered: {len(filtered) - len(vertical_triangles)} horizontal surfaces"
         )

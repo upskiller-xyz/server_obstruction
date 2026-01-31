@@ -11,10 +11,11 @@ services:
       - "8081:8081"  # Map host port 8081 to container port 8081
     environment:
       - PORT=8081
-      - WORKERS=${WORKERS:-32}
+      - WORKERS=${WORKERS:-4}
       - THREADS=${THREADS:-2}
       - FLASK_ENV=production
       - FLASK_DEBUG=False
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
       - CUDA_VISIBLE_DEVICES=-1
       - TF_CPP_MIN_LOG_LEVEL=3
       - OPENCV_IO_ENABLE_OPENEXR=0

@@ -18,21 +18,23 @@ RUN chmod 444 main.py
 RUN chmod 444 /requirements-prod.txt
 
 ENV PORT 8081
-ENV WORKERS 32
+ENV WORKERS 4
 ENV THREADS 2
 
-# Optimized for CPU-bound work with 32 cores:
-# - More workers (one per core for CPU work)
-# - Fewer threads (GIL limits thread parallelism for CPU)
-# - Use sync worker class (simpler, more stable)
+# Optimized for CPU-bound parallel processing with 32 cores:
+# - 4 workers = handle multiple concurrent requests
+# - 2 threads per worker = 8 total request handlers
+# - ProcessPoolExecutor (31 workers) handles parallelism within each request
+# - gthread worker for async support needed by ProcessPoolExecutor
 CMD exec gunicorn \
     --bind :$PORT \
     --workers $WORKERS \
     --threads $THREADS \
-    --worker-class sync \
+    --worker-class gthread \
     --timeout 900 \
     --max-requests 1000 \
     --max-requests-jitter 100 \
+    --worker-tmp-dir /dev/shm \
     main:app
 
 

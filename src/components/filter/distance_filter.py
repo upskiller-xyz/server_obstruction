@@ -87,7 +87,7 @@ class DistanceTriangleFilter(TriangleFilter):
         settings = Settings()
         distance = settings.min_horizontal_distance if angle_type == ANGLES.HORIZON else settings.max_horizontal_distance
 
-        logger.info(
+        logger.debug(
             f"        [DISTANCE-FILTER] Kept {stats['kept']}/{n_triangles} - "
             f"Filtered: {stats['below']} below window, "
             f"{stats['too_close_or_behind']} outside distance criteria ({distance}m)"

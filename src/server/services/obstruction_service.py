@@ -54,7 +54,7 @@ class ObstructionService:
             # Use CPU count - 1, minimum 2 workers
             cls._max_workers = max(2, cpu_count - 1)
             cls._process_pool = ProcessPoolExecutor(max_workers=cls._max_workers)
-            logger.info(f"[PARALLEL-INIT] Created ProcessPoolExecutor with {cls._max_workers} workers (CPU count: {cpu_count})")
+            logger.debug(f"[PARALLEL-INIT] Created ProcessPoolExecutor with {cls._max_workers} workers (CPU count: {cpu_count})")
         return cls._process_pool
 
     @classmethod
@@ -79,7 +79,7 @@ class ObstructionService:
             ValueError: If request data is invalid
         """
         
-        logger.info(
+        logger.debug(
             f"[CALC-START] Starting calculation with {len(request.mesh.triangles)} triangles"
         )
 
@@ -106,7 +106,7 @@ class ObstructionService:
         Returns:
             Dictionary with 'horizon' and 'zenith' ObstructionResults
         """
-        logger.info(
+        logger.debug(
             f"[CALC-BOTH] Starting calculation for both horizon and zenith angles "
             f"with {len(request.mesh.triangles)} triangles"
         )
@@ -140,7 +140,7 @@ class ObstructionService:
             ValueError: If request data is invalid
         """
         start_time = time.time()
-        logger.info(
+        logger.debug(
             f"[TIMING] Starting zenith angle calculation for window at "
             f"({request.window.center.x}, {request.window.center.y}, {request.window.center.z})"
             f" with {len(request.mesh.triangles)} meshes."
@@ -152,7 +152,7 @@ class ObstructionService:
             zenith_mesh, request.window, angle_type=ANGLES.ZENITH)
             
             total_time = time.time() - start_time
-            logger.info(
+            logger.debug(
                 f"[TIMING] Zenith angle complete: {result.obstruction_angle_degrees:.2f}° "
                 f"(total: {total_time*1000:.2f}ms)"
             )
@@ -207,7 +207,7 @@ class ObstructionService:
             end_angle_degrees = AllDirectionDefaults.END_ANGLE_DEGREES.value
 
         start_time = time.time()
-        logger.info(f"[PARALLEL] Starting with {len(request.mesh.triangles)} triangles") 
+        logger.debug(f"[PARALLEL] Starting with {len(request.mesh.triangles)} triangles") 
 
         # PRE-FILTER ONCE: Remove triangles below AND behind window (using base direction)
         coarse_start = time.time()
@@ -221,7 +221,7 @@ class ObstructionService:
         filtered_mesh = Mesh(coarse_filtered)
 
         coarse_time = time.time() - coarse_start
-        logger.info(
+        logger.debug(
             f"[PARALLEL-PRE-FILTER] Removed {removed_count} triangles below/behind window "
             f"({len(coarse_filtered)} remaining, {coarse_time*1000:.2f}ms)"
         )

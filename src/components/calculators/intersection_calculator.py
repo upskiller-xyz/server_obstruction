@@ -96,7 +96,7 @@ class IntersectionCalculator:
         algo_start = time.time()
 
         if not triangles:
-            logger.info(f"No triangles provided")
+            logger.debug(f"No triangles provided")
             return cls._no_intersection()
         
         fltr = cls._get_filter(angle_type)
@@ -107,7 +107,7 @@ class IntersectionCalculator:
         )
 
         if not relevant_triangles:
-            logger.info(f"No relevant triangles provided")
+            logger.debug(f"No relevant triangles provided")
             return cls._no_intersection()
         
         plane = VerticalPlane.from_window(window)
@@ -138,11 +138,11 @@ class IntersectionCalculator:
 
 
         if int_point.point is None or int_point.angle == 0.0:
-            logger.info(f"No valid angles found, total time: {(time.time()-algo_start)*1000:.2f}ms")
+            logger.debug(f"No valid angles found, total time: {(time.time()-algo_start)*1000:.2f}ms")
             return cls._no_intersection()
 
         total_time = time.time() - algo_start
-        logger.info(f"✓ TOTAL TIME: {total_time*1000:.2f}ms")
+        logger.debug(f"✓ TOTAL TIME: {total_time*1000:.2f}ms")
         logger.debug("Final angle: {}\n Final point: {}".format(int_point.angle, int_point.point))
         return int_point
     
