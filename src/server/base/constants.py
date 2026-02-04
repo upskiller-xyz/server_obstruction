@@ -93,10 +93,21 @@ class ControllerStatus(ExtendedEnumMixin, Enum):
 
 class RequestField(ExtendedEnumMixin, Enum):
     """Required and optional field names for requests"""
-    # Position fields
+    # Center position fields (legacy format)
     X = "x"
     Y = "y"
     Z = "z"
+
+    # Window endpoint fields (endpoint format)
+    X1 = "x1"
+    Y1 = "y1"
+    Z1 = "z1"
+    X2 = "x2"
+    Y2 = "y2"
+    Z2 = "z2"
+
+    # Room polygon (required with endpoint format)
+    ROOM_POLYGON = "room_polygon"
 
     # Direction field
     DIRECTION_ANGLE = "direction_angle"
