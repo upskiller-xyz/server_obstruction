@@ -100,10 +100,9 @@ class IntersectionCalculator:
             return cls._no_intersection()
         
         fltr = cls._get_filter(angle_type)
-        
-        relevant_triangles = DistanceTriangleFilter.call(triangles, window, angle_type)
+
         relevant_triangles = fltr.call(
-            relevant_triangles, window, angle_type
+            triangles, window, angle_type
         )
 
         if not relevant_triangles:

@@ -20,14 +20,22 @@ class WindowNotOnMeshValidationStep(ValidationStep):
         """Check window center is not on mesh surface (auto-detects format)"""
         window_center = cls._extract_center(data)
 
-        # Create mesh from vertices
-        mesh = Mesh.from_vertices(data[RequestField.MESH.value])
+        # Collect all mesh keys present in request
+        mesh_keys = [
+            RequestField.MESH.value,
+            RequestField.HORIZON_MESH.value,
+            RequestField.ZENITH_MESH.value,
+        ]
 
-        # Validate window center doesn't lie on any triangle
-        GeometryValidator.validate_point_not_on_mesh(
-            window_center,
-            mesh.triangles
-        )
+        for key in mesh_keys:
+            mesh_raw = data.get(key)
+            if not mesh_raw:
+                continue
+            mesh = Mesh.from_vertices(mesh_raw)
+            GeometryValidator.validate_point_not_on_mesh(
+                window_center,
+                mesh.triangles
+            )
 
     @staticmethod
     def _extract_center(data: Dict[str, Any]) -> Point3D:
