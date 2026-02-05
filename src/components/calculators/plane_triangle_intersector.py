@@ -170,12 +170,7 @@ class PlaneTriangleIntersector:
         # Project vector from window to point onto horizontal plane
         
         horizontal_distance = cls._horizontal_distance( point, window)
-        _dists = {
-            ANGLES.HORIZON: Settings.min_horizontal_distance,
-            ANGLES.ZENITH: 0
-        }
-        
-        if horizontal_distance < _dists.get(angle_type, 0):
+        if horizontal_distance < 0:
             return None
         
         angle = AngleCalculator.call(

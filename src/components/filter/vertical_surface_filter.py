@@ -48,17 +48,11 @@ class VerticalSurfaceFilter(TriangleFilter):
         if not triangles:
             return tuple()
 
-        # First apply horizon filter (above, in front, minimum distance)
-        horizon_filtered = DistanceTriangleFilter.call(triangles, window, angle_type=ANGLES.HORIZON)
-
-        if not horizon_filtered:
-            return tuple()
-
         # Filter by surface orientation - keep only vertical surfaces
-        vertical_triangles = [x for x in filter(cls._is_vertical, horizon_filtered)]
+        vertical_triangles = [x for x in filter(cls._is_vertical, triangles)]
         logger.debug(
-            f"        [VERTICAL-FILTER] Kept {len(vertical_triangles)}/{len(horizon_filtered)} - "
-            f"Filtered: {len(horizon_filtered) - len(vertical_triangles)} horizontal surfaces"
+            f"        [VERTICAL-FILTER] Kept {len(vertical_triangles)}/{len(triangles)} - "
+            f"Filtered: {len(triangles) - len(vertical_triangles)} horizontal surfaces"
         )
 
         return tuple(vertical_triangles)
