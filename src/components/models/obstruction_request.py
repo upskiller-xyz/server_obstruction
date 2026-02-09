@@ -51,23 +51,24 @@ class ObstructionRequest:
 
     @staticmethod
     def _parse_meshes(data: dict) -> Tuple[Optional[Mesh], Optional[Mesh]]:
-        """Detect mesh format and parse accordingly."""
-        has_split = (
-            RequestField.HORIZON_MESH.value in data
-            or RequestField.ZENITH_MESH.value in data
-        )
+        """Detect mesh format and parse accordingly.
 
-        if has_split:
-            horizon_raw = data.get(RequestField.HORIZON_MESH.value, [])
-            zenith_raw = data.get(RequestField.ZENITH_MESH.value, [])
+        Supports nested format: {"mesh": {"horizon": [...], "zenith": [...]}}
+        and legacy format: {"mesh": [[x,y,z], ...]} (assigned to both).
+        """
+        mesh_data = data.get(RequestField.MESH.value, {})
+
+        # Nested format: mesh is a dict with horizon/zenith sub-keys
+        if isinstance(mesh_data, dict):
+            horizon_raw = mesh_data.get("horizon", [])
+            zenith_raw = mesh_data.get("zenith", [])
             horizon_mesh = Mesh.from_vertices(horizon_raw) if horizon_raw else None
             zenith_mesh = Mesh.from_vertices(zenith_raw) if zenith_raw else None
             return horizon_mesh, zenith_mesh
 
-        # Legacy: single mesh assigned to both
-        mesh_raw = data.get(RequestField.MESH.value, [])
-        if mesh_raw:
-            mesh = Mesh.from_vertices(mesh_raw)
+        # Legacy: single mesh list assigned to both
+        if mesh_data:
+            mesh = Mesh.from_vertices(mesh_data)
             return mesh, mesh
         return None, None
 
