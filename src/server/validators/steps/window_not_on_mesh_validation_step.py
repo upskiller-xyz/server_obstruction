@@ -31,11 +31,17 @@ class WindowNotOnMeshValidationStep(ValidationStep):
             mesh_raw = data.get(key)
             if not mesh_raw:
                 continue
-            mesh = Mesh.from_vertices(mesh_raw)
-            GeometryValidator.validate_point_not_on_mesh(
-                window_center,
-                mesh.triangles
-            )
+            if isinstance(mesh_raw, dict):
+                for sub_key in ("horizon", "zenith"):
+                    sub_mesh_raw = mesh_raw.get(sub_key, [])
+                    if sub_mesh_raw:
+                        mesh = Mesh.from_vertices(sub_mesh_raw)
+                        GeometryValidator.validate_point_not_on_mesh(
+                            window_center, mesh.triangles)
+            else:
+                mesh = Mesh.from_vertices(mesh_raw)
+                GeometryValidator.validate_point_not_on_mesh(
+                    window_center, mesh.triangles)
 
     @staticmethod
     def _extract_center(data: Dict[str, Any]) -> Point3D:

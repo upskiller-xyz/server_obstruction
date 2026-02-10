@@ -34,21 +34,41 @@ class MeshFormatValidationStep(ValidationStep):
 
     @classmethod
     def _validate_single_mesh(cls, data: Dict[str, Any], key: str) -> None:
-        """Validate a single mesh field."""
+        """Validate a single mesh field.
+
+        Accepts either:
+        - A flat list of vertices: [[x,y,z], ...]
+        - A nested dict with horizon/zenith: {"horizon": [...], "zenith": [...]}
+        """
         mesh = data[key]
 
-        if not isinstance(mesh, list):
-            raise ValueError(f"{key} must be a list of vertices")
+        if isinstance(mesh, dict):
+            for sub_key in ("horizon", "zenith"):
+                sub_mesh = mesh.get(sub_key, [])
+                if not isinstance(sub_mesh, list):
+                    raise ValueError(f"{key}.{sub_key} must be a list of vertices")
+                cls._validate_vertex_count(sub_mesh, f"{key}.{sub_key}")
+                mesh[sub_key] = sub_mesh
+            return
 
+        if not isinstance(mesh, list):
+            raise ValueError(f"{key} must be a list of vertices or a dict with horizon/zenith")
+
+        cls._validate_vertex_count(mesh, key)
+        data[key] = mesh
+
+    @classmethod
+    def _validate_vertex_count(cls, mesh: list, label: str) -> None:
+        """Warn and trim if vertex count is not divisible by 3."""
         if len(mesh) == 0:
             return
 
         if len(mesh) % 3 != 0:
             extra_vertices = len(mesh) % 3
             original_count = len(mesh)
-            data[key] = mesh[:-extra_vertices]
+            del mesh[-extra_vertices:]
             logger.warning(
-                f"{key} had {original_count} vertices (not divisible by 3). "
+                f"{label} had {original_count} vertices (not divisible by 3). "
                 f"Trimmed {extra_vertices} extra vertex/vertices. "
-                f"Proceeding with {len(data[key])} vertices."
+                f"Proceeding with {len(mesh)} vertices."
             )

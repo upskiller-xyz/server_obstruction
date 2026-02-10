@@ -28,8 +28,17 @@ class VertexFormatValidationStep(ValidationStep):
 
         for key in mesh_keys:
             mesh = data[key]
-            for i, vertex in enumerate(mesh):
-                if not isinstance(vertex, (list, tuple)) or len(vertex) != 3:
-                    raise ValueError(
-                        f"{key} vertex {i} must be a list/tuple of 3 coordinates [x, y, z]"
-                    )
+            if isinstance(mesh, dict):
+                for sub_key in ("horizon", "zenith"):
+                    cls._validate_vertices(mesh.get(sub_key, []), f"{key}.{sub_key}")
+            else:
+                cls._validate_vertices(mesh, key)
+
+    @classmethod
+    def _validate_vertices(cls, mesh: list, label: str) -> None:
+        """Validate each vertex in a mesh list has 3 coordinates."""
+        for i, vertex in enumerate(mesh):
+            if not isinstance(vertex, (list, tuple)) or len(vertex) != 3:
+                raise ValueError(
+                    f"{label} vertex {i} must be a list/tuple of 3 coordinates [x, y, z]"
+                )
