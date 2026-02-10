@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from src.components.geometry import Mesh
 from src.components.models.window import Window
-from src.server.base.constants import RequestField
+from src.server.base.constants import ANGLES, RequestField
 
 
 @dataclass(frozen=True)
@@ -60,8 +60,8 @@ class ObstructionRequest:
 
         # Nested format: mesh is a dict with horizon/zenith sub-keys
         if isinstance(mesh_data, dict):
-            horizon_raw = mesh_data.get("horizon", [])
-            zenith_raw = mesh_data.get("zenith", [])
+            horizon_raw = mesh_data.get(ANGLES.HORIZON.value, [])
+            zenith_raw = mesh_data.get(ANGLES.ZENITH.value, [])
             horizon_mesh = Mesh.from_vertices(horizon_raw) if horizon_raw else None
             zenith_mesh = Mesh.from_vertices(zenith_raw) if zenith_raw else None
             return horizon_mesh, zenith_mesh

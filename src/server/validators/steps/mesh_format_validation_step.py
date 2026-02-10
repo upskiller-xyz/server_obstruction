@@ -8,7 +8,7 @@ Supports both split (horizon_mesh/zenith_mesh) and legacy (mesh) formats.
 from typing import Dict, Any, List
 import logging
 
-from src.server.base.constants import RequestField
+from src.server.base.constants import ANGLES, RequestField
 from src.server.validators.steps.validation_step import ValidationStep
 
 logger = logging.getLogger(__name__)
@@ -43,12 +43,12 @@ class MeshFormatValidationStep(ValidationStep):
         mesh = data[key]
 
         if isinstance(mesh, dict):
-            for sub_key in ("horizon", "zenith"):
-                sub_mesh = mesh.get(sub_key, [])
+            for angle in ANGLES:
+                sub_mesh = mesh.get(angle.value, [])
                 if not isinstance(sub_mesh, list):
-                    raise ValueError(f"{key}.{sub_key} must be a list of vertices")
-                cls._validate_vertex_count(sub_mesh, f"{key}.{sub_key}")
-                mesh[sub_key] = sub_mesh
+                    raise ValueError(f"{key}.{angle.value} must be a list of vertices")
+                cls._validate_vertex_count(sub_mesh, f"{key}.{angle.value}")
+                mesh[angle.value] = sub_mesh
             return
 
         if not isinstance(mesh, list):

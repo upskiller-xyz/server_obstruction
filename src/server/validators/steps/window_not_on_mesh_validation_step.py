@@ -6,7 +6,7 @@ Validates that window center doesn't lie on any mesh triangle.
 
 from typing import Dict, Any
 
-from src.server.base.constants import RequestField
+from src.server.base.constants import ANGLES, RequestField
 from src.server.validators.geometry_validator import GeometryValidator
 from src.components.geometry import Point3D, Mesh, ReferencePointCalculator
 from src.server.validators.steps.validation_step import ValidationStep
@@ -32,8 +32,8 @@ class WindowNotOnMeshValidationStep(ValidationStep):
             if not mesh_raw:
                 continue
             if isinstance(mesh_raw, dict):
-                for sub_key in ("horizon", "zenith"):
-                    sub_mesh_raw = mesh_raw.get(sub_key, [])
+                for angle in ANGLES:
+                    sub_mesh_raw = mesh_raw.get(angle.value, [])
                     if sub_mesh_raw:
                         mesh = Mesh.from_vertices(sub_mesh_raw)
                         GeometryValidator.validate_point_not_on_mesh(

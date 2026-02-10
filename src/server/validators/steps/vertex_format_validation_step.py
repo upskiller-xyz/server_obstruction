@@ -7,7 +7,7 @@ Supports both split (horizon_mesh/zenith_mesh) and legacy (mesh) formats.
 
 from typing import Dict, Any, List
 
-from src.server.base.constants import RequestField
+from src.server.base.constants import ANGLES, RequestField
 from src.server.validators.steps.validation_step import ValidationStep
 
 
@@ -29,8 +29,8 @@ class VertexFormatValidationStep(ValidationStep):
         for key in mesh_keys:
             mesh = data[key]
             if isinstance(mesh, dict):
-                for sub_key in ("horizon", "zenith"):
-                    cls._validate_vertices(mesh.get(sub_key, []), f"{key}.{sub_key}")
+                for angle in ANGLES:
+                    cls._validate_vertices(mesh.get(angle.value, []), f"{key}.{angle.value}")
             else:
                 cls._validate_vertices(mesh, key)
 
