@@ -15,8 +15,8 @@ class TestObstructionController:
         # Controller returns either 'status' or 'controller' key
         assert 'controller' in status or 'status' in status
 
-    def test_call_with_horizon_angle_endpoint(self):
-        """Test call method with horizon_angle endpoint"""
+    def test_call_with_horizon_endpoint(self):
+        """Test call method with horizon endpoint"""
         request_data = {
             "x": 0.0,
             "y": 0.0,
@@ -26,12 +26,12 @@ class TestObstructionController:
             "direction_angle": 0.0,
             "mesh": {"horizon": []}
         }
-        result = ObstructionController.call(EndpointName.HORIZON_ANGLE, request_data)
+        result = ObstructionController.call(EndpointName.HORIZON, request_data)
         assert isinstance(result, dict)
         assert 'status' in result
 
-    def test_call_with_zenith_angle_endpoint(self):
-        """Test call method with zenith_angle endpoint"""
+    def test_call_with_zenith_endpoint(self):
+        """Test call method with zenith endpoint"""
         request_data = {
             "x": 0.0,
             "y": 0.0,
@@ -41,14 +41,14 @@ class TestObstructionController:
             "direction_angle": 0.0,
             "mesh": {"zenith": []}
         }
-        result = ObstructionController.call(EndpointName.ZENITH_ANGLE, request_data)
+        result = ObstructionController.call(EndpointName.ZENITH, request_data)
         assert isinstance(result, dict)
         assert 'status' in result
 
     def test_call_with_invalid_data_returns_error(self):
         """Test call with invalid data returns error status"""
         request_data = {}  # Missing required fields
-        result = ObstructionController.call(EndpointName.HORIZON_ANGLE, request_data)
+        result = ObstructionController.call(EndpointName.HORIZON, request_data)
         assert isinstance(result, dict)
         assert 'status' in result
         assert result['status'] == ResponseStatus.ERROR.value
@@ -70,7 +70,7 @@ class TestObstructionController:
                 ]
             }
         }
-        result = ObstructionController.call(EndpointName.HORIZON_ANGLE, request_data)
+        result = ObstructionController.call(EndpointName.HORIZON, request_data)
         assert isinstance(result, dict)
         assert 'status' in result
 

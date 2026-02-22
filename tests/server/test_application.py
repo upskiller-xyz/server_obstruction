@@ -42,10 +42,10 @@ class TestServerApplication:
         assert 'total_routes' in data
         assert isinstance(data['routes'], list)
 
-    def test_horizon_angle_endpoint_missing_content_type(self, client):
+    def test_horizon_endpoint_missing_content_type(self, client):
         """Test POST /horizon with missing Content-Type"""
         response = client.post(
-            '/horizon_angle',
+            '/horizon',
             data='{}',
             content_type='text/plain'
         )
@@ -53,35 +53,35 @@ class TestServerApplication:
         data = json.loads(response.data)
         assert data['status'] == ResponseStatus.ERROR.value
 
-    def test_horizon_angle_endpoint_empty_body(self, client):
+    def test_horizon_endpoint_empty_body(self, client):
         """Test POST /horizon with empty body"""
         response = client.post(
-            '/horizon_angle',
+            '/horizon',
             data='',
             content_type='application/json'
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST.value
 
-    def test_horizon_angle_endpoint_invalid_json(self, client):
+    def test_horizon_endpoint_invalid_json(self, client):
         """Test POST /horizon with invalid JSON"""
         response = client.post(
-            '/horizon_angle',
+            '/horizon',
             data='not json',
             content_type='application/json'
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST.value
 
-    def test_horizon_angle_endpoint_missing_fields(self, client):
+    def test_horizon_endpoint_missing_fields(self, client):
         """Test POST /horizon with missing required fields"""
         response = client.post(
-            '/horizon_angle',
+            '/horizon',
             json={}
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST.value
         data = json.loads(response.data)
         assert data['status'] == ResponseStatus.ERROR.value
 
-    def test_horizon_angle_endpoint_valid_request(self, client):
+    def test_horizon_endpoint_valid_request(self, client):
         """Test POST /horizon with valid request"""
         request_data = {
             "x": 0.0,
@@ -95,7 +95,7 @@ class TestServerApplication:
             }
         }
         response = client.post(
-            '/horizon_angle',
+            '/horizon',
             json=request_data
         )
         # Should succeed with empty mesh (no obstruction)
@@ -103,7 +103,7 @@ class TestServerApplication:
         data = json.loads(response.data)
         assert 'status' in data
 
-    def test_zenith_angle_endpoint_valid_request(self, client):
+    def test_zenith_endpoint_valid_request(self, client):
         """Test POST /zenith with valid request"""
         request_data = {
             "x": 0.0,
@@ -117,7 +117,7 @@ class TestServerApplication:
             }
         }
         response = client.post(
-            '/zenith_angle',
+            '/zenith',
             json=request_data
         )
         # Should succeed with empty mesh (no obstruction)

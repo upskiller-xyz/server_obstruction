@@ -67,7 +67,7 @@ class OpenAPISpecGenerator:
                     }
                 }
             },
-            "/horizon_angle": {
+            "/horizon": {
                 "post": {
                     "summary": "Calculate horizon obstruction angle",
                     "description": "Calculate the maximum horizon obstruction angle from a 3D mesh",
@@ -114,7 +114,7 @@ class OpenAPISpecGenerator:
                     }
                 }
             },
-            "/zenith_angle": {
+            "/zenith": {
                 "post": {
                     "summary": "Calculate zenith obstruction angle",
                     "description": "Calculate the maximum zenith obstruction angle from a 3D mesh",

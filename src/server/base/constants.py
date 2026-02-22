@@ -54,9 +54,9 @@ class EndpointName(ExtendedEnumMixin, Enum):
     """API endpoint names"""
     STATUS = "get_status"
     ROUTES = "routes"
-    HORIZON_ANGLE = "horizon_angle"
+    HORIZON = "horizon"
     OBSTRUCTION = "obstruction"
-    ZENITH_ANGLE = "zenith_angle"
+    ZENITH = "zenith"
     OBSTRUCTION_ALL = "obstruction_all"
     OBSTRUCTION_PARALLEL = "obstruction_parallel"
 

@@ -149,8 +149,8 @@ class ScenarioConfiguration:
         Args:
             mesh_type: Type of mesh format to use
                 - "combined": Single flat mesh array (for /obstruction endpoint)
-                - "horizon": Mesh wrapped in {"horizon": [...]} (for /horizon_angle endpoint)
-                - "zenith": Mesh wrapped in {"zenith": [...]} (for /zenith_angle endpoint)
+                - "horizon": Mesh wrapped in {"horizon": [...]} (for /horizon endpoint)
+                - "zenith": Mesh wrapped in {"zenith": [...]} (for /zenith endpoint)
 
         Returns:
             Request data dictionary
