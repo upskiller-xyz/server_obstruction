@@ -12,8 +12,8 @@ class ServiceMethod(StandardMap):
     """Service method names"""
     _content:Dict[EndpointName, Callable] = {
         EndpointName.STATUS : ObstructionService.get_status,
-        EndpointName.HORIZON_ANGLE : ObstructionService.calculate_horizon,
-        EndpointName.ZENITH_ANGLE: ObstructionService.calculate_zenith_angle,
+        EndpointName.HORIZON : ObstructionService.calculate_horizon,
+        EndpointName.ZENITH: ObstructionService.calculate_zenith_angle,
         EndpointName.OBSTRUCTION_ALL: ObstructionService.calculate_all_directions_async,
         EndpointName.OBSTRUCTION_PARALLEL: ObstructionService.calculate_all_directions_async,
         EndpointName.OBSTRUCTION: ObstructionService.calculate_both_angles

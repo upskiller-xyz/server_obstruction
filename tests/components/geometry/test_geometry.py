@@ -83,18 +83,18 @@ class TestVector3D:
         assert vector.y == 2.0
         assert vector.z == 3.0
 
-    def test_from_angles_zero(self):
-        """Test vector creation from zero angles"""
-        vector = Vector3D.from_angles(rad_x=0.0, rad_y=0.0)
+    def test_from_horizontal_angle_zero(self):
+        """Test vector creation from zero horizontal angle"""
+        vector = Vector3D.from_horizontal_angle(0.0)
         # Should point in positive X direction
         assert abs(vector.x - 1.0) < 1e-10
         assert abs(vector.y) < 1e-10
         assert abs(vector.z) < 1e-10
 
-    def test_from_angles_vertical(self):
-        """Test vector creation with vertical rotation"""
-        vector = Vector3D.from_angles(rad_x=np.pi/2, rad_y=0.0)
-        # Should point up (positive Y)
+    def test_from_horizontal_angle_90_degrees(self):
+        """Test vector creation with 90 degree horizontal angle"""
+        vector = Vector3D.from_horizontal_angle(np.pi/2)
+        # Should point in positive Y direction (in XY plane)
         assert abs(vector.x) < 1e-10
         assert abs(vector.y - 1.0) < 1e-10
         assert abs(vector.z) < 1e-10

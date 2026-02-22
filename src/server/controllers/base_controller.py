@@ -9,7 +9,7 @@ class ServerController(IServerController):
     """Generic server controller implementing IServerController interface"""
 
     def __init__(
-        self
+        self,
         services: Optional[Dict[str, Any]] = None
     ):
         """

@@ -1,6 +1,7 @@
 """Constants and enums for the obstruction calculation system"""
 
 from enum import Enum
+from typing import List
 from ...utils.extended_enum import ExtendedEnumMixin
 
 
@@ -53,9 +54,9 @@ class EndpointName(ExtendedEnumMixin, Enum):
     """API endpoint names"""
     STATUS = "get_status"
     ROUTES = "routes"
-    HORIZON_ANGLE = "horizon"
+    HORIZON = "horizon"
     OBSTRUCTION = "obstruction"
-    ZENITH_ANGLE = "zenith"
+    ZENITH = "zenith"
     OBSTRUCTION_ALL = "obstruction_all"
     OBSTRUCTION_PARALLEL = "obstruction_parallel"
 
@@ -93,16 +94,47 @@ class ControllerStatus(ExtendedEnumMixin, Enum):
 
 class RequestField(ExtendedEnumMixin, Enum):
     """Required and optional field names for requests"""
-    # Position fields
+    # Center position fields (legacy format)
     X = "x"
     Y = "y"
     Z = "z"
 
+    # Window endpoint fields (endpoint format)
+    X1 = "x1"
+    Y1 = "y1"
+    Z1 = "z1"
+    X2 = "x2"
+    Y2 = "y2"
+    Z2 = "z2"
+
+    # Room polygon (required with endpoint format)
+    ROOM_POLYGON = "room_polygon"
+
     # Direction field
     DIRECTION_ANGLE = "direction_angle"
 
-    # Mesh
+    # Mesh (legacy single mesh — kept for backward compatibility)
     MESH = "mesh"
+
+    # Split meshes (new format: caller separates geometry by type)
+    HORIZON_MESH = "horizon_mesh"
+    ZENITH_MESH = "zenith_mesh"
+
+CENTER_WINDOW_FIELDS= frozenset([
+    RequestField.X.value,
+    RequestField.Y.value,
+    RequestField.Z.value,
+])
+
+ENDPOINT_WINDOW_FIELDS = frozenset([
+    RequestField.X1.value,
+    RequestField.Y1.value,
+    RequestField.Z1.value,
+    RequestField.X2.value,
+    RequestField.Y2.value,
+    RequestField.Z2.value,
+    RequestField.ROOM_POLYGON.value,
+])
 
 
 class OptionalRequestField(ExtendedEnumMixin, Enum):

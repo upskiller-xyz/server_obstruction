@@ -143,14 +143,34 @@ class ScenarioConfiguration:
             combined.extend(mesh)
         return combined
 
-    def to_request_data(self) -> dict:
-        """Convert to API request format"""
+    def to_request_data(self, mesh_type: str = "combined") -> dict:
+        """Convert to API request format
+
+        Args:
+            mesh_type: Type of mesh format to use
+                - "combined": Single flat mesh array (for /obstruction endpoint)
+                - "horizon": Mesh wrapped in {"horizon": [...]} (for /horizon endpoint)
+                - "zenith": Mesh wrapped in {"zenith": [...]} (for /zenith endpoint)
+
+        Returns:
+            Request data dictionary
+        """
+        mesh_data = self.get_combined_mesh()
+
+        # Format mesh based on endpoint type
+        if mesh_type == "horizon":
+            mesh_value = {"horizon": mesh_data}
+        elif mesh_type == "zenith":
+            mesh_value = {"zenith": mesh_data}
+        else:  # combined or default
+            mesh_value = mesh_data
+
         return {
             "x": self.window_center[0],
             "y": self.window_center[1],
             "z": self.window_center[2],
             "direction_angle": self.direction_angle,
-            "mesh": self.get_combined_mesh()
+            "mesh": mesh_value
         }
 
 
