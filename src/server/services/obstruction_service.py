@@ -9,6 +9,7 @@ from concurrent.futures import ProcessPoolExecutor
 logger = logging.getLogger(__name__)
 
 from src.components.calculators.intersection_calculator import IntersectionCalculator
+from src.components.calculators.ray_verification_calculator import RayVerificationCalculator
 from src.components.models import ObstructionRequest, ObstructionResult, Window
 
 from src.server.base.constants import ANGLES, ResponseField, ResponseStatus, AllDirectionDefaults
@@ -215,6 +216,13 @@ class ObstructionService:
         )
 
         horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)
+
+        # Verify full obstruction with ray casting when h+z >= 90
+        horizon_result, zenith_result = RayVerificationCalculator.verify(
+            horizon_result, zenith_result,
+            window, direction_angle,
+            h_mesh, z_mesh
+        )
 
         return {
             ResponseField.DIRECTION_ANGLE.value: direction_angle,

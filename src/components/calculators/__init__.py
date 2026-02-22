@@ -7,6 +7,9 @@ from src.components.calculators.horizontal_distance_calculator import Horizontal
 from src.components.calculators.intersection_calculator import IntersectionCalculator
 from src.components.calculators.plane_triangle_intersector import PlaneTriangleIntersector
 from src.components.calculators.projection_calculator import OrthographicProjectionCalculator
+from src.components.calculators.ray_triangle_intersector import Ray, RayTriangleIntersector, TriangleArrays
+from src.components.calculators.ray_verification_calculator import RayVerificationCalculator, RayVerificationConfig
+
 __all__ = [
     'AngleCalculator',
     'DirectionCalculator',
@@ -14,5 +17,10 @@ __all__ = [
     'HorizontalDistanceCalculator',
     'IntersectionCalculator',
     'OrthographicProjectionCalculator',
-    'PlaneTriangleIntersector'
+    'PlaneTriangleIntersector',
+    'Ray',
+    'RayTriangleIntersector',
+    'TriangleArrays',
+    'RayVerificationCalculator',
+    'RayVerificationConfig',
 ]
