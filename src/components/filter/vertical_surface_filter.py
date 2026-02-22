@@ -4,7 +4,7 @@ Vertical surface filtering for horizon calculations
 Filters out horizontal surfaces like roofs, keeping only walls and vertical obstructions.
 """
 
-from typing import List, Tuple
+from typing import Tuple
 import numpy as np
 import logging
 
@@ -12,7 +12,6 @@ from src.components.geometry import Triangle
 from src.server.base.constants import ANGLES, MathConstants
 from src.components.models import Window
 from src.components.filter.base_filter import TriangleFilter
-from src.components.filter.distance_filter import DistanceTriangleFilter
 from src.utils.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -49,13 +48,18 @@ class VerticalSurfaceFilter(TriangleFilter):
             return tuple()
 
         # Filter by surface orientation - keep only vertical surfaces
-        vertical_triangles = [x for x in filter(cls._is_vertical, triangles)]
+        relevant_triangles = [x for x in filter(cls._should_keep, triangles)]
         logger.debug(
-            f"        [VERTICAL-FILTER] Kept {len(vertical_triangles)}/{len(triangles)} - "
-            f"Filtered: {len(triangles) - len(vertical_triangles)} horizontal surfaces"
+            f"        [VERTICAL-FILTER] Kept {len(relevant_triangles)}/{len(triangles)} - "
+            f"Filtered: {len(triangles) - len(relevant_triangles)} horizontal surfaces"
         )
 
-        return tuple(vertical_triangles)
+        return tuple(relevant_triangles)
+
+    @classmethod
+    def _should_keep(cls, triangle: Triangle) -> bool:
+        """Return True if triangle should be kept (is vertical surface)"""
+        return cls._is_vertical(triangle)
 
     @classmethod
     def _is_vertical(cls, triangle: Triangle) -> bool:

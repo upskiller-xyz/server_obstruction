@@ -5,11 +5,11 @@ Projects window bounding box center onto the nearest point on
 a room polygon boundary to determine the obstruction reference point.
 """
 
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 
-from src.components.geometry.point import Point3D
+from src.components.geometry import Point3D
 
 
 class ReferencePointCalculator:

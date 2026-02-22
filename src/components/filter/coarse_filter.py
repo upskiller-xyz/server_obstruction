@@ -4,7 +4,7 @@ Coarse triangle filtering for initial pre-filtering
 Removes triangles below and behind window for all-direction calculations.
 """
 
-from typing import List, Tuple
+from typing import Tuple
 import numpy as np
 import logging
 

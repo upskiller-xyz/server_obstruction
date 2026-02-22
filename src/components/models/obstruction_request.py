@@ -45,46 +45,34 @@ class ObstructionRequest:
         Returns:
             ObstructionRequest instance
         """
-        window = cls._parse_window(data)
+        window = Window.from_dict(data)
         horizon_mesh, zenith_mesh = cls._parse_meshes(data)
         return cls(window=window, horizon_mesh=horizon_mesh, zenith_mesh=zenith_mesh)
 
-    @staticmethod
-    def _parse_meshes(data: dict) -> Tuple[Optional[Mesh], Optional[Mesh]]:
+    @classmethod
+    def _parse_meshes(cls, content: dict) -> Tuple[Optional[Mesh], Optional[Mesh]]:
         """Detect mesh format and parse accordingly.
 
         Supports nested format: {"mesh": {"horizon": [...], "zenith": [...]}}
         and legacy format: {"mesh": [[x,y,z], ...]} (assigned to both).
         """
-        mesh_data = data.get(RequestField.MESH.value, {})
+        mesh_data = content.get(RequestField.MESH.value, {})
+        
+        return cls._parse_mesh(mesh_data, ANGLES.HORIZON), cls._parse_mesh(mesh_data, ANGLES.ZENITH)
+    
+    @classmethod
+    def _parse_mesh(cls, mesh_data: dict, angle:ANGLES) -> Optional[Mesh]:
+        """Detect mesh format and parse accordingly.
 
-        # Nested format: mesh is a dict with horizon/zenith sub-keys
-        if isinstance(mesh_data, dict):
-            horizon_raw = mesh_data.get(ANGLES.HORIZON.value, [])
-            zenith_raw = mesh_data.get(ANGLES.ZENITH.value, [])
-            horizon_mesh = Mesh.from_vertices(horizon_raw) if horizon_raw else None
-            zenith_mesh = Mesh.from_vertices(zenith_raw) if zenith_raw else None
-            return horizon_mesh, zenith_mesh
+        Supports nested format: {"mesh": {"horizon": [...], "zenith": [...]}}
+        and legacy format: {"mesh": [[x,y,z], ...]} (assigned to both).
 
-        # Legacy: single mesh list assigned to both
-        if mesh_data:
-            mesh = Mesh.from_vertices(mesh_data)
-            return mesh, mesh
-        return None, None
+        Accepts both string keys ("horizon", "zenith") and enum keys (ANGLES.HORIZON, ANGLES.ZENITH).
+        """
 
-    @staticmethod
-    def _parse_window(data: dict) -> Window:
-        """Detect request format and create Window accordingly."""
-        if RequestField.X1.value in data:
-            return Window.from_endpoints(
-                x1=float(data[RequestField.X1.value]),
-                y1=float(data[RequestField.Y1.value]),
-                z1=float(data[RequestField.Z1.value]),
-                x2=float(data[RequestField.X2.value]),
-                y2=float(data[RequestField.Y2.value]),
-                z2=float(data[RequestField.Z2.value]),
-                direction_angle=float(data[RequestField.DIRECTION_ANGLE.value]),
-                room_polygon=data[RequestField.ROOM_POLYGON.value],
-            )
+        # Try string key first (standard format), then enum key (for backwards compatibility)
+        raw = mesh_data.get(angle.value) or mesh_data.get(angle, [])
 
-        return Window.from_dict(data)
+        return Mesh.from_vertices(raw) if raw else None
+    
+    

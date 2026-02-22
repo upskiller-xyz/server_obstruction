@@ -1,6 +1,7 @@
 """Constants and enums for the obstruction calculation system"""
 
 from enum import Enum
+from typing import List
 from ...utils.extended_enum import ExtendedEnumMixin
 
 
@@ -53,9 +54,9 @@ class EndpointName(ExtendedEnumMixin, Enum):
     """API endpoint names"""
     STATUS = "get_status"
     ROUTES = "routes"
-    HORIZON_ANGLE = "horizon"
+    HORIZON = "horizon"
     OBSTRUCTION = "obstruction"
-    ZENITH_ANGLE = "zenith"
+    ZENITH = "zenith"
     OBSTRUCTION_ALL = "obstruction_all"
     OBSTRUCTION_PARALLEL = "obstruction_parallel"
 
@@ -118,6 +119,22 @@ class RequestField(ExtendedEnumMixin, Enum):
     # Split meshes (new format: caller separates geometry by type)
     HORIZON_MESH = "horizon_mesh"
     ZENITH_MESH = "zenith_mesh"
+
+CENTER_WINDOW_FIELDS= frozenset([
+    RequestField.X.value,
+    RequestField.Y.value,
+    RequestField.Z.value,
+])
+
+ENDPOINT_WINDOW_FIELDS = frozenset([
+    RequestField.X1.value,
+    RequestField.Y1.value,
+    RequestField.Z1.value,
+    RequestField.X2.value,
+    RequestField.Y2.value,
+    RequestField.Z2.value,
+    RequestField.ROOM_POLYGON.value,
+])
 
 
 class OptionalRequestField(ExtendedEnumMixin, Enum):

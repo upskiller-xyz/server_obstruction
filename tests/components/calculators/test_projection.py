@@ -24,15 +24,16 @@ class TestOrthographicProjectionCalculator:
         assert plane.origin == window.center
 
         # Plane's geometric normal should be perpendicular to viewing direction (which is +X)
-        # Since viewing is +X and world up is +Y, plane normal should be ±Z
+        # Since viewing is +X and world up is +Z, plane normal should be ±Y
+        # cross([1,0,0], [0,0,1]) = [0,-1,0]
         assert abs(plane.normal.x) < 1e-10
-        assert abs(plane.normal.y) < 1e-10
-        assert abs(abs(plane.normal.z) - 1.0) < 1e-10  # Should be +1 or -1
+        assert abs(abs(plane.normal.y) - 1.0) < 1e-10  # Should be +1 or -1
+        assert abs(plane.normal.z) < 1e-10
 
-        # V-axis should point up (world up)
+        # V-axis should point up (world up is +Z)
         assert abs(plane.v_axis.x) < 1e-10
-        assert abs(plane.v_axis.y - 1.0) < 1e-10
-        assert abs(plane.v_axis.z) < 1e-10
+        assert abs(plane.v_axis.y) < 1e-10
+        assert abs(plane.v_axis.z - 1.0) < 1e-10
 
         # U-axis should be the horizontal component of viewing direction (+X)
         assert abs(plane.u_axis.x - 1.0) < 1e-10
@@ -41,10 +42,10 @@ class TestOrthographicProjectionCalculator:
 
     def test_create_projection_plane_upward_facing(self):
         """Test plane creation for upward-facing window"""
-        # Window normal pointing up (parallel to world up)
+        # Window normal pointing up (parallel to world up which is +Z)
         window = Window(
             center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=0.0, y=1.0, z=0.0)
+            normal=Vector3D(x=0.0, y=0.0, z=1.0)
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -57,7 +58,7 @@ class TestOrthographicProjectionCalculator:
         """Test that plane axes are orthogonal"""
         window = Window(
             center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D.from_angles(rad_x=0.0, rad_y=np.pi/4).normalize()
+            normal=Vector3D(x=1.0, y=1.0, z=0.0).normalize()
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -78,7 +79,7 @@ class TestOrthographicProjectionCalculator:
         """Test that all plane axes are unit vectors"""
         window = Window(
             center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D.from_angles(rad_x=0.0, rad_y=np.pi/6).normalize()
+            normal=Vector3D(x=1.0, y=0.5, z=0.0).normalize()
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -94,12 +95,12 @@ class TestOrthographicProjectionCalculator:
         )
         plane = self.calculator.create_projection_plane(window)
 
-        # Point to project: (1, 1, 0)
-        # Since u_axis is (1,0,0) and v_axis is (0,1,0), and origin is (0,0,0):
-        # relative = (1, 1, 0)
-        # u = dot(relative, u_axis) = 1*1 + 1*0 + 0*0 = 1
-        # v = dot(relative, v_axis) = 1*0 + 1*1 + 0*0 = 1
-        point = Point3D(x=1.0, y=1.0, z=0.0)
+        # Point to project: (1, 0, 1)
+        # Since u_axis is (1,0,0) and v_axis is (0,0,1), and origin is (0,0,0):
+        # relative = (1, 0, 1)
+        # u = dot(relative, u_axis) = 1*1 + 0*0 + 1*0 = 1
+        # v = dot(relative, v_axis) = 1*0 + 0*0 + 1*1 = 1
+        point = Point3D(x=1.0, y=0.0, z=1.0)
         projected = self.calculator.project_point(point, plane)
 
         assert projected.original == point
@@ -129,8 +130,8 @@ class TestOrthographicProjectionCalculator:
         )
         plane = self.calculator.create_projection_plane(window)
 
-        # Point above the plane center
-        point = Point3D(x=0.0, y=5.0, z=0.0)
+        # Point above the plane center (Z is up in this coordinate system)
+        point = Point3D(x=0.0, y=0.0, z=5.0)
         projected = self.calculator.project_point(point, plane)
 
         # Should have positive v coordinate
