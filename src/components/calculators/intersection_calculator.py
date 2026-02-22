@@ -13,7 +13,7 @@ from src.components.geometry import Mesh, Point3D, Triangle, AngleCalculator
 from src.components.geometry.vertical_plane import VerticalPlane
 from src.components.calculators.distance_calculator import DistanceCalculator
 from src.components.calculators.plane_triangle_intersector import PlaneTriangleIntersector
-from src.components.filter import VerticalSurfaceFilter, NonVerticalSurfaceFilter, DistanceTriangleFilter
+from src.components.filter import VerticalSurfaceFilter, NonVerticalSurfaceFilter
 
 
 

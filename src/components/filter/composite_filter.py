@@ -4,7 +4,7 @@ Composite filter for both horizon and zenith calculations
 Optimized to filter for both angle types in a single pass.
 """
 
-from typing import List, Tuple
+from typing import Tuple
 import logging
 
 from src.components.geometry import Triangle
@@ -25,7 +25,7 @@ class CompositeTriangleFilter(DistanceTriangleFilter):
     """
 
     @classmethod
-    def call(
+    def call( # type: ignore
         cls,
         triangles: Tuple[Triangle, ...],
         window: Window,

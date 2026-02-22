@@ -4,7 +4,7 @@ Base class for triangle filtering strategies
 Provides abstract base class and common filtering utilities using Template Method Pattern.
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Tuple
 import numpy as np
 

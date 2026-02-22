@@ -4,7 +4,7 @@ Window model
 Represents a window with center point and normal direction.
 """
 
-from typing import List
+from typing import List, Dict, Any
 
 from dataclasses import dataclass
 
@@ -48,11 +48,11 @@ class Window:
 
     @classmethod
     def from_endpoints(
-        cls,
-        x1: float, y1: float, z1: float,
-        x2: float, y2: float, z2: float,
-        direction_angle: float,
-        room_polygon: List[List[float]],
+        cls, content: Dict[str, Any]
+        # x1: float, y1: float, z1: float,
+        # x2: float, y2: float, z2: float,
+        # direction_angle: float,
+        # room_polygon: List[List[float]],
     ) -> 'Window':
         """
         Create Window from window corner endpoints and room polygon.
@@ -69,8 +69,15 @@ class Window:
         Returns:
             Window instance with projected center and direction normal
         """
+        direction_angle=float(content[RequestField.DIRECTION_ANGLE.value])
         center = ReferencePointCalculator.calculate(
-            x1, y1, z1, x2, y2, z2, room_polygon
+            x1=float(content[RequestField.X1.value]),
+            y1=float(content[RequestField.Y1.value]),
+            z1=float(content[RequestField.Z1.value]),
+            x2=float(content[RequestField.X2.value]),
+            y2=float(content[RequestField.Y2.value]),
+            z2=float(content[RequestField.Z2.value]),
+            room_polygon=content[RequestField.ROOM_POLYGON.value]
         )
         normal = Vector3D.from_horizontal_angle(direction_angle)
         return cls(center=center, normal=normal)

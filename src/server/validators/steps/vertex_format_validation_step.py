@@ -15,24 +15,19 @@ class VertexFormatValidationStep(ValidationStep):
     """Validates individual vertex format for all mesh fields present"""
 
     @classmethod
-    def call(cls, data: Dict[str, Any]) -> None:
+    def call(cls, content: Dict[str, Any]) -> None: # type: ignore
         """Validate each vertex has 3 coordinates in all mesh fields"""
-        mesh_keys: List[str] = []
-
-        if RequestField.MESH.value in data:
-            mesh_keys.append(RequestField.MESH.value)
-        if RequestField.HORIZON_MESH.value in data:
-            mesh_keys.append(RequestField.HORIZON_MESH.value)
-        if RequestField.ZENITH_MESH.value in data:
-            mesh_keys.append(RequestField.ZENITH_MESH.value)
+        mesh_keys: List[RequestField] = [RequestField.MESH, RequestField.HORIZON_MESH, RequestField.ZENITH_MESH]
+        mesh_keys = [k for k in mesh_keys if k.value in content]
+        
 
         for key in mesh_keys:
-            mesh = data[key]
+            mesh = content[key.value]
             if isinstance(mesh, dict):
                 for angle in ANGLES:
                     cls._validate_vertices(mesh.get(angle.value, []), f"{key}.{angle.value}")
             else:
-                cls._validate_vertices(mesh, key)
+                cls._validate_vertices(mesh, key.value)
 
     @classmethod
     def _validate_vertices(cls, mesh: list, label: str) -> None:
