@@ -37,7 +37,8 @@ def main() -> None:
     launcher = ServerLauncher()
     application = launcher.create_application()
     port = int(os.getenv("PORT", 8081))
-    launcher.run_server(application, port=port, debug=True)
+    debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+    launcher.run_server(application, port=port, debug=debug)
 
 
 # Create app instance for gunicorn only when needed
