@@ -53,26 +53,26 @@ class ObstructionRequest:
     def _parse_meshes(cls, content: dict) -> Tuple[Optional[Mesh], Optional[Mesh]]:
         """Detect mesh format and parse accordingly.
 
-        Supports nested format: {"mesh": {"horizon": [...], "zenith": [...]}}
-        and legacy format: {"mesh": [[x,y,z], ...]} (assigned to both).
+        Supports:
+          - Split dict: {"mesh": {"horizon": [...], "zenith": [...]}}
+          - Flat list:  {"mesh": [[x,y,z], ...]} → all triangles go to horizon_mesh
         """
         mesh_data = content.get(RequestField.MESH.value, {})
-        
-        return cls._parse_mesh(mesh_data, ANGLES.HORIZON), cls._parse_mesh(mesh_data, ANGLES.ZENITH)
-    
-    @classmethod
-    def _parse_mesh(cls, mesh_data: dict, angle:ANGLES) -> Optional[Mesh]:
-        """Detect mesh format and parse accordingly.
 
-        Supports nested format: {"mesh": {"horizon": [...], "zenith": [...]}}
-        and legacy format: {"mesh": [[x,y,z], ...]} (assigned to both).
+        # Flat list format: all geometry in one mesh, no horizon/zenith split
+        if isinstance(mesh_data, list):
+            mesh = Mesh.from_vertices(mesh_data) if mesh_data else None
+            return mesh, None
+
+        return cls._parse_mesh(mesh_data, ANGLES.HORIZON), cls._parse_mesh(mesh_data, ANGLES.ZENITH)
+
+    @classmethod
+    def _parse_mesh(cls, mesh_data: dict, angle: ANGLES) -> Optional[Mesh]:
+        """Parse a single mesh from split dict format.
 
         Accepts both string keys ("horizon", "zenith") and enum keys (ANGLES.HORIZON, ANGLES.ZENITH).
         """
-
-        # Try string key first (standard format), then enum key (for backwards compatibility)
         raw = mesh_data.get(angle.value) or mesh_data.get(angle, [])
-
         return Mesh.from_vertices(raw) if raw else None
     
     
