@@ -9,6 +9,7 @@ from concurrent.futures import ProcessPoolExecutor
 logger = logging.getLogger(__name__)
 
 from src.components.calculators.intersection_calculator import IntersectionCalculator
+from src.components.calculators.gap_obstruction_calculator import GapObstructionCalculator, GapObstructionResult
 from src.components.models import ObstructionRequest, ObstructionResult, Window
 
 from src.server.base.constants import ANGLES, ResponseField, ResponseStatus, AllDirectionDefaults
@@ -16,7 +17,13 @@ from src.components.geometry import Mesh
 from src.components.filter import CompositeTriangleFilter, CoarseTriangleFilter, DistanceTriangleFilter, HeightTriangleFilter
 
 
-# Top-level functions for ProcessPoolExecutor (must be picklable)
+# Top-level worker function for ProcessPoolExecutor (must be picklable)
+def _calculate_gap_worker(mesh: Mesh, window: Window, direction_angle: float) -> GapObstructionResult:
+    """Worker function for gap-based obstruction calculation (picklable)"""
+    return GapObstructionCalculator.calculate(mesh, window, direction_angle)
+
+
+# Legacy workers kept for backward compatibility with single-direction endpoints
 def _calculate_horizon_worker(mesh: Mesh, window: Window) -> ObstructionResult:
     """Worker function for horizon calculation (picklable)"""
     return IntersectionCalculator.call(mesh, window, ANGLES.HORIZON)
@@ -31,10 +38,8 @@ class ObstructionService:
     """
     Service orchestrating obstruction calculation operations
 
-    Follows Single Responsibility Principle:
-    - Coordinates projection and obstruction calculations
-    - Does not handle HTTP/request parsing
-    - Does not perform low-level calculations
+    Uses gap-based unified calculation for multi-direction requests.
+    Keeps legacy horizon/zenith split for single-direction endpoints.
     """
 
     # Shared ProcessPoolExecutor for all parallel calculations (Singleton Pattern)
@@ -111,7 +116,7 @@ class ObstructionService:
         start_angle_degrees: float | None = None,
         end_angle_degrees: float | None = None
     ) -> Dict[str, Any]:
-        """Calculate obstruction angles for multiple directions in parallel."""
+        """Calculate obstruction angles for multiple directions using gap-based approach."""
         if num_directions is None:
             num_directions = AllDirectionDefaults.NUM_DIRECTIONS.value
         if start_angle_degrees is None:
@@ -121,12 +126,10 @@ class ObstructionService:
 
         start_time = time.time()
 
-        # Determine if we have split meshes (new format) or single mesh (legacy)
-        is_split = request.horizon_mesh is not request.zenith_mesh
-
-        # Pre-filter each mesh once (coarse filter: remove triangles below/behind window)
-        h_filtered_mesh = cls._coarse_filter_mesh(request.horizon_mesh, request.window, "horizon")
-        z_filtered_mesh = cls._coarse_filter_mesh(request.zenith_mesh, request.window, "zenith")
+        # Combine all meshes into one (no horizon/zenith split needed)
+        combined_mesh = cls._combine_and_filter_meshes(
+            request.horizon_mesh, request.zenith_mesh, request.window
+        )
 
         direction_angles = cls._get_directions(
             request.window, start_angle_degrees, end_angle_degrees, num_directions
@@ -134,8 +137,7 @@ class ObstructionService:
 
         tasks = [
             cls._calculate_direction_async(
-                h_filtered_mesh, z_filtered_mesh, request.window,
-                direction_angle, is_split
+                combined_mesh, request.window, direction_angle
             )
             for direction_angle in direction_angles
         ]
@@ -143,11 +145,54 @@ class ObstructionService:
         results = await asyncio.gather(*tasks)
 
         total_time = time.time() - start_time
-        logger.info(f"[PARALLEL] Calculated {num_directions} directions in {total_time:.2f}s")
+        total_rays = sum(r.get('rays_cast', 0) for r in results)
+        logger.info(
+            f"[GAP-PARALLEL] Calculated {num_directions} directions in {total_time:.2f}s "
+            f"(total rays: {total_rays})"
+        )
 
         return {
             ResponseField.RESULTS.value: results,
         }
+
+    @classmethod
+    def _combine_and_filter_meshes(
+        cls,
+        horizon_mesh: Optional[Mesh],
+        zenith_mesh: Optional[Mesh],
+        window: Window
+    ) -> Mesh:
+        """
+        Combine horizon and zenith meshes into one and apply coarse pre-filter.
+
+        Args:
+            horizon_mesh: Horizon mesh (walls/buildings) or None
+            zenith_mesh: Zenith mesh (roofs/slabs) or None
+            window: Window for filtering
+
+        Returns:
+            Single combined and pre-filtered Mesh
+        """
+        h_tris = horizon_mesh.triangles if horizon_mesh and horizon_mesh.triangles else ()
+        z_tris = zenith_mesh.triangles if zenith_mesh and zenith_mesh.triangles else ()
+
+        # If they're the same object (legacy format), just use one
+        if horizon_mesh is zenith_mesh:
+            all_triangles = h_tris
+        else:
+            all_triangles = h_tris + z_tris
+
+        if not all_triangles:
+            return Mesh(())
+
+        # Apply coarse pre-filter (remove triangles below/behind window)
+        filtered = CoarseTriangleFilter.call(all_triangles, window)
+        removed = len(all_triangles) - len(filtered)
+        logger.debug(
+            f"[PRE-FILTER] Combined mesh: {len(all_triangles)} -> {len(filtered)} "
+            f"triangles (removed {removed})"
+        )
+        return Mesh(filtered)
 
     @classmethod
     def _height_filter_mesh(cls, mesh: Optional[Mesh], window: Window, label: str) -> Optional[Mesh]:
@@ -178,56 +223,46 @@ class ObstructionService:
     @classmethod
     async def _calculate_direction_async(
         cls,
-        horizon_mesh: Optional[Mesh],
-        zenith_mesh: Optional[Mesh],
+        combined_mesh: Mesh,
         window_orig: Window,
         direction_angle: float,
-        is_split: bool,
     ):
-        """Calculate horizon and zenith for a single direction in parallel."""
+        """Calculate obstruction for a single direction using gap-based approach."""
         window = Window.set_angle(window_orig, direction_angle)
 
-        if is_split:
-            # Split format: meshes are already separated by type.
-            # Apply per-direction distance filter but skip surface orientation filter.
-            h_mesh = cls._direction_filter(horizon_mesh, window, ANGLES.HORIZON)
-            z_mesh = cls._direction_filter(zenith_mesh, window, ANGLES.ZENITH)
-        else:
-            # Legacy format: single mesh, use CompositeTriangleFilter to classify surfaces.
-            if horizon_mesh is not None:
-                h_filtered, v_filtered = CompositeTriangleFilter.call(
-                    horizon_mesh.triangles, window
-                )
-                h_mesh = Mesh(h_filtered)
-                z_mesh = Mesh(v_filtered)
-            else:
-                h_mesh = Mesh(())
-                z_mesh = Mesh(())
+        # Per-direction height filter on the combined mesh
+        filtered_mesh = cls._direction_filter_combined(combined_mesh, window)
 
         loop = asyncio.get_event_loop()
         executor = cls._get_process_pool()
 
-        horizon_task = loop.run_in_executor(
-            executor, _calculate_horizon_worker, h_mesh, window
-        )
-        zenith_task = loop.run_in_executor(
-            executor, _calculate_zenith_worker, z_mesh, window
+        gap_result: GapObstructionResult = await loop.run_in_executor(
+            executor, _calculate_gap_worker, filtered_mesh, window, direction_angle
         )
 
-        horizon_result, zenith_result = await asyncio.gather(horizon_task, zenith_task)
+        # Build backward-compatible response with horizon/zenith
+        horizon_result, zenith_result = ObstructionResult.from_gap(
+            horizon_deg=gap_result.horizon_deg,
+            zenith_deg=gap_result.zenith_deg,
+            gap_midpoint_deg=gap_result.gap_midpoint_deg,
+            gap_amplitude_deg=gap_result.gap_amplitude_deg
+        )
 
         return {
             ResponseField.DIRECTION_ANGLE.value: direction_angle,
             ResponseField.HORIZON.value: horizon_result.to_dict(),
             ResponseField.ZENITH.value: zenith_result.to_dict(),
+            'gap_midpoint': gap_result.gap_midpoint_deg,
+            'gap_amplitude': gap_result.gap_amplitude_deg,
+            'rays_cast': gap_result.rays_cast,
         }
 
     @staticmethod
-    def _direction_filter(mesh: Optional[Mesh], window: Window, angle_type: ANGLES) -> Mesh:
-        """Apply height-only filtering for split meshes (no distance heuristics needed)."""
-        if mesh is None or not mesh.triangles:
+    def _direction_filter_combined(mesh: Mesh, window: Window) -> Mesh:
+        """Apply height-only filtering for the combined mesh per direction."""
+        if not mesh.triangles:
             return Mesh(())
-        filtered = HeightTriangleFilter.call(mesh.triangles, window, angle_type)
+        filtered = HeightTriangleFilter.call(mesh.triangles, window, ANGLES.HORIZON)
         return Mesh(filtered)
 
     @classmethod

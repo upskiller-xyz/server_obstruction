@@ -7,7 +7,7 @@ from src.components.models.intersection import IntersectionResult
 logger = logging.getLogger(__name__)
 import time
 import numpy as np
-from typing import Tuple
+from typing import List, Tuple
 
 from src.components.geometry import Mesh, Point3D, Triangle, AngleCalculator
 from src.components.geometry.vertical_plane import VerticalPlane
@@ -171,6 +171,52 @@ class IntersectionCalculator:
         return intersections[ind]
     
     
+    @classmethod
+    def collect_all_elevation_angles(
+        cls,
+        triangles: Tuple[Triangle, ...],
+        window: Window
+    ) -> List[float]:
+        """
+        Collect ALL intersection point elevation angles from ALL triangles.
+
+        Used by the gap-based obstruction calculator. No surface orientation
+        filter (uses all triangles). No max_angle cap. Returns all valid
+        intersection points (0-2 per triangle) as elevation angles in degrees.
+
+        Args:
+            triangles: All triangles (no horizon/zenith split)
+            window: Window with center and normal for this direction
+
+        Returns:
+            Sorted list of elevation angles in degrees (0=horizontal, 90=up)
+        """
+        if not triangles:
+            return []
+
+        plane = VerticalPlane.from_window(window)
+        angles: List[float] = []
+
+        for triangle in triangles:
+            points = PlaneTriangleIntersector.intersect_triangle_with_plane(
+                triangle, plane
+            )
+            for point in points:
+                vertical_distance = point.z - window.center.z
+                if vertical_distance <= 0:
+                    continue
+                horizontal_distance = PlaneTriangleIntersector._horizontal_distance(
+                    point, window
+                )
+                if horizontal_distance < 0:
+                    continue
+                elevation_deg = float(np.degrees(
+                    np.arctan2(vertical_distance, horizontal_distance)
+                ))
+                angles.append(elevation_deg)
+
+        return sorted(angles)
+
     @classmethod
     def _no_intersection(cls)->IntersectionResult:
         return IntersectionResult(None, 0)
