@@ -1,6 +1,6 @@
 """Server-side decorators for endpoint handlers"""
 from functools import wraps
-from typing import Callable, Any, Dict, Type, Optional
+from typing import Callable, Any, Type, Optional
 from flask import request, jsonify
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 from pydantic import BaseModel, ValidationError
@@ -10,7 +10,6 @@ import logging
 from src.server.base.constants import ResponseField, HTTPStatus
 from src.server.enums import EndpointType
 
-logger = logging.getLogger(__name__)
 
 
 def endpoint_error_handler(
@@ -79,7 +78,7 @@ def endpoint_error_handler(
                 return func(*args, data, **kwargs)
             except BadRequest as e:
                 # Log bad request error
-                logger.error(f"{endpoint.value} bad request: {str(e)}")
+                logging.error(f"{endpoint.value} bad request: {str(e)}")
                 return jsonify({
                     ResponseField.ERROR.value: str(e)
                 }), HTTPStatus.BAD_REQUEST.value
@@ -89,20 +88,20 @@ def endpoint_error_handler(
                     f"{error['loc'][0]}: {error['msg']}"
                     for error in e.errors()
                 ])
-                logger.error(f"{endpoint.value} validation error: {error_msgs}")
+                logging.error(f"{endpoint.value} validation error: {error_msgs}")
                 return jsonify({
                     ResponseField.ERROR.value: f"Validation error: {error_msgs}"
                 }), HTTPStatus.BAD_REQUEST.value
             except ValueError as e:
                 # Log validation error
-                logger.error(f"{endpoint.value} error: {str(e)}")
+                logging.error(f"{endpoint.value} error: {str(e)}")
                 return jsonify({
                     ResponseField.ERROR.value: str(e)
                 }), HTTPStatus.BAD_REQUEST.value
             except Exception as e:
                 # Log unexpected error with traceback
                 error_trace = traceback.format_exc()
-                logger.error(
+                logging.error(
                     f"{endpoint.value} failed: {str(e)}\n"
                     f"Error type: {type(e).__name__}\n"
                     f"Traceback:\n{error_trace}"

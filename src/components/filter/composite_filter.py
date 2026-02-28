@@ -5,7 +5,6 @@ Optimized to filter for both angle types in a single pass.
 """
 
 from typing import Tuple
-import logging
 
 from src.components.geometry import Triangle
 from src.server.base.constants import ANGLES
@@ -13,8 +12,6 @@ from src.components.models import Window
 from src.components.filter.distance_filter import DistanceTriangleFilter
 from src.components.filter.within_distance_filter import WithinDistanceFilter
 from src.utils.settings import Settings
-
-logger = logging.getLogger(__name__)
 
 
 class CompositeTriangleFilter(DistanceTriangleFilter):
@@ -53,10 +50,5 @@ class CompositeTriangleFilter(DistanceTriangleFilter):
         # Build results
         h_filtered = cls._build_filtered_list(triangles, above_mask & h_mask)
         z_filtered = cls._build_filtered_list(triangles, above_mask & z_mask)
-
-        # logger.info(
-        #     f"        [COMPOSITE-FILTER] Kept {len(h_filtered)} horizon, "
-        #     f"{len(z_filtered)} zenith from {len(triangles)} triangles"
-        # )
 
         return (h_filtered, z_filtered)

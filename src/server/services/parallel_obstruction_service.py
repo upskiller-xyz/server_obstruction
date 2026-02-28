@@ -1,57 +1,29 @@
+"""Parallel obstruction service for multi-direction calculations"""
+
 import asyncio
 import math
 import time
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import aiohttp
-import numpy as np
-from src.server.interfaces import ILogger
-from src.components.obstruction_models import ObstructionRequest
-from src.components.direction_calculator import DirectionCalculator
-from src.components.geometry import Vector3D
-from src.server.base.constants import ResponseField, AllDirectionDefaults
-
-
-class ParallelRequestBuilder:
-    """
-    Builder Pattern implementation for constructing parallel request payloads
-
-    Responsibilities:
-    - Build request payloads for microservice calls
-    - Format mesh data
-    - Include authorization headers
-    """
-
-    @staticmethod
-    def build_single_direction_payload(
-        x: float,
-        y: float,
-        z: float,
-        direction_angle: float,
-        mesh_vertices: List[List[float]]
-    ) -> Dict[str, Any]:
-        """
-        Build payload for single direction request
-
-        Args:
-            x, y, z: Window position coordinates
-            direction_angle: Absolute direction in radians
-            mesh_vertices: 3D mesh geometry
-
-        Returns:
-            Dictionary payload for HTTP request
-        """
-        return {
-            "x": x,
-            "y": y,
-            "z": z,
-            "direction_angle": direction_angle,
-            "mesh": mesh_vertices
-        }
+import logging
+from src.components.calculators.direction_calculator import DirectionCalculator
+from src.components.models.obstruction_request import ObstructionRequest
+from src.server.base.constants import ResponseField
+from src.server.services.http_header_builder import HTTPHeaderBuilder
+from src.server.services.request_builder import ParallelRequestBuilder
+from src.server.services.result_assembler import ParallelResultAssembler
 
 
 class ParallelObstructionService:
     """
     Service for calculating obstructions in parallel across multiple directions
+
+    Single Responsibility:
+    - Coordinates parallel microservice calls
+    - Delegates header building to HTTPHeaderBuilder
+    - Delegates payload building to ParallelRequestBuilder
+    - Delegates result assembly to ParallelResultAssembler
 
     Uses Strategy Pattern:
     - Async HTTP requests via aiohttp
@@ -59,14 +31,12 @@ class ParallelObstructionService:
 
     Follows OOP principles:
     - Encapsulates parallel request logic
-    - Single Responsibility: coordinate parallel microservice calls
-    - Dependency Injection: logger and microservice URL
+    - Dependency Injection: microservice URL
     """
 
     def __init__(
         self,
         microservice_url: str,
-        logger: ILogger,
         auth_token: Optional[str] = None
     ):
         """
@@ -74,11 +44,9 @@ class ParallelObstructionService:
 
         Args:
             microservice_url: Base URL of obstruction microservice
-            logger: Structured logger
             auth_token: Optional bearer token for GCP authentication
         """
         self._microservice_url = microservice_url
-        self._logger = logger
         self._auth_token = auth_token
         self._request_builder = ParallelRequestBuilder()
 
@@ -106,14 +74,14 @@ class ParallelObstructionService:
             Dictionary with horizon/zenith angles and highest points
         """
         # Build payload using Builder Pattern
-        payload = self._request_builder.build_single_direction_payload(
-            x, y, z, direction_angle, mesh_vertices
+        payload = self._request_builder.build_payload(
+            x=x, y=y, z=z,
+            direction_angle=direction_angle,
+            mesh_vertices=mesh_vertices
         )
 
-        # Prepare headers with optional auth
-        headers = {"Content-Type": "application/json"}
-        if self._auth_token:
-            headers["Authorization"] = f"Bearer {self._auth_token}"
+        # Build headers using HTTPHeaderBuilder
+        headers = HTTPHeaderBuilder.build_headers(auth_token=self._auth_token)
 
         try:
             start_time = time.time()
@@ -128,7 +96,7 @@ class ParallelObstructionService:
                 result = await response.json()
 
             elapsed_ms = (time.time() - start_time) * 1000
-            self._logger.info(
+            logging.info(
                 f"[PARALLEL] Direction {direction_index} "
                 f"({math.degrees(direction_angle):.1f}°) completed in {elapsed_ms:.2f}ms"
             )
@@ -141,7 +109,7 @@ class ParallelObstructionService:
             }
 
         except aiohttp.ClientError as e:
-            self._logger.error(
+            logging.error(
                 f"[PARALLEL] Direction {direction_index} failed: HTTP error {str(e)}"
             )
             return {
@@ -150,7 +118,7 @@ class ParallelObstructionService:
                 "error": str(e)
             }
         except Exception as e:
-            self._logger.error(
+            logging.error(
                 f"[PARALLEL] Direction {direction_index} failed: {str(e)}"
             )
             return {
@@ -162,9 +130,9 @@ class ParallelObstructionService:
     async def calculate_all_directions_parallel(
         self,
         request: ObstructionRequest,
-        num_directions: int = None,
-        start_angle_degrees: float = None,
-        end_angle_degrees: float = None
+        num_directions: int = 64,
+        start_angle_degrees: float = 17.5,
+        end_angle_degrees: float = 162.5
     ) -> Dict[str, Any]:
         """
         Calculate obstruction angles for 64 directions in parallel
@@ -193,10 +161,10 @@ class ParallelObstructionService:
         )
 
         # Extract mesh vertices for payload
-        mesh_vertices = [[v.x, v.y, v.z] for triangle in request.mesh.triangles
+        mesh_vertices = [[v.x, v.y, v.z] for triangle in request.mesh.triangles # type: ignore
                         for v in [triangle.v1, triangle.v2, triangle.v3]]
 
-        self._logger.info(
+        logging.info(
             f"[PARALLEL] Starting parallel calculation for {len(direction_angles)} directions"
         )
 
@@ -221,41 +189,15 @@ class ParallelObstructionService:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
         total_time = time.time() - start_time
-        self._logger.info(
+        logging.info(
             f"[PARALLEL] Completed {len(direction_angles)} directions in {total_time:.2f}s"
         )
 
-        # Assemble results into arrays (Result assembly pattern)
-        horizon_angles = []
-        zenith_angles = []
-        direction_angles_degrees = []
-
-        for result in results:
-            if isinstance(result, Exception):
-                self._logger.error(f"[PARALLEL] Task raised exception: {str(result)}")
-                continue
-
-            if "error" in result:
-                continue
-
-            direction_angles_degrees.append(result[ResponseField.DIRECTION_ANGLE_DEGREES.value])
-
-            horizon_data = result.get(ResponseField.HORIZON.value)
-            if horizon_data:
-                horizon_angles.append(horizon_data.get("obstruction_angle_degrees", 0.0))
-
-            zenith_data = result.get(ResponseField.ZENITH.value)
-            if zenith_data:
-                zenith_angles.append(zenith_data.get("obstruction_angle_degrees", 0.0))
-
-        return {
-            ResponseField.RESULTS.value: results,
-            "horizon_angles": horizon_angles,
-            "zenith_angles": zenith_angles,
-            "direction_angles_degrees": direction_angles_degrees,
-            "num_directions": len(results),
-            "total_time_seconds": total_time
-        }
+        # Delegate result assembly to ResultAssembler
+        return ParallelResultAssembler.assemble_results(
+            results=results,
+            total_time=total_time
+        )
 
 
 class ParallelObstructionServiceFactory:
@@ -268,7 +210,6 @@ class ParallelObstructionServiceFactory:
     @staticmethod
     def create_service(
         microservice_url: str,
-        logger: ILogger,
         auth_token: Optional[str] = None
     ) -> ParallelObstructionService:
         """
@@ -276,7 +217,6 @@ class ParallelObstructionServiceFactory:
 
         Args:
             microservice_url: Base URL of microservice
-            logger: Logger instance
             auth_token: Optional authentication token
 
         Returns:
@@ -284,6 +224,5 @@ class ParallelObstructionServiceFactory:
         """
         return ParallelObstructionService(
             microservice_url=microservice_url,
-            logger=logger,
             auth_token=auth_token
         )

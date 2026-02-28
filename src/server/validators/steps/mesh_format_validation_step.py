@@ -11,8 +11,6 @@ import logging
 from src.server.base.constants import ANGLES, RequestField
 from src.server.validators.steps.validation_step import ValidationStep
 
-logger = logging.getLogger(__name__)
-
 
 class MeshFormatValidationStep(ValidationStep):
     """Validates mesh format and structure for all mesh fields present"""
@@ -60,7 +58,7 @@ class MeshFormatValidationStep(ValidationStep):
             extra_vertices = len(mesh) % 3
             original_count = len(mesh)
             del mesh[-extra_vertices:]
-            logger.warning(
+            logging.warning(
                 f"{label} had {original_count} vertices (not divisible by 3). "
                 f"Trimmed {extra_vertices} extra vertex/vertices. "
                 f"Proceeding with {len(mesh)} vertices."

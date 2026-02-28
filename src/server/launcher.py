@@ -3,9 +3,6 @@ import logging
 from src.server.application import ServerApplication
 
 
-logger = logging.getLogger(__name__)
-
-
 class ServerLauncher:
     """Launcher class for the server application"""
 

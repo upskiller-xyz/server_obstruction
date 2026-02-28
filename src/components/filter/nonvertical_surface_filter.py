@@ -4,12 +4,9 @@ Vertical surface filtering for horizon calculations
 Filters out horizontal surfaces like roofs, keeping only walls and vertical obstructions.
 """
 
-import logging
 
 from src.components.geometry import Triangle
 from src.components.filter import VerticalSurfaceFilter
-
-logger = logging.getLogger(__name__)
 
 
 class NonVerticalSurfaceFilter(VerticalSurfaceFilter):

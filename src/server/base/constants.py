@@ -10,6 +10,25 @@ class ANGLES(ExtendedEnumMixin, Enum):
     HORIZON = "horizon"
 
 
+class BoundaryDirection(ExtendedEnumMixin, Enum):
+    """Direction for binary boundary search"""
+    LOWER = "lower"  # Search for lower boundary (horizon)
+    UPPER = "upper"  # Search for upper boundary (zenith)
+
+
+class GapVerificationStatus(ExtendedEnumMixin, Enum):
+    """Status of gap verification"""
+    SKY_FOUND = "sky_found"
+    OBSTRUCTED = "obstructed"
+
+
+class ObstructionStatus(ExtendedEnumMixin, Enum):
+    """Overall obstruction status"""
+    FULLY_OBSTRUCTED = "fully_obstructed"
+    PARTIALLY_OBSTRUCTED = "partially_obstructed"
+    NO_OBSTRUCTION = "no_obstruction"
+
+
 class TriangleOrientation(ExtendedEnumMixin, Enum):
     """Triangle surface orientation types"""
     VERTICAL = "vertical"  # Walls, vertical surfaces
@@ -48,6 +67,20 @@ class ContentType(ExtendedEnumMixin, Enum):
     TEXT = "text/plain"
     HTML = "text/html"
     XML = "application/xml"
+
+
+class HTTPHeader(ExtendedEnumMixin, Enum):
+    """HTTP header names"""
+    CONTENT_TYPE = "Content-Type"
+    AUTHORIZATION = "Authorization"
+    ACCEPT = "Accept"
+    USER_AGENT = "User-Agent"
+
+
+class AuthScheme(ExtendedEnumMixin, Enum):
+    """Authentication scheme prefixes"""
+    BEARER = "Bearer"
+    BASIC = "Basic"
 
 
 class EndpointName(ExtendedEnumMixin, Enum):

@@ -1,17 +1,17 @@
 """Simplified obstruction controller using Strategy Pattern"""
 
-from typing import Dict, Any
 import asyncio
 import logging
+from typing import Any, Dict
+
+from src.components.models import ObstructionRequest
+from src.server.base.constants import EndpointName, OptionalRequestField, RequestField
+from src.server.base.errors import PointOnTriangleError
+from src.server.builders import ErrorResponseBuilder
 from src.server.controllers.endpoint_config import ServiceMethod
 from src.server.maps import EndpointResponseMap
 from src.server.services.obstruction_service import ObstructionService
-from src.server.builders import ErrorResponseBuilder
 from src.server.validators.request_validator import RequestValidator
-from src.components.models import ObstructionRequest
-from src.server.base.constants import (RequestField, OptionalRequestField,  EndpointName
-)
-from src.server.base.errors import PointOnTriangleError
 
 logger = logging.getLogger(__name__)
 

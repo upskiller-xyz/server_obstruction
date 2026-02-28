@@ -13,8 +13,6 @@ from src.server.base.constants import ANGLES
 from src.components.models import Window
 from src.components.filter.base_filter import TriangleFilter
 
-logger = logging.getLogger(__name__)
-
 
 class HeightTriangleFilter(TriangleFilter):
     """
@@ -51,7 +49,7 @@ class HeightTriangleFilter(TriangleFilter):
 
         kept = int(above_mask.sum())
         removed = len(triangles) - kept
-        logger.debug(
+        logging.debug(
             f"        [HEIGHT-FILTER] Kept {kept}/{len(triangles)} — "
             f"Filtered: {removed} below window"
         )
