@@ -19,40 +19,6 @@ class MeshFilterService:
     """
 
     @staticmethod
-    def combine_and_filter(
-        horizon_mesh: Optional[Mesh],
-        zenith_mesh: Optional[Mesh],
-        window: Window
-    ) -> Mesh:
-        """
-        Combine horizon and zenith meshes and apply coarse pre-filter
-
-        Args:
-            horizon_mesh: Horizon mesh (walls/buildings) or None
-            zenith_mesh: Zenith mesh (roofs/slabs) or None
-            window: Window for filtering
-
-        Returns:
-            Single combined and pre-filtered Mesh
-        """
-        h_tris = horizon_mesh.triangles if horizon_mesh and horizon_mesh.triangles else ()
-        z_tris = zenith_mesh.triangles if zenith_mesh and zenith_mesh.triangles else ()
-
-        all_triangles = h_tris + z_tris
-
-        if not all_triangles:
-            return Mesh(())
-
-        # Apply coarse pre-filter (remove triangles below/behind window)
-        filtered = CoarseTriangleFilter.call(all_triangles, window)
-        removed = len(all_triangles) - len(filtered)
-        logging.debug(
-            f"[PRE-FILTER] Combined mesh: {len(all_triangles)} -> {len(filtered)} "
-            f"triangles (removed {removed})"
-        )
-        return Mesh(filtered)
-
-    @staticmethod
     def apply_height_filter(
         mesh: Mesh,
         window: Window
@@ -68,7 +34,7 @@ class MeshFilterService:
             Filtered mesh
         """
         if not mesh.triangles:
-            return Mesh(())
+            return Mesh.empty()
 
         filtered = HeightTriangleFilter.call(mesh.triangles, window, ANGLES.HORIZON)
         return Mesh(filtered)
@@ -78,7 +44,7 @@ class MeshFilterService:
         mesh: Optional[Mesh],
         window: Window,
         label: str = ""
-    ) -> Optional[Mesh]:
+    ) -> Mesh:
         """
         Apply coarse triangle filter to a mesh
 
@@ -91,7 +57,7 @@ class MeshFilterService:
             Filtered mesh or None
         """
         if mesh is None:
-            return None
+            return Mesh.empty()
 
         coarse_filtered = CoarseTriangleFilter.call(mesh.triangles, window)
         removed = len(mesh.triangles) - len(coarse_filtered)

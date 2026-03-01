@@ -1,8 +1,8 @@
 """
-Height-only triangle filtering for pre-separated mesh obstruction calculations.
+Height-only triangle filtering for obstruction calculations.
 
-When meshes are already separated by type (horizon_mesh / zenith_mesh),
-the distance-based filtering is unnecessary — only height matters.
+Filters triangles based on their height (Z-axis extent).
+Removes triangles that are too short to be relevant for obstruction analysis.
 """
 
 from typing import Tuple

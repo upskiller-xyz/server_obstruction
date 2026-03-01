@@ -2,7 +2,7 @@
 Mesh format validation step
 
 Validates mesh format and structure.
-Supports both split (horizon_mesh/zenith_mesh) and legacy (mesh) formats.
+Accepts a single mesh parameter with combined geometry.
 """
 
 from typing import Dict, Any, List
@@ -18,7 +18,7 @@ class MeshFormatValidationStep(ValidationStep):
     @classmethod
     def call(cls, content: Dict[str, Any]) -> None: # type: ignore
         """Validate mesh(es) are lists with proper structure"""
-        mesh_keys: List[RequestField] = [RequestField.MESH, RequestField.HORIZON_MESH, RequestField.ZENITH_MESH]
+        mesh_keys: List[RequestField] = [RequestField.MESH]
         mesh_keys = [k for k in mesh_keys if k.value in content]
         
         _ = [cls._validate_single_mesh(content, key) for key in mesh_keys]

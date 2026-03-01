@@ -22,9 +22,7 @@ class WindowNotOnMeshValidationStep(ValidationStep):
 
         # Collect all mesh keys present in request
         mesh_keys = [
-            RequestField.MESH.value,
-            RequestField.HORIZON_MESH.value,
-            RequestField.ZENITH_MESH.value,
+            RequestField.MESH.value
         ]
 
         for key in mesh_keys:

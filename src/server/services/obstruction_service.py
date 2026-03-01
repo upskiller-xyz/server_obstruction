@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from src.components.calculators.direction_calculator import DirectionCalculator
 from src.components.calculators.intersection_calculator import IntersectionCalculator
+from src.components.geometry.mesh import Mesh
 from src.components.models import ObstructionRequest, ObstructionResult
 from src.server.base.constants import ANGLES, AllDirectionDefaults, ResponseField, ResponseStatus
 from src.server.services.async_direction_calculator import AsyncDirectionCalculator
@@ -36,45 +37,45 @@ class ObstructionService:
     @classmethod
     def calculate_horizon(cls, request: ObstructionRequest) -> ObstructionResult:
         """
-        Calculate horizon obstruction angle using horizon_mesh
+        Calculate horizon obstruction angle using mesh
 
         Args:
-            request: Obstruction request with horizon_mesh
+            request: Obstruction request with mesh
 
         Returns:
             ObstructionResult with horizon angle
         """
-        if request.horizon_mesh is None:
+        if request.mesh is None:
             return ObstructionResult.no_obstruction()
 
         logging.debug(
             f"[CALC-START] Horizon calculation with "
-            f"{len(request.horizon_mesh.triangles)} triangles"
+            f"{len(request.mesh.triangles)} triangles"
         )
         return IntersectionCalculator.call(
-            request.horizon_mesh, request.window, ANGLES.HORIZON
+            request.mesh, request.window, ANGLES.HORIZON
         )
 
     @classmethod
     def calculate_zenith_angle(cls, request: ObstructionRequest) -> ObstructionResult:
         """
-        Calculate zenith obstruction angle using zenith_mesh
+        Calculate zenith obstruction angle using mesh
 
         Args:
-            request: Obstruction request with zenith_mesh
+            request: Obstruction request with mesh
 
         Returns:
             ObstructionResult with zenith angle
         """
-        if request.zenith_mesh is None:
+        if request.mesh is None:
             return ObstructionResult.no_obstruction()
 
         logging.debug(
             f"[CALC-START] Zenith calculation with "
-            f"{len(request.zenith_mesh.triangles)} triangles"
+            f"{len(request.mesh.triangles)} triangles"
         )
         return IntersectionCalculator.call(
-            request.zenith_mesh, request.window, angle_type=ANGLES.ZENITH
+            request.mesh, request.window, angle_type=ANGLES.ZENITH
         )
 
     @classmethod
@@ -124,9 +125,7 @@ class ObstructionService:
             end_angle_degrees = AllDirectionDefaults.END_ANGLE_DEGREES.value
 
         # Delegate mesh combining and filtering to MeshFilterService
-        combined_mesh = MeshFilterService.combine_and_filter(
-            request.horizon_mesh, request.zenith_mesh, request.window
-        )
+        mesh = MeshFilterService.apply_coarse_filter(request.mesh, request.window)
 
         # Delegate direction calculation to DirectionCalculator
         normal_arr = request.window.normal.to_array()
@@ -142,7 +141,7 @@ class ObstructionService:
         # Create async tasks for all directions
         tasks = [
             AsyncDirectionCalculator.calculate(
-                combined_mesh,
+                mesh,
                 request.window,
                 float(direction_angle),
                 self._pool_manager

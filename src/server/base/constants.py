@@ -146,12 +146,8 @@ class RequestField(ExtendedEnumMixin, Enum):
     # Direction field
     DIRECTION_ANGLE = "direction_angle"
 
-    # Mesh (legacy single mesh — kept for backward compatibility)
+    # Mesh (single combined mesh with all geometry)
     MESH = "mesh"
-
-    # Split meshes (new format: caller separates geometry by type)
-    HORIZON_MESH = "horizon_mesh"
-    ZENITH_MESH = "zenith_mesh"
 
 CENTER_WINDOW_FIELDS= frozenset([
     RequestField.X.value,

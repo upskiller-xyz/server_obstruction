@@ -3,7 +3,7 @@ Multi-direction required fields validation step
 
 Validates required fields for multi-direction requests (no direction_angle required).
 Supports both center format (x, y, z) and endpoint format (x1..z2 + room_polygon).
-Supports split mesh (horizon_mesh/zenith_mesh) and legacy mesh formats.
+Accepts single mesh parameter with combined geometry.
 """
 
 from typing import Dict, Any
@@ -16,8 +16,6 @@ def _has_any_mesh(data: Dict[str, Any]) -> bool:
     """Check if the request has mesh data in any supported format."""
     return (
         RequestField.MESH.value in data
-        or RequestField.HORIZON_MESH.value in data
-        or RequestField.ZENITH_MESH.value in data
     )
 
 
@@ -36,7 +34,7 @@ class MultiDirectionRequiredFieldsValidationStep(ValidationStep):
         missing_fields = [field for field in window_fields if field not in data]
 
         if not _has_any_mesh(data):
-            missing_fields.append("mesh or horizon_mesh/zenith_mesh")
+            missing_fields.append("mesh")
 
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
