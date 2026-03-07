@@ -18,11 +18,7 @@
                 SwaggerUIBundle.presets.apis,
                 SwaggerUIBundle.SwaggerUIStandalonePreset
             ],
-            layout: "BaseLayout",
-            requestInterceptor: (request) => {
-                request.headers['X-API-Version'] = '1.0.0';
-                return request;
-            }
+            layout: "BaseLayout"
         })
     }
     </script>

@@ -14,9 +14,6 @@ from src.components.models import ObstructionResult, Window
 from src.components.models.intersection import IntersectionResult
 from src.server.base.constants import ANGLES
 
-logger = logging.getLogger(__name__)
-
-
 class IntersectionCalculator:
     """
     Horizon/Zenith obstruction calculator using plane-triangle intersections
@@ -86,7 +83,7 @@ class IntersectionCalculator:
         algo_start = time.time()
 
         if not triangles:
-            logger.debug("No triangles provided")
+            logging.debug("No triangles provided")
             return cls._no_intersection()
 
         # Get appropriate filter using Strategy Pattern
@@ -94,7 +91,7 @@ class IntersectionCalculator:
         relevant_triangles = filter_class.call(triangles, window, angle_type)
 
         if not relevant_triangles:
-            logger.debug("No relevant triangles after filtering")
+            logging.debug("No relevant triangles after filtering")
             return cls._no_intersection()
 
         plane = VerticalPlane.from_window(window)
@@ -126,12 +123,12 @@ class IntersectionCalculator:
 
         if best_result.point is None or best_result.angle == 0.0:
             total_time = (time.time() - algo_start) * 1000
-            logger.debug(f"No valid angles found, total time: {total_time:.2f}ms")
+            logging.debug(f"No valid angles found, total time: {total_time:.2f}ms")
             return cls._no_intersection()
 
         total_time = (time.time() - algo_start) * 1000
-        logger.debug(f"✓ TOTAL TIME: {total_time:.2f}ms")
-        logger.debug(
+        logging.debug(f"✓ TOTAL TIME: {total_time:.2f}ms")
+        logging.debug(
             f"Final angle: {best_result.angle}\nFinal point: {best_result.point}"
         )
         return best_result

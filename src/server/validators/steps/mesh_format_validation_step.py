@@ -8,7 +8,7 @@ Accepts a single mesh parameter with combined geometry.
 from typing import Dict, Any, List
 import logging
 
-from src.server.base.constants import ANGLES, RequestField
+from src.server.base.constants import RequestField
 from src.server.validators.steps.validation_step import ValidationStep
 
 
@@ -27,23 +27,12 @@ class MeshFormatValidationStep(ValidationStep):
     def _validate_single_mesh(cls, data: Dict[str, Any], key: RequestField) -> None:
         """Validate a single mesh field.
 
-        Accepts either:
-        - A flat list of vertices: [[x,y,z], ...]
-        - A nested dict with horizon/zenith: {"horizon": [...], "zenith": [...]}
+        Accepts only a flat list of vertices: [[x, y, z], ...]
         """
         mesh = data[key.value]
 
-        if isinstance(mesh, dict):
-            for angle in ANGLES:
-                sub_mesh = mesh.get(angle.value, [])
-                if not isinstance(sub_mesh, list):
-                    raise ValueError(f"{key.value}.{angle.value} must be a list of vertices")
-                cls._validate_vertex_count(sub_mesh, f"{key.value}.{angle.value}")
-                mesh[angle.value] = sub_mesh
-            return
-
         if not isinstance(mesh, list):
-            raise ValueError(f"{key.value} must be a list of vertices or a dict with horizon/zenith")
+            raise ValueError(f"{key.value} must be a list of vertices")
 
         cls._validate_vertex_count(mesh, key.value)
         data[key.value] = mesh
