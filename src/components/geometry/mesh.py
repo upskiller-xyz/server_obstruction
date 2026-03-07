@@ -17,7 +17,8 @@ class Mesh:
     triangles: Tuple[Triangle, ...]
 
     @classmethod
-    def empty(cls)->'Mesh':
+    def empty(cls) -> 'Mesh':
+        """Create an empty mesh with no triangles."""
         return cls(())
 
     @classmethod

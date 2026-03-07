@@ -4,6 +4,7 @@ from typing import Any, Dict
 
 from flask import Response, jsonify
 
+from src.__version__ import version
 from src.server.base.constants import HTTPMethod, ResponseStatus
 from src.server.controllers.obstruction_controller import ObstructionController
 from src.server.openapi import OpenAPISpecGenerator
@@ -68,7 +69,7 @@ class DocumentationController:
         spec = OpenAPISpecGenerator.generate_spec(
             title="Obstruction Calculation API",
             description="Service for calculating horizon and zenith obstruction angles from 3D mesh data",
-            version="1.0.0",
+            version=version,
             base_url="/"
         )
         return jsonify(spec)

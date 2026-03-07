@@ -54,7 +54,7 @@ class MeshFilterService:
             label: Label for logging
 
         Returns:
-            Filtered mesh or None
+            Filtered mesh (empty Mesh if input is None)
         """
         if mesh is None:
             return Mesh.empty()

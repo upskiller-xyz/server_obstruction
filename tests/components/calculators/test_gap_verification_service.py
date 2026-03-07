@@ -35,52 +35,52 @@ class TestGapVerificationService:
         """Prepare triangle arrays for ray casting"""
         return RayTriangleIntersector.prepare_arrays([obstructing_triangle])
 
-    # def test_verify_gap_finds_sky(self, service, tri_arrays):
-    #     """Test that service finds sky in a valid gap"""
-    #     origin = np.array([0.0, 0.0, 0.0])
-    #     direction_angle = 0.0
+    def test_verify_gap_finds_sky(self, service, tri_arrays):
+        """Test that service finds sky in a valid gap"""
+        origin = np.array([0.0, 0.0, 0.0])
+        direction_angle = 0.0
 
-    #     # Gap between 40-90 degrees should be clear
-    #     result = service.verify_gap(
-    #         gap_low=40.0,
-    #         gap_high=90.0,
-    #         origin=origin,
-    #         direction_angle=direction_angle,
-    #         tri_arrays=tri_arrays,
-    #         precision=1.0
-    #     )
+        # Gap between 40-90 degrees should be clear (triangle is at z=3, ~17 deg elevation)
+        result = service.verify_gap(
+            gap_low=40.0,
+            gap_high=90.0,
+            origin=origin,
+            direction_angle=direction_angle,
+            tri_arrays=tri_arrays,
+            precision=1.0
+        )
 
-    #     assert result.status == GapVerificationStatus.SKY_FOUND
-    #     assert result.horizon_deg is not None
-    #     assert result.zenith_deg is not None
-    #     assert result.rays_cast > 1  # Initial test + binary searches
+        assert result.status == GapVerificationStatus.SKY_FOUND
+        assert result.horizon_deg is not None
+        assert result.zenith_deg is not None
+        assert result.rays_cast > 1  # Initial test + binary searches
 
-    # def test_verify_gap_detects_obstruction(self, service):
-    #     """Test that service detects obstruction in gap midpoint"""
-    #     # Create triangle that obstructs 40-50 degree range
-    #     triangle = Triangle(
-    #         Point3D(0.0, -10.0, 8.0),
-    #         Point3D(10.0, 0.0, 8.0),
-    #         Point3D(0.0, 10.0, 8.0)
-    #     )
-    #     tri_arrays = RayTriangleIntersector.prepare_arrays([triangle])
-    #     origin = np.array([0.0, 0.0, 0.0])
-    #     direction_angle = 0.0
+    def test_verify_gap_detects_obstruction(self, service):
+        """Test that service detects obstruction in gap midpoint"""
+        # Triangle at z=8 obstructs ~39 deg elevation; midpoint of gap 35-50 is 42.5 deg (above triangle)
+        triangle = Triangle(
+            Point3D(0.0, -10.0, 8.0),
+            Point3D(10.0, 0.0, 8.0),
+            Point3D(0.0, 10.0, 8.0)
+        )
+        tri_arrays = RayTriangleIntersector.prepare_arrays([triangle])
+        origin = np.array([0.0, 0.0, 0.0])
+        direction_angle = 0.0
 
-    #     # Test gap that contains obstruction
-    #     result = service.verify_gap(
-    #         gap_low=35.0,
-    #         gap_high=50.0,
-    #         origin=origin,
-    #         direction_angle=direction_angle,
-    #         tri_arrays=tri_arrays,
-    #         precision=1.0
-    #     )
+        # Test gap whose midpoint is obstructed
+        result = service.verify_gap(
+            gap_low=35.0,
+            gap_high=50.0,
+            origin=origin,
+            direction_angle=direction_angle,
+            tri_arrays=tri_arrays,
+            precision=1.0
+        )
 
-    #     assert result.status == GapVerificationStatus.OBSTRUCTED
-    #     assert result.horizon_deg is None
-    #     assert result.zenith_deg is None
-    #     assert result.rays_cast == 1  # Only initial test ray
+        assert result.status == GapVerificationStatus.OBSTRUCTED
+        assert result.horizon_deg is None
+        assert result.zenith_deg is None
+        assert result.rays_cast == 1  # Only initial test ray
 
     def test_verify_gap_with_empty_mesh(self, service):
         """Test verification with no obstructions"""

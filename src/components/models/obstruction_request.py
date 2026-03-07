@@ -55,7 +55,10 @@ class ObstructionRequest:
         Raises:
           ValueError: if mesh is present but not a list.
         """
-        mesh_data = content.get(RequestField.MESH.value, {})
+        mesh_data = content.get(RequestField.MESH.value)
+
+        if mesh_data is None:
+            return None
 
         # List format: all geometry in one mesh
         if isinstance(mesh_data, list):

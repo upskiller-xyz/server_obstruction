@@ -2,6 +2,7 @@
 
 import logging
 import multiprocessing
+import threading
 from concurrent.futures import ProcessPoolExecutor
 from typing import Optional
 
@@ -18,6 +19,7 @@ class ProcessPoolManager:
     _instance: Optional['ProcessPoolManager'] = None
     _process_pool: Optional[ProcessPoolExecutor] = None
     _max_workers: Optional[int] = None
+    _lock: threading.Lock = threading.Lock()
 
     def __new__(cls):
         """Singleton pattern - only one instance"""
@@ -27,15 +29,17 @@ class ProcessPoolManager:
 
     @classmethod
     def get_pool(cls) -> ProcessPoolExecutor:
-        """Get or create shared ProcessPoolExecutor instance"""
+        """Get or create shared ProcessPoolExecutor instance (thread-safe)"""
         if cls._process_pool is None:
-            cpu_count = multiprocessing.cpu_count()
-            cls._max_workers = max(2, cpu_count - 1)
-            cls._process_pool = ProcessPoolExecutor(max_workers=cls._max_workers)
-            logging.debug(
-                f"[PARALLEL-INIT] Created ProcessPoolExecutor with {cls._max_workers} "
-                f"workers (CPU count: {cpu_count})"
-            )
+            with cls._lock:
+                if cls._process_pool is None:
+                    cpu_count = multiprocessing.cpu_count()
+                    cls._max_workers = max(2, cpu_count - 1)
+                    cls._process_pool = ProcessPoolExecutor(max_workers=cls._max_workers)
+                    logging.debug(
+                        f"[PARALLEL-INIT] Created ProcessPoolExecutor with {cls._max_workers} "
+                        f"workers (CPU count: {cpu_count})"
+                    )
         return cls._process_pool
 
     @classmethod
