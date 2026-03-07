@@ -8,8 +8,6 @@ from src.server.validators.geometry_validator import GeometryValidator
 
 from src.components.geometry import Point3D, Mesh
 
-logger = logging.getLogger(__name__)
-
 
 class ValidationStep(ABC):
     """
@@ -92,7 +90,7 @@ class MeshFormatValidationStep(ValidationStep):
             original_count = len(mesh)
             # Trim extra vertices (1-2 vertices)
             data[RequestField.MESH.value] = mesh[:-extra_vertices]
-            logger.warning(
+            logging.warning(
                 f"Mesh had {original_count} vertices (not divisible by 3). "
                 f"Trimmed {extra_vertices} extra vertex/vertices. "
                 f"Proceeding with {len(data[RequestField.MESH.value])} vertices."

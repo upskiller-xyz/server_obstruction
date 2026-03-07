@@ -6,8 +6,6 @@ import logging
 
 from src.components.models import Window
 
-logger = logging.getLogger(__name__)
-
 from src.server.base.constants import ANGLES, MathConstants
 from src.components.geometry import Point3D, Vector3D
 

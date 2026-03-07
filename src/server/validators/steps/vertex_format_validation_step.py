@@ -2,7 +2,7 @@
 Vertex format validation step
 
 Validates individual vertex format.
-Supports both split (horizon_mesh/zenith_mesh) and legacy (mesh) formats.
+Accepts a single mesh parameter with combined geometry.
 """
 
 from typing import Dict, Any, List
@@ -17,7 +17,7 @@ class VertexFormatValidationStep(ValidationStep):
     @classmethod
     def call(cls, content: Dict[str, Any]) -> None: # type: ignore
         """Validate each vertex has 3 coordinates in all mesh fields"""
-        mesh_keys: List[RequestField] = [RequestField.MESH, RequestField.HORIZON_MESH, RequestField.ZENITH_MESH]
+        mesh_keys: List[RequestField] = [RequestField.MESH]
         mesh_keys = [k for k in mesh_keys if k.value in content]
         
 

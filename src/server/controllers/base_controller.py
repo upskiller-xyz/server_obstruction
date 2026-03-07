@@ -1,12 +1,11 @@
 from typing import Dict, Any, Optional
 import logging
-logger = logging.getLogger(__name__)
-from src.server.interfaces import IServerController, ILogger
+
 from src.server.enums import ServerStatus
 
 
-class ServerController(IServerController):
-    """Generic server controller implementing IServerController interface"""
+class ServerController:
+    """Generic server controller"""
 
     def __init__(
         self,
@@ -16,7 +15,6 @@ class ServerController(IServerController):
         Initialize the controller with dependencies
 
         Args:
-            logger: Logger instance for structured logging
             services: Optional dictionary of service name -> service instance
         """
         self._services = services or {}
@@ -24,19 +22,19 @@ class ServerController(IServerController):
 
     def initialize(self) -> None:
         """Initialize the server and its components"""
-        logger.info("Initializing server controller")
+        logging.info("Initializing server controller")
         try:
             # Initialize all registered services
             for service_name, service in self._services.items():
                 if hasattr(service, 'initialize'):
-                    logger.debug(f"Initializing service: {service_name}")
+                    logging.debug(f"Initializing service: {service_name}")
                     service.initialize()
 
             self._status = ServerStatus.RUNNING
-            logger.info("Server controller initialized successfully")
+            logging.info("Server controller initialized successfully")
         except Exception as e:
             self._status = ServerStatus.ERROR
-            logger.error(f"Failed to initialize server controller: {str(e)}")
+            logging.error(f"Failed to initialize server controller: {str(e)}")
             raise
 
     def get_status(self) -> Dict[str, Any]:

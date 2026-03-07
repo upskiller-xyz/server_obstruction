@@ -4,17 +4,16 @@ Vertical surface filtering for horizon calculations
 Filters out horizontal surfaces like roofs, keeping only walls and vertical obstructions.
 """
 
-from typing import Tuple
-import numpy as np
 import logging
+from typing import Tuple
 
-from src.components.geometry import Triangle
-from src.server.base.constants import ANGLES, MathConstants
-from src.components.models import Window
+import numpy as np
+
 from src.components.filter.base_filter import TriangleFilter
+from src.components.geometry import Triangle
+from src.components.models import Window
+from src.server.base.constants import ANGLES, MathConstants
 from src.utils.settings import Settings
-
-logger = logging.getLogger(__name__)
 
 
 class VerticalSurfaceFilter(TriangleFilter):
@@ -49,7 +48,7 @@ class VerticalSurfaceFilter(TriangleFilter):
 
         # Filter by surface orientation - keep only vertical surfaces
         relevant_triangles = [x for x in filter(cls._should_keep, triangles)]
-        logger.debug(
+        logging.debug(
             f"        [VERTICAL-FILTER] Kept {len(relevant_triangles)}/{len(triangles)} - "
             f"Filtered: {len(triangles) - len(relevant_triangles)} horizontal surfaces"
         )

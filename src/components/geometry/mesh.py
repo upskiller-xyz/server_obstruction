@@ -17,6 +17,11 @@ class Mesh:
     triangles: Tuple[Triangle, ...]
 
     @classmethod
+    def empty(cls) -> 'Mesh':
+        """Create an empty mesh with no triangles."""
+        return cls(())
+
+    @classmethod
     def from_vertices(cls, vertices: List[List[float]]) -> 'Mesh':
         """
         Create mesh from list of vertices (grouped by 3 for triangles)

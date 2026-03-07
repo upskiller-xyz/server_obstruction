@@ -21,7 +21,7 @@ class TestObstructionService:
             [1.0, 3.0, 0.0],
             [1.0, 1.5, 1.0]
         ])
-        request = ObstructionRequest(window=window, horizon_mesh=mesh, zenith_mesh=None)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         result = ObstructionService.calculate_horizon(request)
 
@@ -41,7 +41,7 @@ class TestObstructionService:
             [1.0, 3.0, 0.0],
             [1.0, 1.5, 1.0]
         ])
-        request = ObstructionRequest(window=window, horizon_mesh=None, zenith_mesh=mesh)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         result = ObstructionService.calculate_zenith_angle(request)
 
@@ -70,7 +70,7 @@ class TestObstructionService:
             [1.0, 3.0, 0.0],
             [1.0, 1.5, 1.0]
         ])
-        request = ObstructionRequest(window=window, horizon_mesh=mesh, zenith_mesh=None)
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         mock_result = ObstructionResult(
             obstruction_angle_degrees=45.0,

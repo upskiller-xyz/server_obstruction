@@ -9,11 +9,11 @@ class OpenAPISpecGenerator:
     def generate_spec(
         title: str = "Obstruction Calculation API",
         description: str = "Service for calculating horizon and zenith obstruction angles from 3D mesh data",
-        version: str = "1.0.0",
+        version: str = "0.1.0",
         base_url: str = "/"
     ) -> Dict[str, Any]:
         """
-        Generate OpenAPI 3.0 specification from Pydantic models.
+        Generate OpenAPI 3.0 specification.
 
         Args:
             title: API title
@@ -52,8 +52,8 @@ class OpenAPISpecGenerator:
         return {
             "/": {
                 "get": {
-                    "summary": "Get server status",
-                    "description": "Health check endpoint returning server status",
+                    "summary": "Server health check",
+                    "description": "Returns server status and version information.",
                     "tags": ["Server"],
                     "responses": {
                         "200": {
@@ -67,36 +67,50 @@ class OpenAPISpecGenerator:
                     }
                 }
             },
+            "/routes": {
+                "get": {
+                    "summary": "List registered routes",
+                    "description": "Returns all HTTP routes registered on the server.",
+                    "tags": ["Server"],
+                    "responses": {
+                        "200": {
+                            "description": "List of registered routes",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/RoutesResponse"}
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "/horizon": {
                 "post": {
                     "summary": "Calculate horizon obstruction angle",
-                    "description": "Calculate the maximum horizon obstruction angle from a 3D mesh",
+                    "description": (
+                        "Calculates the maximum horizon obstruction angle (degrees above horizontal) "
+                        "from the given window position looking in the given direction through the mesh."
+                    ),
                     "tags": ["Obstruction Calculation"],
                     "requestBody": {
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ObstructionCalculationRequest"}
+                                "schema": {"$ref": "#/components/schemas/ObstructionRequest"}
                             }
                         }
                     },
                     "responses": {
                         "200": {
-                            "description": "Horizon obstruction angle calculated successfully",
+                            "description": "Horizon angle calculated successfully",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "status": {"type": "string", "example": "success"},
-                                            "data": {"$ref": "#/components/schemas/ObstructionAngleResponse"}
-                                        }
-                                    }
+                                    "schema": {"$ref": "#/components/schemas/SingleAngleEnvelope"}
                                 }
                             }
                         },
                         "400": {
-                            "description": "Bad request - invalid input",
+                            "description": "Invalid request (missing fields, bad mesh format, window on mesh surface)",
                             "content": {
                                 "application/json": {
                                     "schema": {"$ref": "#/components/schemas/ErrorResponse"}
@@ -117,33 +131,30 @@ class OpenAPISpecGenerator:
             "/zenith": {
                 "post": {
                     "summary": "Calculate zenith obstruction angle",
-                    "description": "Calculate the maximum zenith obstruction angle from a 3D mesh",
+                    "description": (
+                        "Calculates the maximum zenith obstruction angle (degrees below vertical) "
+                        "from the given window position looking in the given direction through the mesh."
+                    ),
                     "tags": ["Obstruction Calculation"],
                     "requestBody": {
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ObstructionCalculationRequest"}
+                                "schema": {"$ref": "#/components/schemas/ObstructionRequest"}
                             }
                         }
                     },
                     "responses": {
                         "200": {
-                            "description": "Zenith obstruction angle calculated successfully",
+                            "description": "Zenith angle calculated successfully",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "status": {"type": "string", "example": "success"},
-                                            "data": {"$ref": "#/components/schemas/ObstructionAngleResponse"}
-                                        }
-                                    }
+                                    "schema": {"$ref": "#/components/schemas/SingleAngleEnvelope"}
                                 }
                             }
                         },
                         "400": {
-                            "description": "Bad request - invalid input",
+                            "description": "Invalid request",
                             "content": {
                                 "application/json": {
                                     "schema": {"$ref": "#/components/schemas/ErrorResponse"}
@@ -163,14 +174,17 @@ class OpenAPISpecGenerator:
             },
             "/obstruction": {
                 "post": {
-                    "summary": "Calculate both horizon and zenith angles",
-                    "description": "Calculate both horizon and zenith obstruction angles in a single request",
+                    "summary": "Calculate horizon and zenith in one request",
+                    "description": (
+                        "Calculates both the horizon and zenith obstruction angles "
+                        "for a single window position and direction."
+                    ),
                     "tags": ["Obstruction Calculation"],
                     "requestBody": {
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ObstructionCalculationRequest"}
+                                "schema": {"$ref": "#/components/schemas/ObstructionRequest"}
                             }
                         }
                     },
@@ -179,18 +193,12 @@ class OpenAPISpecGenerator:
                             "description": "Both angles calculated successfully",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "status": {"type": "string", "example": "success"},
-                                            "data": {"$ref": "#/components/schemas/CombinedObstructionResponse"}
-                                        }
-                                    }
+                                    "schema": {"$ref": "#/components/schemas/BothAnglesEnvelope"}
                                 }
                             }
                         },
                         "400": {
-                            "description": "Bad request - invalid input",
+                            "description": "Invalid request",
                             "content": {
                                 "application/json": {
                                     "schema": {"$ref": "#/components/schemas/ErrorResponse"}
@@ -210,8 +218,12 @@ class OpenAPISpecGenerator:
             },
             "/obstruction_all": {
                 "post": {
-                    "summary": "Calculate obstruction angles for multiple directions",
-                    "description": "Calculate horizon and zenith angles for multiple directions around a window",
+                    "summary": "Calculate obstruction for multiple directions (local)",
+                    "description": (
+                        "Calculates horizon and zenith obstruction angles across N evenly-spaced directions "
+                        "using the gap-based algorithm locally. "
+                        "Defaults: 64 directions, 17.5°–162.5° relative to window normal."
+                    ),
                     "tags": ["Obstruction Calculation"],
                     "requestBody": {
                         "required": True,
@@ -223,21 +235,61 @@ class OpenAPISpecGenerator:
                     },
                     "responses": {
                         "200": {
-                            "description": "Multi-direction angles calculated successfully",
+                            "description": "Multi-direction results",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "status": {"type": "string", "example": "success"},
-                                            "data": {"$ref": "#/components/schemas/MultiDirectionResponse"}
-                                        }
-                                    }
+                                    "schema": {"$ref": "#/components/schemas/MultiDirectionEnvelope"}
                                 }
                             }
                         },
                         "400": {
-                            "description": "Bad request - invalid input",
+                            "description": "Invalid request",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                }
+                            }
+                        },
+                        "500": {
+                            "description": "Internal server error",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/obstruction_parallel": {
+                "post": {
+                    "summary": "Calculate obstruction for multiple directions (parallel microservice)",
+                    "description": (
+                        "Fans out N direction calculations as parallel HTTP requests to the "
+                        "obstruction microservice and assembles the results. "
+                        "Shares the same request/response format as /obstruction_all. "
+                        "Requires the MICROSERVICE_URL environment variable to be set."
+                    ),
+                    "tags": ["Obstruction Calculation"],
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/MultiDirectionRequest"}
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Parallel multi-direction results",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/MultiDirectionEnvelope"}
+                                }
+                            }
+                        },
+                        "400": {
+                            "description": "Invalid request",
                             "content": {
                                 "application/json": {
                                     "schema": {"$ref": "#/components/schemas/ErrorResponse"}
@@ -259,52 +311,82 @@ class OpenAPISpecGenerator:
 
     @staticmethod
     def _generate_schemas() -> Dict[str, Any]:
-        """Generate OpenAPI schemas from Pydantic models"""
+        """Generate OpenAPI schemas"""
         return {
-            "ObstructionCalculationRequest": {
+            # ── Request schemas ──────────────────────────────────────────────
+            "ObstructionRequest": {
                 "type": "object",
+                "description": (
+                    "Window position and mesh geometry for a single-direction obstruction calculation. "
+                    "The window can be specified either as a pre-computed centre point (x, y, z) "
+                    "or as two wall endpoints (x1, y1, z1, x2, y2, z2) with an optional room polygon "
+                    "so the reference point can be derived automatically."
+                ),
                 "required": ["x", "y", "z", "direction_angle", "mesh"],
                 "properties": {
-                    "x": {"type": "number", "description": "Window center X coordinate"},
-                    "y": {"type": "number", "description": "Window center Y coordinate"},
-                    "z": {"type": "number", "description": "Window center Z coordinate (height)"},
+                    "x": {
+                        "type": "number",
+                        "description": "Window centre X coordinate (centre format)"
+                    },
+                    "y": {
+                        "type": "number",
+                        "description": "Window centre Y coordinate (centre format)"
+                    },
+                    "z": {
+                        "type": "number",
+                        "description": "Window centre Z coordinate / height (centre format)"
+                    },
+                    "x1": {
+                        "type": "number",
+                        "description": "First endpoint X coordinate (endpoint format)"
+                    },
+                    "y1": {
+                        "type": "number",
+                        "description": "First endpoint Y coordinate (endpoint format)"
+                    },
+                    "z1": {
+                        "type": "number",
+                        "description": "First endpoint Z coordinate (endpoint format)"
+                    },
+                    "x2": {
+                        "type": "number",
+                        "description": "Second endpoint X coordinate (endpoint format)"
+                    },
+                    "y2": {
+                        "type": "number",
+                        "description": "Second endpoint Y coordinate (endpoint format)"
+                    },
+                    "z2": {
+                        "type": "number",
+                        "description": "Second endpoint Z coordinate (endpoint format)"
+                    },
+                    "room_polygon": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 2,
+                            "maxItems": 3
+                        },
+                        "description": "Room floor polygon used to compute the outward-facing reference point (endpoint format)"
+                    },
                     "direction_angle": {
                         "type": "number",
-                        "description": "Window direction angle in radians (0-2π)"
+                        "description": "Window outward-facing direction in radians (0 = +X axis, counter-clockwise)"
                     },
                     "mesh": {
-                        "oneOf": [
-                            {
-                                "type": "array",
-                                "items": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 3,
-                                    "maxItems": 3
-                                },
-                                "description": "Flat list of vertices [[x,y,z],...]"
-                            },
-                            {
-                                "type": "object",
-                                "properties": {
-                                    "horizon": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "array",
-                                            "items": {"type": "number"}
-                                        }
-                                    },
-                                    "zenith": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "array",
-                                            "items": {"type": "number"}
-                                        }
-                                    }
-                                },
-                                "description": "Nested format {horizon: [...], zenith: [...]}"
-                            }
-                        ]
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 3,
+                            "maxItems": 3,
+                            "description": "Vertex [x, y, z]"
+                        },
+                        "description": (
+                            "Flat list of triangle vertices. Every three consecutive vertices form one triangle. "
+                            "Total vertex count must be divisible by 3."
+                        )
                     }
                 },
                 "example": {
@@ -312,33 +394,68 @@ class OpenAPISpecGenerator:
                     "y": 0.0,
                     "z": 3.0,
                     "direction_angle": 0.0,
-                    "mesh": {
-                        "horizon": [
-                            [10.0, -5.0, 0.0],
-                            [10.0, -5.0, 5.0],
-                            [10.0, 5.0, 0.0]
-                        ]
-                    }
+                    "mesh": [
+                        [10.0, -5.0, 0.0],
+                        [10.0, -5.0, 5.0],
+                        [10.0,  5.0, 0.0]
+                    ]
                 }
             },
             "MultiDirectionRequest": {
                 "type": "object",
-                "required": ["x", "y", "z", "direction_angle", "mesh"],
+                "description": (
+                    "Window position and mesh geometry for a multi-direction sweep. "
+                    "direction_angle is not required — the window normal is used as the base direction "
+                    "and the sweep range is applied relative to it."
+                ),
+                "required": ["x", "y", "z", "mesh"],
                 "properties": {
-                    "x": {"type": "number"},
-                    "y": {"type": "number"},
-                    "z": {"type": "number"},
-                    "direction_angle": {"type": "number"},
+                    "x": {"type": "number", "description": "Window centre X coordinate"},
+                    "y": {"type": "number", "description": "Window centre Y coordinate"},
+                    "z": {"type": "number", "description": "Window centre Z / height"},
                     "mesh": {
                         "type": "array",
-                        "items": {"type": "array", "items": {"type": "number"}}
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 3,
+                            "maxItems": 3
+                        },
+                        "description": "Flat list of triangle vertices (same format as ObstructionRequest)"
                     },
-                    "num_directions": {"type": "integer", "default": 64},
-                    "start_angle_degrees": {"type": "number", "default": -90.0},
-                    "end_angle_degrees": {"type": "number", "default": 90.0}
+                    "num_directions": {
+                        "type": "integer",
+                        "default": 64,
+                        "minimum": 1,
+                        "description": "Number of evenly-spaced directions to evaluate"
+                    },
+                    "start_angle_degrees": {
+                        "type": "number",
+                        "default": 17.5,
+                        "description": "Start of the angular sweep range in degrees, relative to window normal"
+                    },
+                    "end_angle_degrees": {
+                        "type": "number",
+                        "default": 162.5,
+                        "description": "End of the angular sweep range in degrees, relative to window normal"
+                    }
+                },
+                "example": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 3.0,
+                    "mesh": [
+                        [10.0, -5.0, 0.0],
+                        [10.0, -5.0, 5.0],
+                        [10.0,  5.0, 0.0]
+                    ],
+                    "num_directions": 64,
+                    "start_angle_degrees": 17.5,
+                    "end_angle_degrees": 162.5
                 }
             },
-            "Point3DResponse": {
+            # ── Shared sub-schemas ───────────────────────────────────────────
+            "Point3D": {
                 "type": "object",
                 "properties": {
                     "x": {"type": "number"},
@@ -346,68 +463,138 @@ class OpenAPISpecGenerator:
                     "z": {"type": "number"}
                 }
             },
-            "ObstructionAngleResponse": {
+            "ObstructionAngle": {
                 "type": "object",
+                "description": "Obstruction angle result for one angular direction (horizon or zenith)",
                 "properties": {
-                    "obstruction_angle_degrees": {"type": "number"},
-                    "obstruction_angle_radians": {"type": "number"},
-                    "highest_point": {"$ref": "#/components/schemas/Point3DResponse"}
+                    "obstruction_angle_degrees": {
+                        "type": "number",
+                        "description": "Obstruction angle in degrees"
+                    },
+                    "obstruction_angle_radians": {
+                        "type": "number",
+                        "description": "Obstruction angle in radians"
+                    },
+                    "highest_point": {
+                        "oneOf": [
+                            {"$ref": "#/components/schemas/Point3D"},
+                            {"type": "null"}
+                        ],
+                        "description": "3D coordinates of the highest obstructing point, or null if none found"
+                    }
                 },
                 "example": {
                     "obstruction_angle_degrees": 11.31,
-                    "obstruction_angle_radians": 0.197,
+                    "obstruction_angle_radians": 0.1974,
                     "highest_point": {"x": 10.0, "y": 0.0, "z": 5.0}
                 }
             },
-            "CombinedObstructionResponse": {
+            "DirectionResult": {
                 "type": "object",
+                "description": "Horizon and zenith results for one evaluated direction",
                 "properties": {
-                    "horizon": {"$ref": "#/components/schemas/ObstructionAngleResponse"},
-                    "zenith": {"$ref": "#/components/schemas/ObstructionAngleResponse"}
+                    "direction_angle": {
+                        "type": "number",
+                        "description": "Absolute direction angle in radians"
+                    },
+                    "direction_angle_degrees": {
+                        "type": "number",
+                        "description": "Absolute direction angle in degrees"
+                    },
+                    "horizon": {"$ref": "#/components/schemas/ObstructionAngle"},
+                    "zenith": {"$ref": "#/components/schemas/ObstructionAngle"}
                 }
             },
-            "MultiDirectionResponse": {
+            # ── Response envelope schemas ────────────────────────────────────
+            "SingleAngleEnvelope": {
                 "type": "object",
                 "properties": {
-                    "horizon_angles": {
-                        "type": "array",
-                        "items": {"type": "number"},
-                        "description": "Horizon angles in degrees"
-                    },
-                    "zenith_angles": {
-                        "type": "array",
-                        "items": {"type": "number"},
-                        "description": "Zenith angles in degrees"
-                    },
-                    "directions": {
-                        "type": "array",
-                        "items": {"type": "number"},
-                        "description": "Direction angles in radians"
-                    },
-                    "num_directions": {"type": "integer"}
+                    "status": {"type": "string", "example": "success"},
+                    "data": {"$ref": "#/components/schemas/ObstructionAngle"}
                 }
             },
-            "ErrorResponse": {
+            "BothAnglesEnvelope": {
                 "type": "object",
                 "properties": {
-                    "error": {"type": "string"},
-                    "error_type": {"type": "string"}
-                },
-                "example": {
-                    "error": "Invalid mesh format",
-                    "error_type": "ValueError"
+                    "status": {"type": "string", "example": "success"},
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "horizon": {"$ref": "#/components/schemas/ObstructionAngle"},
+                            "zenith": {"$ref": "#/components/schemas/ObstructionAngle"}
+                        }
+                    }
+                }
+            },
+            "MultiDirectionEnvelope": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "example": "success"},
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "results": {
+                                "type": "array",
+                                "items": {"$ref": "#/components/schemas/DirectionResult"},
+                                "description": "One result object per evaluated direction"
+                            },
+                            "num_directions": {
+                                "type": "integer",
+                                "description": "Number of directions evaluated"
+                            },
+                            "total_time_seconds": {
+                                "type": "number",
+                                "description": "Total wall-clock time for the calculation"
+                            }
+                        }
+                    }
                 }
             },
             "StatusResponse": {
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string"},
-                    "version": {"type": "string"},
-                    "services": {"type": "object"}
+                    "status": {"type": "string", "example": "success"},
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "controller": {"type": "string", "example": "ready"},
+                            "service": {"type": "object"}
+                        }
+                    }
+                }
+            },
+            "RoutesResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "example": "success"},
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "path": {"type": "string", "example": "/obstruction"},
+                                "methods": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "example": ["POST"]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "example": "error"},
+                    "error": {
+                        "type": "string",
+                        "description": "Human-readable error message"
+                    }
                 },
                 "example": {
-                    "status": "running",
-                    "version": "1.0.0"
+                    "status": "error",
+                    "error": "Invalid mesh format: expected a list of vertices, got dict."
                 }
             }
         }
