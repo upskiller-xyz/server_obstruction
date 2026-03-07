@@ -160,9 +160,15 @@ class ParallelObstructionService:
             base_direction_angle, num_directions, start_angle_degrees, end_angle_degrees
         )
 
+        if request.mesh is None:
+            raise ValueError("ObstructionRequest.mesh is required for parallel calculation but was None.")
+
         # Extract mesh vertices for payload
-        mesh_vertices = [[v.x, v.y, v.z] for triangle in request.mesh.triangles # type: ignore
-                        for v in [triangle.v1, triangle.v2, triangle.v3]]
+        mesh_vertices = [
+            [v.x, v.y, v.z]
+            for triangle in request.mesh.triangles
+            for v in [triangle.v1, triangle.v2, triangle.v3]
+        ]
 
         logging.info(
             f"[PARALLEL] Starting parallel calculation for {len(direction_angles)} directions"

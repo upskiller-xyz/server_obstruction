@@ -1,6 +1,5 @@
 """HTML template loader for documentation pages"""
 
-import os
 from pathlib import Path
 
 

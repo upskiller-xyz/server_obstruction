@@ -21,19 +21,9 @@ class GapObstructionResult:
     zenith_deg: float
 
     @classmethod
-    def empty(cls, elapsed_ms: float, rays_cast:int=0) -> 'GapObstructionResult':
-        """Create an empty result representing no obstruction (full sky visible).
-
-        Args:
-            elapsed_ms: Elapsed time in milliseconds
-
-        Returns:
-            GapObstructionResult with full sky visible
-        """
-        return cls(
-            horizon_deg=0.0,
-            zenith_deg=0.0
-        )
+    def empty(cls) -> 'GapObstructionResult':
+        """Create an empty result representing no obstruction (full sky visible)."""
+        return cls(horizon_deg=0.0, zenith_deg=0.0)
 
 
 @dataclass(frozen=True)
@@ -65,7 +55,7 @@ class ObstructionResult:
         cls,
         horizon_deg: float,
         zenith_deg: float
-    ) -> tuple['ObstructionResult', ...]:
+    ) -> tuple['ObstructionResult', 'ObstructionResult']:
         """
         Create horizon and zenith results from gap-based calculation.
 

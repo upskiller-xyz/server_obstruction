@@ -50,7 +50,10 @@ class ObstructionRequest:
         """Parse mesh from request data.
 
         Supports:
-          - List format:  {"mesh": [[x,y,z], ...]} → single combined mesh
+          - List format:  {"mesh": [[x,y,z], ...]} → single combined Mesh
+
+        Raises:
+          ValueError: if mesh is present but not a list.
         """
         mesh_data = content.get(RequestField.MESH.value, {})
 
@@ -58,10 +61,9 @@ class ObstructionRequest:
         if isinstance(mesh_data, list):
             return Mesh.from_vertices(mesh_data) if mesh_data else None
 
-        # Dict format: treat as raw vertex list
-        if isinstance(mesh_data, dict):
-            return None
-
-        return None
+        raise ValueError(
+            f"Unsupported mesh format: expected a list of vertices, got {type(mesh_data).__name__}. "
+            "Provide mesh as a flat list of [x, y, z] vertex coordinates."
+        )
     
     
