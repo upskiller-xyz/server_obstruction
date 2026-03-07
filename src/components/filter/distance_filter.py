@@ -15,8 +15,6 @@ from src.components.filter.base_filter import TriangleFilter
 from src.components.filter.within_distance_filter import WithinDistanceFilter
 from src.utils.settings import Settings
 
-logger = logging.getLogger(__name__)
-
 
 class DistanceTriangleFilter(TriangleFilter):
     """
@@ -87,7 +85,7 @@ class DistanceTriangleFilter(TriangleFilter):
         settings = Settings()
         distance = settings.min_horizontal_distance if angle_type == ANGLES.HORIZON else settings.max_horizontal_distance
 
-        logger.debug(
+        logging.debug(
             f"        [DISTANCE-FILTER] Kept {stats['kept']}/{n_triangles} - "
             f"Filtered: {stats['below']} below window, "
             f"{stats['too_close_or_behind']} outside distance criteria ({distance}m)"

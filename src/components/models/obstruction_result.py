@@ -7,8 +7,23 @@ Result of obstruction calculation with angle and highest point.
 from dataclasses import dataclass
 from typing import Optional
 
+import numpy as np
+
 from src.components.geometry import Point3D
 from src.server.base.constants import ResponseField, RequestField
+
+
+@dataclass(frozen=True)
+class GapObstructionResult:
+    """Result of gap-based obstruction calculation"""
+    
+    horizon_deg: float
+    zenith_deg: float
+
+    @classmethod
+    def empty(cls) -> 'GapObstructionResult':
+        """Create an empty result representing no obstruction (full sky visible)."""
+        return cls(horizon_deg=0.0, zenith_deg=0.0)
 
 
 @dataclass(frozen=True)
@@ -32,8 +47,31 @@ class ObstructionResult:
         return cls(
             obstruction_angle_degrees=0.0,
             obstruction_angle_radians=0.0,
-            highest_point=highest_point
+            highest_point=highest_point,
         )
+
+    @classmethod
+    def from_gap(
+        cls,
+        horizon_deg: float,
+        zenith_deg: float
+    ) -> tuple['ObstructionResult', 'ObstructionResult']:
+        """
+        Create horizon and zenith results from gap-based calculation.
+
+        Returns a tuple of (horizon_result, zenith_result).
+        """
+        horizon = cls(
+            obstruction_angle_degrees=horizon_deg,
+            obstruction_angle_radians=float(np.radians(horizon_deg)),
+            highest_point=None,
+        )
+        zenith = cls(
+            obstruction_angle_degrees=zenith_deg,
+            obstruction_angle_radians=float(np.radians(zenith_deg)),
+            highest_point=None
+        )
+        return horizon, zenith
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization"""

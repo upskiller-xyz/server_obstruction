@@ -2,11 +2,9 @@
 Required fields validation step
 
 Validates that all required fields are present in the request.
-Supports mesh formats:
-  - Split format: horizon_mesh and/or zenith_mesh
-  - Legacy format: mesh (single combined mesh)
+Mesh format: single mesh parameter with combined geometry
 
-And window formats:
+Window formats:
   - Center format: x, y, z, direction_angle
   - Endpoint format: x1, y1, z1, x2, y2, z2, direction_angle, room_polygon
 """
@@ -21,8 +19,6 @@ def _has_any_mesh(data: Dict[str, Any]) -> bool:
     """Check if the request has mesh data in any supported format."""
     return (
         RequestField.MESH.value in data
-        or RequestField.HORIZON_MESH.value in data
-        or RequestField.ZENITH_MESH.value in data
     )
 
 class RequiredFieldsValidationStep(ValidationStep):
@@ -41,7 +37,7 @@ class RequiredFieldsValidationStep(ValidationStep):
         missing_fields = [field for field in window_fields if field not in content]
 
         if not _has_any_mesh(content):
-            missing_fields.append("mesh or horizon_mesh/zenith_mesh")
+            missing_fields.append("mesh")
 
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")

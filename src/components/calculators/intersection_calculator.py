@@ -1,33 +1,30 @@
+"""Intersection-based obstruction calculator"""
 
 import logging
-
-from src.server.base.constants import ANGLES
-from src.components.models import Window, ObstructionResult
-from src.components.models.intersection import IntersectionResult
-logger = logging.getLogger(__name__)
 import time
-import numpy as np
-from typing import Tuple
+from typing import List, Tuple
 
-from src.components.geometry import Mesh, Point3D, Triangle, AngleCalculator
-from src.components.geometry.vertical_plane import VerticalPlane
-from src.components.calculators.distance_calculator import DistanceCalculator
+from src.components.calculators.elevation_angle_collector import ElevationAngleCollector
+from src.components.calculators.filter_strategy_map import FilterStrategyMap
 from src.components.calculators.plane_triangle_intersector import PlaneTriangleIntersector
-from src.components.filter import VerticalSurfaceFilter, NonVerticalSurfaceFilter
-
-
-
+from src.components.calculators.triangle_intersection_finder import TriangleIntersectionFinder
+from src.components.geometry import AngleCalculator, Mesh, Triangle
+from src.components.geometry.vertical_plane import VerticalPlane
+from src.components.models import ObstructionResult, Window
+from src.components.models.intersection import IntersectionResult
+from src.server.base.constants import ANGLES
 
 class IntersectionCalculator:
     """
-    Horizon obstruction calculator using plane-triangle intersections
+    Horizon/Zenith obstruction calculator using plane-triangle intersections
 
-    Instead of projecting all points, finds only triangles that intersect
-    the viewing plane and calculates angles directly.
+    Single Responsibility:
+    - Orchestrates intersection-based obstruction calculation
+    - Delegates filtering to FilterStrategyMap
+    - Delegates intersection finding to TriangleIntersectionFinder
+    - Delegates angle collection to ElevationAngleCollector
 
-    OPTIMIZATION: Sorts intersection points by Z coordinate (highest first)
-    and uses early termination - once we find a point with angle >= max seen,
-    we can stop checking lower points.
+    OPTIMIZATION: Tracks maximum height/angle for early termination
     """
 
     @classmethod
@@ -35,142 +32,128 @@ class IntersectionCalculator:
         cls,
         mesh: Mesh,
         window: Window,
-        angle_type:ANGLES = ANGLES.HORIZON
+        angle_type: ANGLES = ANGLES.HORIZON
     ) -> ObstructionResult:
         """
         Calculate obstruction angle directly from mesh using plane intersections
 
         Args:
             mesh: 3D mesh
-            window_center: 3D position of window center
-            window_normal: Viewing direction unit vector
+            window: Window with center and normal
+            angle_type: HORIZON or ZENITH
 
         Returns:
             ObstructionResult with angle and metadata
         """
         if window.center is None or window.normal is None:
-            raise ValueError("window_center and window_normal are required")
+            raise ValueError("window.center and window.normal are required")
 
-        # Use the efficient intersection calculator
-        res = cls._call(mesh.triangles, window, angle_type)
-
-        if res.angle is None:
-            return ObstructionResult.no_obstruction()
-        
-        return ObstructionResult(
-            obstruction_angle_degrees=AngleCalculator.radians_to_degrees(res.angle),
-            obstruction_angle_radians=res.angle,
-            highest_point=res.point
+        # Delegate to internal calculation
+        result = cls._calculate_intersection(
+            mesh.triangles, window, angle_type
         )
-    
-    @classmethod
-    def _get_filter(cls, angle:ANGLES):
-        _map = {
-            ANGLES.HORIZON: VerticalSurfaceFilter,
-            ANGLES.ZENITH: NonVerticalSurfaceFilter
-        }
-        return _map.get(angle, VerticalSurfaceFilter)
+
+        if result.angle is None:
+            return ObstructionResult.no_obstruction()
+
+        return ObstructionResult(
+            obstruction_angle_degrees=AngleCalculator.radians_to_degrees(result.angle),
+            obstruction_angle_radians=result.angle,
+            highest_point=result.point
+        )
 
     @classmethod
-    def _call(
+    def _calculate_intersection(
         cls,
         triangles: Tuple[Triangle, ...],
-        window:Window,
-        angle_type = ANGLES.HORIZON
+        window: Window,
+        angle_type: ANGLES = ANGLES.HORIZON
     ) -> IntersectionResult:
         """
-        Calculate maximum obstruction angle using plane intersections on PRE-FILTERED triangles
-
-        This method skips the filtering step (Step 0) and works directly with
-        triangles that have already been filtered.
+        Calculate maximum obstruction angle using plane intersections
 
         Args:
-            triangles: Pre-filtered list of relevant triangles
-            window_center: Window center point
-            window_normal: Window viewing direction (unit vector)
+            triangles: Triangles to process
+            window: Window center and normal
+            angle_type: HORIZON or ZENITH
 
         Returns:
-            Tuple of (max_angle_radians, highest_point, intersection_count)
+            IntersectionResult with angle and point
         """
-
         algo_start = time.time()
 
         if not triangles:
-            logger.debug(f"No triangles provided")
+            logging.debug("No triangles provided")
             return cls._no_intersection()
-        
-        fltr = cls._get_filter(angle_type)
 
-        relevant_triangles = fltr.call(
-            triangles, window, angle_type
-        )
+        # Get appropriate filter using Strategy Pattern
+        filter_class = FilterStrategyMap.get_filter(angle_type)
+        relevant_triangles = filter_class.call(triangles, window, angle_type)
 
         if not relevant_triangles:
-            logger.debug(f"No relevant triangles provided")
+            logging.debug("No relevant triangles after filtering")
             return cls._no_intersection()
-        
+
         plane = VerticalPlane.from_window(window)
-
         intersection_count = 0
-        angle_filtered = 0  # Intersections found but angle calculation returned None
-        int_point = IntersectionResult(None, 0)
+        angle_filtered = 0
+        best_result = IntersectionResult(None, 0)
+        max_height = window.center.z
 
-        max_height = window.center.z  # Track highest Z found so far
-        
         for triangle in relevant_triangles:
-
-            point = cls._get_intersection(triangle, plane, window, angle_type, max_height)
+            # Delegate intersection finding
+            point = TriangleIntersectionFinder.find_intersection(
+                triangle, plane, window, angle_type
+            )
             if point is None:
                 continue
-            
+
             intersection_count += 1
             angle = PlaneTriangleIntersector.calculate_obstruction_angle(
-                    point, window, angle_type)
-            
+                point, window, angle_type
+            )
+
             if angle is None:
                 angle_filtered += 1
                 continue
-            
-            if angle > int_point.angle:
-                int_point = IntersectionResult(point, angle)
-                max_height = point.z 
 
+            if angle > best_result.angle:
+                best_result = IntersectionResult(point, angle)
+                max_height = point.z
 
-        if int_point.point is None or int_point.angle == 0.0:
-            logger.debug(f"No valid angles found, total time: {(time.time()-algo_start)*1000:.2f}ms")
+        if best_result.point is None or best_result.angle == 0.0:
+            total_time = (time.time() - algo_start) * 1000
+            logging.debug(f"No valid angles found, total time: {total_time:.2f}ms")
             return cls._no_intersection()
 
-        total_time = time.time() - algo_start
-        logger.debug(f"✓ TOTAL TIME: {total_time*1000:.2f}ms")
-        logger.debug("Final angle: {}\n Final point: {}".format(int_point.angle, int_point.point))
-        return int_point
-    
+        total_time = (time.time() - algo_start) * 1000
+        logging.debug(f"✓ TOTAL TIME: {total_time:.2f}ms")
+        logging.debug(
+            f"Final angle: {best_result.angle}\nFinal point: {best_result.point}"
+        )
+        return best_result
+
     @classmethod
-    def _get_intersection(cls, triangle: Triangle, plane: VerticalPlane, window: Window, angle_type:ANGLES, max_height: float) -> Point3D | None:
-        """Get the highest intersection point between triangle and plane
+    def collect_all_elevation_angles(
+        cls,
+        triangles: Tuple[Triangle, ...],
+        window: Window
+    ) -> List[float]:
+        """
+        Collect ALL elevation angles for gap-based calculation
+
+        Delegates to ElevationAngleCollector for separation of concerns
 
         Args:
-            triangle: Triangle to intersect
-            plane: Vertical plane
-            max_height: Current maximum height found (for early termination)
+            triangles: All triangles (no filtering)
+            window: Window for reference
 
         Returns:
-            Highest intersection point, or None if no intersection or all points below max_height
+            Sorted list of elevation angles in degrees
         """
+        return ElevationAngleCollector.collect_all_angles(triangles, window)
 
-        intersections = PlaneTriangleIntersector.intersect_triangle_with_plane(triangle, plane)
-
-        if len(intersections) <=0:
-            return None
-        distances = DistanceCalculator.call(intersections, angle_type, window)
-        if len(distances)<=0:
-            return None
-        
-        # TODO: check the logic
-        ind = np.argmax(distances)
-        return intersections[ind]
-    
-    
     @classmethod
-    def _no_intersection(cls)->IntersectionResult:
+    def _no_intersection(cls) -> IntersectionResult:
+        """Create empty intersection result"""
         return IntersectionResult(None, 0)

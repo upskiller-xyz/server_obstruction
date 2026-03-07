@@ -6,14 +6,11 @@ Removes triangles below and behind window for all-direction calculations.
 
 from typing import Tuple
 import numpy as np
-import logging
 
 from src.components.geometry import Triangle
 from src.server.base.constants import ANGLES
 from src.components.models import Window
 from src.components.filter.base_filter import TriangleFilter
-
-logger = logging.getLogger(__name__)
 
 
 class CoarseTriangleFilter(TriangleFilter):

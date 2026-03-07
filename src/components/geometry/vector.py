@@ -84,3 +84,22 @@ class Vector3D:
         y = np.sin(angle)
         z = 0.0  # Horizontal plane only
         return cls(x=float(x), y=float(y), z=float(z))
+
+    @classmethod
+    def from_azimuth_elevation(cls, azimuth_rad: float, elevation_deg: float) -> 'Vector3D':
+        """
+        Create a unit direction vector from azimuth and elevation angles.
+
+        Args:
+            azimuth_rad: Horizontal direction angle in radians
+            elevation_deg: Elevation angle in degrees (0=horizontal, 90=up)
+
+        Returns:
+            Unit direction vector
+        """
+        horizontal = np.array([np.cos(azimuth_rad), np.sin(azimuth_rad), 0.0])
+        elev_rad = np.radians(elevation_deg)
+        direction = np.cos(elev_rad) * horizontal + np.sin(elev_rad) * CoordinateSystem.UP
+        norm = np.linalg.norm(direction)
+        normalized = direction / norm
+        return cls.from_array(normalized)

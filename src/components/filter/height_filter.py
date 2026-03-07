@@ -1,8 +1,8 @@
 """
-Height-only triangle filtering for pre-separated mesh obstruction calculations.
+Height-only triangle filtering for obstruction calculations.
 
-When meshes are already separated by type (horizon_mesh / zenith_mesh),
-the distance-based filtering is unnecessary — only height matters.
+Filters triangles based on their height (Z-axis extent).
+Removes triangles that are too short to be relevant for obstruction analysis.
 """
 
 from typing import Tuple
@@ -12,8 +12,6 @@ from src.components.geometry import Triangle
 from src.server.base.constants import ANGLES
 from src.components.models import Window
 from src.components.filter.base_filter import TriangleFilter
-
-logger = logging.getLogger(__name__)
 
 
 class HeightTriangleFilter(TriangleFilter):
@@ -51,7 +49,7 @@ class HeightTriangleFilter(TriangleFilter):
 
         kept = int(above_mask.sum())
         removed = len(triangles) - kept
-        logger.debug(
+        logging.debug(
             f"        [HEIGHT-FILTER] Kept {kept}/{len(triangles)} — "
             f"Filtered: {removed} below window"
         )
