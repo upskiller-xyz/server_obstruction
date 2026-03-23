@@ -134,6 +134,57 @@ class TestGeometryValidator(unittest.TestCase):
         distance = GeometryValidator._point_distance_to_plane(point, v1, v2, v3)
         self.assertAlmostEqual(distance, 1.0, places=5)
 
+    def test_reported_revit_case_does_not_raise_mesh_error(self):
+        """
+        This test reproduces the bug where a point at (50.173, 59.958, 1.405)
+        was incorrectly detected as lying on a triangle from imported revit geometry.
+
+        All triangle vertices share the same X coordinate, so they lie in the same
+        plane.
+        """
+        # Exact coordinates from the error log
+        point = Point3D(50.173, 59.958, 1.405)
+
+        # Reported triangle from imported geometry
+        triangle = Triangle(
+            v1=Point3D(50.173, 59.752, 9.800),
+            v2=Point3D(50.173, 59.741, 9.763),
+            v3=Point3D(50.173, 59.752, 9.753)
+        )
+
+        # Point should NOT be considered on the triangle
+        result = GeometryValidator.is_point_on_triangle(point, triangle)
+        self.assertFalse(result,
+                        "Point should not be considered on the reported triangle")
+
+        # Validate that the point is correctly identified as NOT on the mesh
+        triangles = (triangle,)
+        # This should NOT raise an exception since point is not on the triangle
+        GeometryValidator.validate_point_not_on_mesh(point, triangles)
+
+    def test_degenerate_triangle_barycentric_coordinates(self):
+        """
+        Test that barycentric coordinates for degenerate triangles return None.
+
+        When a triangle is degenerate (has zero or near-zero area), the barycentric
+        coordinate calculation should return None to indicate that valid coordinates
+        cannot be calculated for such triangles.
+        """
+        # Create a degenerate triangle (collinear points)
+        v1 = np.array([0.0, 0.0, 0.0])
+        v2 = np.array([1.0, 0.0, 0.0])
+        v3 = np.array([2.0, 0.0, 0.0])  # Collinear with v1 and v2
+
+        # Any point
+        point = np.array([0.5, 1.0, 0.0])
+
+        result = GeometryValidator._calculate_barycentric_coordinates(
+            point, v1, v2, v3
+        )
+
+        # Result should be None for degenerate triangle
+        self.assertIsNone(result, "Barycentric coordinates should be None for degenerate triangle")
+
 
 if __name__ == '__main__':
     unittest.main()

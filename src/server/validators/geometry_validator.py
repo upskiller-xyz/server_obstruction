@@ -20,7 +20,7 @@ class GeometryValidator:
         v1: np.ndarray,
         v2: np.ndarray,
         v3: np.ndarray
-    ) -> Tuple[float, float, float]:
+    ) -> Optional[Tuple[float, float, float]]:
         """
         Calculate barycentric coordinates of point with respect to triangle
 
@@ -32,7 +32,7 @@ class GeometryValidator:
             v1, v2, v3: Triangle vertices
 
         Returns:
-            Tuple of (u, v, w) barycentric coordinates
+            Tuple of (u, v, w) barycentric coordinates, or None if triangle is degenerate
         """
         # Vectors from v1 to other vertices
         e1 = v2 - v1
@@ -52,8 +52,9 @@ class GeometryValidator:
         denom = d00 * d11 - d01 * d01
 
         if abs(denom) < MathConstants.EPSILON.value:
-            # Degenerate triangle
-            return (0.0, 0.0, 0.0)
+            # Degenerate triangle - cannot calculate valid barycentric coordinates
+            # This occurs when triangle vertices are collinear (zero area)
+            return None
 
         v = (d11 * d20 - d01 * d21) / denom
         w = (d00 * d21 - d01 * d20) / denom
@@ -132,7 +133,13 @@ class GeometryValidator:
             return False
 
         # Check if point is within triangle boundaries using barycentric coordinates
-        u, v, w = GeometryValidator._calculate_barycentric_coordinates(p, v1, v2, v3)
+        barycentric = GeometryValidator._calculate_barycentric_coordinates(p, v1, v2, v3)
+
+        # Degenerate triangle - point cannot be considered "on" it
+        if barycentric is None:
+            return False
+
+        u, v, w = barycentric
 
         # Point is inside triangle if all barycentric coordinates are non-negative
         # Allow small negative values due to floating point errors
@@ -211,9 +218,15 @@ class GeometryValidator:
             v2_pt = vertices_array[idx, 1]
             v3_pt = vertices_array[idx, 2]
 
-            u, v, w = GeometryValidator._calculate_barycentric_coordinates(
+            barycentric = GeometryValidator._calculate_barycentric_coordinates(
                 point_arr, v1_pt, v2_pt, v3_pt
             )
+
+            # Skip degenerate triangles
+            if barycentric is None:
+                continue
+
+            u, v, w = barycentric
 
             if u >= epsilon and v >= epsilon and w >= epsilon:
                 return triangles[idx]
