@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from src.components.calculators.elevation_angle_collector import ElevationAngleCollector
+from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
 from src.components.calculators.vectorized_elevation_angle_collector import VectorizedElevationAngleCollector
 from src.components.geometry import Mesh, Point3D, Triangle, Vector3D
 from src.components.models import Window
@@ -367,3 +368,61 @@ class TestVectorizedElevationAngleCollector:
             triangles, window_x
         )
         assert all(0.0 < angle <= 90.0 for angle in result)
+
+    # --- Pre-packed array interface ---
+
+    def test_from_arrays_matches_from_triangles(self, window_x):
+        """collect_all_angles_from_arrays produces same results as collect_all_angles"""
+        triangles = (
+            Triangle(
+                Point3D(5.0, -2.0, 0.0),
+                Point3D(5.0, 2.0, 0.0),
+                Point3D(5.0, 0.0, 5.0)
+            ),
+            Triangle(
+                Point3D(8.0, -1.0, 1.0),
+                Point3D(8.0, 1.0, 1.0),
+                Point3D(8.0, 0.0, 10.0)
+            ),
+        )
+
+        from_triangles = VectorizedElevationAngleCollector.collect_all_angles(
+            triangles, window_x
+        )
+        tri_arrays = RayTriangleIntersector.prepare_arrays(triangles)
+        from_arrays = VectorizedElevationAngleCollector.collect_all_angles_from_arrays(
+            tri_arrays, window_x
+        )
+
+        assert from_arrays == pytest.approx(from_triangles, abs=1e-10)
+
+    def test_from_arrays_empty(self, window_x):
+        """collect_all_angles_from_arrays with empty arrays returns empty list"""
+        tri_arrays = RayTriangleIntersector.prepare_arrays(())
+        result = VectorizedElevationAngleCollector.collect_all_angles_from_arrays(
+            tri_arrays, window_x
+        )
+        assert result == []
+
+    def test_from_arrays_many_triangles(self, window_x):
+        """collect_all_angles_from_arrays matches for large mesh"""
+        np.random.seed(99)
+        triangles = tuple(
+            Triangle(
+                Point3D(np.random.uniform(3, 20), np.random.uniform(-5, 5), np.random.uniform(-1, 2)),
+                Point3D(np.random.uniform(3, 20), np.random.uniform(-5, 5), np.random.uniform(-1, 2)),
+                Point3D(np.random.uniform(3, 20), np.random.uniform(-5, 5), np.random.uniform(3, 15))
+            )
+            for _ in range(200)
+        )
+
+        from_triangles = VectorizedElevationAngleCollector.collect_all_angles(
+            triangles, window_x
+        )
+        tri_arrays = RayTriangleIntersector.prepare_arrays(triangles)
+        from_arrays = VectorizedElevationAngleCollector.collect_all_angles_from_arrays(
+            tri_arrays, window_x
+        )
+
+        assert len(from_arrays) == len(from_triangles)
+        assert from_arrays == pytest.approx(from_triangles, abs=1e-10)

@@ -11,6 +11,7 @@ from typing import List, Tuple
 
 import numpy as np
 
+from src.components.calculators.ray_triangle_intersector import TriangleArrays
 from src.components.geometry import Triangle
 from src.components.geometry.vertical_plane import VerticalPlane
 from src.components.models import Window
@@ -62,9 +63,59 @@ class VectorizedElevationAngleCollector:
         if not triangles:
             return []
 
-        plane = VerticalPlane.from_window(window)
-
         v1, v2, v3 = cls._pack_vertices(triangles)
+        return cls._collect_from_vertex_arrays(v1, v2, v3, window)
+
+    @classmethod
+    def collect_all_angles_from_arrays(
+        cls,
+        tri_arrays: TriangleArrays,
+        window: Window
+    ) -> List[float]:
+        """
+        Collect ALL elevation angles using pre-packed triangle arrays.
+
+        Avoids redundant vertex packing when arrays are already available
+        (e.g. shared with RayTriangleIntersector).
+
+        TriangleArrays fields v0/v1/v2 map to Triangle fields v1/v2/v3
+        (0-indexed vs 1-indexed naming convention).
+
+        Args:
+            tri_arrays: Pre-packed triangle vertex arrays
+            window: Window with center and normal for this direction
+
+        Returns:
+            Sorted list of elevation angles in degrees (0=horizontal, 90=up)
+        """
+        if tri_arrays.count == 0:
+            return []
+
+        return cls._collect_from_vertex_arrays(
+            tri_arrays.v0, tri_arrays.v1, tri_arrays.v2, window
+        )
+
+    @classmethod
+    def _collect_from_vertex_arrays(
+        cls,
+        v1: np.ndarray,
+        v2: np.ndarray,
+        v3: np.ndarray,
+        window: Window
+    ) -> List[float]:
+        """
+        Core vectorized computation on pre-packed vertex arrays.
+
+        Args:
+            v1: (N, 3) first vertices of each triangle
+            v2: (N, 3) second vertices
+            v3: (N, 3) third vertices
+            window: Window with center and normal for this direction
+
+        Returns:
+            Sorted list of elevation angles in degrees
+        """
+        plane = VerticalPlane.from_window(window)
 
         origin = plane.origin.to_array()
         normal = plane.normal.to_array()

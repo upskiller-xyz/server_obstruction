@@ -126,6 +126,7 @@ class ObstructionService:
 
         # Delegate mesh combining and filtering to MeshFilterService
         mesh = MeshFilterService.apply_coarse_filter(request.mesh, request.window)
+        mesh = MeshFilterService.apply_height_filter(mesh, request.window)
 
         # Delegate direction calculation to DirectionCalculator
         normal_arr = request.window.normal.to_array()
