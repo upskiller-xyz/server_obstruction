@@ -12,7 +12,7 @@ from src.components.models import ObstructionRequest, ObstructionResult
 from src.server.base.constants import ANGLES, AllDirectionDefaults, ResponseField, ResponseStatus
 from src.server.services.async_direction_calculator import AsyncDirectionCalculator
 from src.server.services.mesh_filter_service import MeshFilterService
-from src.server.services.process_pool_manager import ProcessPoolManager
+from src.server.services.thread_pool_manager import ThreadPoolManager
 
 
 class ObstructionService:
@@ -24,15 +24,15 @@ class ObstructionService:
     - Delegates filtering to MeshFilterService
     - Delegates async execution to AsyncDirectionCalculator
     - Delegates direction calculation to DirectionCalculator
-    - Delegates process pool management to ProcessPoolManager
+    - Delegates thread pool management to ThreadPoolManager
 
     Uses gap-based unified calculation for multi-direction requests.
     Keeps legacy horizon/zenith split for single-direction endpoints.
     """
 
     def __init__(self):
-        """Initialize with process pool manager"""
-        self._pool_manager = ProcessPoolManager()
+        """Initialize with thread pool manager"""
+        self._pool_manager = ThreadPoolManager()
 
     @classmethod
     def calculate_horizon(cls, request: ObstructionRequest) -> ObstructionResult:

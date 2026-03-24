@@ -7,7 +7,7 @@ from src.components.calculators.gap_obstruction_calculator import GapObstruction
 from src.components.geometry import Mesh
 from src.components.models import GapObstructionResult, ObstructionResult, Window
 from src.server.base.constants import ResponseField
-from src.server.services.process_pool_manager import ProcessPoolManager
+from src.server.services.thread_pool_manager import ThreadPoolManager
 
 
 class AsyncDirectionCalculator:
@@ -24,7 +24,7 @@ class AsyncDirectionCalculator:
         combined_mesh: Mesh,
         window_orig: Window,
         direction_angle: float,
-        pool_manager: ProcessPoolManager
+        pool_manager: ThreadPoolManager
     ) -> Dict[str, Any]:
         """
         Calculate obstruction for a single direction using gap-based approach
