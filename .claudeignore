@@ -1,0 +1,8 @@
+.env
+.env.*
+deployment/.env*
+deployment/**/.env*
+*.pem
+*.key
+secrets/
+credentials*
