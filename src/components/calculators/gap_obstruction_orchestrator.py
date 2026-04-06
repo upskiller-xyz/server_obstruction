@@ -55,9 +55,12 @@ class GapObstructionOrchestrator:
         start = time.time()
         rays_cast = 0
 
-        # Step 1: Collect elevation angles from plane intersections
-        elevation_angles = IntersectionCalculator.collect_all_elevation_angles(
-            mesh.triangles, window
+        # Pack triangle arrays once — shared by elevation angle collection and ray casting
+        tri_arrays = RayTriangleIntersector.prepare_arrays(mesh.triangles)
+
+        # Step 1: Collect elevation angles using pre-packed arrays
+        elevation_angles = IntersectionCalculator.collect_all_elevation_angles_from_arrays(
+            tri_arrays, window
         )
 
         # Step 2: Find gaps
@@ -77,8 +80,6 @@ class GapObstructionOrchestrator:
             metrics.log_summary(ObstructionStatus.FULLY_OBSTRUCTED)
             return self._result_factory.create_empty()
 
-        # Prepare for ray casting
-        tri_arrays = RayTriangleIntersector.prepare_arrays(mesh.triangles)
         origin = window.center.to_array()
 
         # Step 3: Test gaps largest-first

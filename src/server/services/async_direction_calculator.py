@@ -7,8 +7,7 @@ from src.components.calculators.gap_obstruction_calculator import GapObstruction
 from src.components.geometry import Mesh
 from src.components.models import GapObstructionResult, ObstructionResult, Window
 from src.server.base.constants import ResponseField
-from src.server.services.mesh_filter_service import MeshFilterService
-from src.server.services.process_pool_manager import ProcessPoolManager
+from src.server.services.thread_pool_manager import ThreadPoolManager
 
 
 class AsyncDirectionCalculator:
@@ -25,7 +24,7 @@ class AsyncDirectionCalculator:
         combined_mesh: Mesh,
         window_orig: Window,
         direction_angle: float,
-        pool_manager: ProcessPoolManager
+        pool_manager: ThreadPoolManager
     ) -> Dict[str, Any]:
         """
         Calculate obstruction for a single direction using gap-based approach
@@ -42,9 +41,6 @@ class AsyncDirectionCalculator:
         # Create window rotated to this direction
         window = Window.set_angle(window_orig, direction_angle)
 
-        # Per-direction height filter
-        filtered_mesh = MeshFilterService.apply_height_filter(combined_mesh, window)
-
         # Execute gap calculation in process pool
         loop = asyncio.get_event_loop()
         executor = pool_manager.get_pool()
@@ -52,7 +48,7 @@ class AsyncDirectionCalculator:
         gap_result: GapObstructionResult = await loop.run_in_executor(
             executor,
             GapObstructionCalculator.calculate,
-            filtered_mesh,
+            combined_mesh,
             window,
             direction_angle
         )

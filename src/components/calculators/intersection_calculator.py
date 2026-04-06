@@ -4,9 +4,10 @@ import logging
 import time
 from typing import List, Tuple
 
-from src.components.calculators.elevation_angle_collector import ElevationAngleCollector
 from src.components.calculators.filter_strategy_map import FilterStrategyMap
 from src.components.calculators.plane_triangle_intersector import PlaneTriangleIntersector
+from src.components.calculators.ray_triangle_intersector import TriangleArrays
+from src.components.calculators.vectorized_elevation_angle_collector import VectorizedElevationAngleCollector
 from src.components.calculators.triangle_intersection_finder import TriangleIntersectionFinder
 from src.components.geometry import AngleCalculator, Mesh, Triangle
 from src.components.geometry.vertical_plane import VerticalPlane
@@ -22,7 +23,7 @@ class IntersectionCalculator:
     - Orchestrates intersection-based obstruction calculation
     - Delegates filtering to FilterStrategyMap
     - Delegates intersection finding to TriangleIntersectionFinder
-    - Delegates angle collection to ElevationAngleCollector
+    - Delegates angle collection to VectorizedElevationAngleCollector
 
     OPTIMIZATION: Tracks maximum height/angle for early termination
     """
@@ -142,7 +143,7 @@ class IntersectionCalculator:
         """
         Collect ALL elevation angles for gap-based calculation
 
-        Delegates to ElevationAngleCollector for separation of concerns
+        Delegates to VectorizedElevationAngleCollector for separation of concerns
 
         Args:
             triangles: All triangles (no filtering)
@@ -151,7 +152,30 @@ class IntersectionCalculator:
         Returns:
             Sorted list of elevation angles in degrees
         """
-        return ElevationAngleCollector.collect_all_angles(triangles, window)
+        return VectorizedElevationAngleCollector.collect_all_angles(triangles, window)
+
+    @classmethod
+    def collect_all_elevation_angles_from_arrays(
+        cls,
+        tri_arrays: TriangleArrays,
+        window: Window
+    ) -> List[float]:
+        """
+        Collect ALL elevation angles using pre-packed triangle arrays.
+
+        Avoids redundant vertex packing when TriangleArrays are already
+        available (e.g. shared with RayTriangleIntersector).
+
+        Args:
+            tri_arrays: Pre-packed triangle vertex arrays
+            window: Window for reference
+
+        Returns:
+            Sorted list of elevation angles in degrees
+        """
+        return VectorizedElevationAngleCollector.collect_all_angles_from_arrays(
+            tri_arrays, window
+        )
 
     @classmethod
     def _no_intersection(cls) -> IntersectionResult:
