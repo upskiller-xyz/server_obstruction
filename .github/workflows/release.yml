@@ -33,5 +33,5 @@ jobs:
       - uses: upskiller-xyz/infra.lux/.github/actions/release@v1
         with:
           image: server-obstruction
-          postfix: ${{ github.event.inputs.postfix }}
+          postfix: ${{ github.event.inputs.postfix || '' }}
           scw-secret-key: ${{ secrets.SCW_SECRET_KEY }}
