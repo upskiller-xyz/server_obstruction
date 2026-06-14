@@ -5,7 +5,7 @@ Abstract base class for validation steps using Strategy Pattern.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Dict, Any
 
 
 class ValidationStep(ABC):

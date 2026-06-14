@@ -1,5 +1,5 @@
 """OpenAPI specification generator from Pydantic models for auto-documentation"""
-from typing import Any, Dict
+from typing import Dict, Any
 
 
 class OpenAPISpecGenerator:

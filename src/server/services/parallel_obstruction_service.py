@@ -1,13 +1,12 @@
 """Parallel obstruction service for multi-direction calculations"""
 
 import asyncio
-import logging
 import math
 import time
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-
+import logging
 from src.components.calculators.direction_calculator import DirectionCalculator
 from src.components.models.obstruction_request import ObstructionRequest
 from src.server.base.constants import ResponseField

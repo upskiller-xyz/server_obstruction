@@ -4,13 +4,9 @@ Numeric fields validation step
 Validates numeric fields are valid numbers.
 """
 
-from typing import Any, Dict
+from typing import Dict, Any
 
-from src.server.base.constants import (
-    CENTER_WINDOW_FIELDS,
-    ENDPOINT_WINDOW_FIELDS,
-    RequestField,
-)
+from src.server.base.constants import RequestField, CENTER_WINDOW_FIELDS, ENDPOINT_WINDOW_FIELDS
 from src.server.validators.steps.validation_step import ValidationStep
 
 

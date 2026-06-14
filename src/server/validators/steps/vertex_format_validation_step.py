@@ -5,7 +5,7 @@ Validates individual vertex format.
 Accepts a single mesh parameter with combined geometry.
 """
 
-from typing import Any, Dict, List
+from typing import Dict, Any, List
 
 from src.server.base.constants import ANGLES, RequestField
 from src.server.validators.steps.validation_step import ValidationStep

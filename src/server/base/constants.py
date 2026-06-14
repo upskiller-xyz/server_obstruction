@@ -2,7 +2,6 @@
 
 from enum import Enum
 from typing import List
-
 from ...utils.extended_enum import ExtendedEnumMixin
 
 

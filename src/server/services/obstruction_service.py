@@ -9,12 +9,7 @@ from src.components.calculators.direction_calculator import DirectionCalculator
 from src.components.calculators.intersection_calculator import IntersectionCalculator
 from src.components.geometry.mesh import Mesh
 from src.components.models import ObstructionRequest, ObstructionResult
-from src.server.base.constants import (
-    ANGLES,
-    AllDirectionDefaults,
-    ResponseField,
-    ResponseStatus,
-)
+from src.server.base.constants import ANGLES, AllDirectionDefaults, ResponseField, ResponseStatus
 from src.server.services.async_direction_calculator import AsyncDirectionCalculator
 from src.server.services.mesh_filter_service import MeshFilterService
 from src.server.services.thread_pool_manager import ThreadPoolManager
