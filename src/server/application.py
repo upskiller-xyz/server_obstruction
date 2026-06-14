@@ -76,12 +76,26 @@ class ServerApplication:
             handler.__name__ = f'handler_{endpoint_value}'
             return handler
 
+        # Create binary (multipart) handler factory
+        def create_binary_handler(endpoint_value: str):
+            """Create a multipart route handler for the given binary endpoint"""
+            def handler():
+                return RequestHandler.handle_multipart_post(endpoint_value)
+            handler.__name__ = f'handler_{endpoint_value}'
+            return handler
+
         # Delegate main route registration to RouteRegistrar
         RouteRegistrar.register_routes(
             self._app,
             handler_factory=create_handler,
             status_handler=self._get_status,
             routes_handler=self._list_routes
+        )
+
+        # Register binary transport routes (e.g. /obstruction_parallel_bin)
+        RouteRegistrar.register_binary_routes(
+            self._app,
+            handler_factory=create_binary_handler
         )
 
         # Delegate documentation route registration

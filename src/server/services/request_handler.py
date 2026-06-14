@@ -7,8 +7,17 @@ import orjson
 from flask import Response, jsonify, request
 from werkzeug.exceptions import BadRequest
 
-from src.server.base.constants import ContentType, EndpointName, HTTPStatus, ResponseStatus
+from src.server.base.constants import (
+    BinaryEndpointName,
+    ContentType,
+    EndpointName,
+    HTTPStatus,
+    RequestField,
+    ResponseStatus,
+)
+from src.server.controllers.endpoint_config import BinaryEndpointLogicalMap
 from src.server.controllers.obstruction_controller import ObstructionController
+from src.server.services.mesh_decoder import NpyMeshDecoder
 
 
 class RequestHandler:
@@ -19,6 +28,55 @@ class RequestHandler:
     - Only handles HTTP request/response cycle
     - Does NOT register routes or manage application state
     """
+
+    _mesh_decoder = NpyMeshDecoder()
+
+    @staticmethod
+    def handle_multipart_post(endpoint_str: str) -> Tuple[Response, int]:
+        """Handle a binary (multipart) POST for a binary transport endpoint.
+
+        Body: a small ``params`` JSON form field (window fields) plus a ``mesh``
+        file (.npy, optionally gzipped). The mesh is decoded to the same list
+        structure the JSON path produces, then dispatched to the controller via
+        the logical endpoint — so validation/service/response logic is reused
+        unchanged. Only the transport differs (no multi-second JSON mesh parse).
+        """
+        try:
+            raw_params = request.form.get("params")
+            if not raw_params:
+                raise BadRequest("Missing 'params' form field")
+            try:
+                request_data = orjson.loads(raw_params)
+            except orjson.JSONDecodeError as e:
+                raise BadRequest(f"Invalid params JSON: {e}")
+
+            mesh_file = request.files.get(RequestField.MESH.value)
+            if mesh_file is not None:
+                request_data[RequestField.MESH.value] = (
+                    RequestHandler._mesh_decoder.decode(mesh_file.read())
+                )
+
+            binary_endpoint = BinaryEndpointName.by_value(endpoint_str)
+            endpoint = BinaryEndpointLogicalMap.get(binary_endpoint)
+            result = ObstructionController.call(endpoint, request_data)  # type: ignore
+
+            if result.get("status") == ResponseStatus.ERROR.value:
+                return jsonify(result), HTTPStatus.BAD_REQUEST.value
+
+            return jsonify(result), HTTPStatus.OK.value
+
+        except BadRequest as e:
+            return jsonify({
+                "status": ResponseStatus.ERROR.value,
+                "error": str(e)
+            }), HTTPStatus.BAD_REQUEST.value
+
+        except Exception as e:
+            logging.error(f"{endpoint_str} endpoint failed: {str(e)}")
+            return jsonify({
+                "status": ResponseStatus.ERROR.value,
+                "error": f"Internal server error: {str(e)}"
+            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
 
     @staticmethod
     def handle_json_post(endpoint_str: str) -> Tuple[Response, int]:
