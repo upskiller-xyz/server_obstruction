@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Tuple
 
+import orjson
 from flask import Response, jsonify, request
 from werkzeug.exceptions import BadRequest
 
@@ -35,8 +36,9 @@ class RequestHandler:
             if not request.is_json:
                 raise BadRequest(f"Content-Type must be {ContentType.JSON.value}")
 
-            # Parse request body
-            request_data = request.get_json()
+            # Parse request body with orjson (~faster than get_json; obstruction
+            # receives the full mesh, so body parsing dominates here too).
+            request_data = orjson.loads(request.get_data())
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 

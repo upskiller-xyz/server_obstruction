@@ -20,6 +20,8 @@ python-dotenv>=1.0.0,<2.0.0
 
 # Production Server (optional for Docker deployment)
 gunicorn>=21.0.0,<23.0.0
+# Fast JSON parsing (request body carries the full mesh)
+orjson>=3.9.0
 # Numerical & Scientific Computing
 numpy>=1.24.0,<2.0.0
 
