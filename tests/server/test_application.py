@@ -188,6 +188,40 @@ class TestServerApplication:
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST.value
 
+    def test_binary_endpoint_rejects_npz_archive(self, client):
+        """An .npz archive (not a single array) is a client error, not a 500."""
+        buf = io.BytesIO()
+        np.savez(buf, a=np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32))
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': json.dumps(self._params()), 'mesh': (io.BytesIO(buf.getvalue()), 'm.npz')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_binary_endpoint_rejects_corrupt_gzip(self, client):
+        """A gzip-magic but corrupt payload is a client error, not a 500."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': json.dumps(self._params()), 'mesh': (io.BytesIO(b'\x1f\x8bgarbage'), 'm.npy.gz')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_binary_endpoint_rejects_non_object_params(self, client):
+        """params that is not a JSON object is a client error."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': '[1, 2, 3]', 'mesh': (io.BytesIO(self._npy_mesh()), 'mesh.npy')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_json_endpoint_rejects_non_object_body(self, client):
+        """A non-object JSON body (list/null) is a 400, not a 500."""
+        response = client.post('/obstruction_parallel', data='[1, 2, 3]', content_type='application/json')
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
     def test_application_has_cors_enabled(self):
         """Test that CORS is enabled"""
         app = ServerApplication()

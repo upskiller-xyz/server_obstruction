@@ -18,6 +18,9 @@ from src.server.base.constants import (
 from src.server.controllers.endpoint_config import BinaryEndpointLogicalMap
 from src.server.controllers.obstruction_controller import ObstructionController
 from src.server.services.mesh_decoder import NpyMeshDecoder
+from src.server.services.timing import StageTimer
+
+logger = logging.getLogger(__name__)
 
 
 class RequestHandler:
@@ -49,12 +52,17 @@ class RequestHandler:
                 request_data = orjson.loads(raw_params)
             except orjson.JSONDecodeError as e:
                 raise BadRequest(f"Invalid params JSON: {e}")
+            if not isinstance(request_data, dict):
+                raise BadRequest("'params' must be a JSON object")
 
             mesh_file = request.files.get(RequestField.MESH.value)
             if mesh_file is not None:
-                request_data[RequestField.MESH.value] = (
-                    RequestHandler._mesh_decoder.decode(mesh_file.read())
-                )
+                # Binary decode is ~ms (np.load) vs multi-second JSON parse; timed
+                # to confirm the win. One timer for the whole mesh, not per vertex.
+                with StageTimer("decode_mesh", logger):
+                    request_data[RequestField.MESH.value] = (
+                        RequestHandler._mesh_decoder.decode(mesh_file.read())
+                    )
 
             binary_endpoint = BinaryEndpointName.by_value(endpoint_str)
             endpoint = BinaryEndpointLogicalMap.get(binary_endpoint)
@@ -71,11 +79,13 @@ class RequestHandler:
                 "error": str(e)
             }), HTTPStatus.BAD_REQUEST.value
 
-        except Exception as e:
-            logging.error(f"{endpoint_str} endpoint failed: {str(e)}")
+        except Exception:
+            # Log full traceback server-side; return a generic message so internal
+            # details are not leaked to the client.
+            logger.error(f"{endpoint_str} endpoint failed", exc_info=True)
             return jsonify({
                 "status": ResponseStatus.ERROR.value,
-                "error": f"Internal server error: {str(e)}"
+                "error": "Internal server error"
             }), HTTPStatus.INTERNAL_SERVER_ERROR.value
 
     @staticmethod
@@ -100,12 +110,16 @@ class RequestHandler:
             raw = request.get_data()
             if not raw:
                 raise BadRequest("Request body cannot be empty")
-            try:
-                request_data = orjson.loads(raw)
-            except orjson.JSONDecodeError as e:
-                raise BadRequest(f"Invalid JSON: {e}")
-            if not request_data:
-                raise BadRequest("Request body cannot be empty")
+            with StageTimer("parse_body", logger):
+                try:
+                    request_data = orjson.loads(raw)
+                except orjson.JSONDecodeError as e:
+                    raise BadRequest(f"Invalid JSON: {e}")
+            # Non-object JSON (list/null/number) would fail confusingly downstream;
+            # reject it as a client error. An empty object ({}) is allowed through so
+            # the validator can report the specific missing fields.
+            if not isinstance(request_data, dict):
+                raise BadRequest("Request body must be a JSON object")
 
             # Route to controller
             endpoint = EndpointName.by_value(endpoint_str)
@@ -123,9 +137,11 @@ class RequestHandler:
                 "error": str(e)
             }), HTTPStatus.BAD_REQUEST.value
 
-        except Exception as e:
-            logging.error(f"{endpoint_str} endpoint failed: {str(e)}")
+        except Exception:
+            # Log full traceback server-side; return a generic message so internal
+            # details are not leaked to the client.
+            logger.error(f"{endpoint_str} endpoint failed", exc_info=True)
             return jsonify({
                 "status": ResponseStatus.ERROR.value,
-                "error": f"Internal server error: {str(e)}"
+                "error": "Internal server error"
             }), HTTPStatus.INTERNAL_SERVER_ERROR.value

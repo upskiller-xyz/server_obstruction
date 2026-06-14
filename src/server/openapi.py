@@ -306,6 +306,73 @@ class OpenAPISpecGenerator:
                         }
                     }
                 }
+            },
+            "/obstruction_parallel_bin": {
+                "post": {
+                    "summary": "Binary (multipart) variant of /obstruction_parallel",
+                    "description": (
+                        "Same computation as /obstruction_parallel, but the mesh is sent as a "
+                        "binary NumPy .npy file (optionally gzip-compressed) in a multipart body "
+                        "instead of an inline JSON array. Avoids the multi-second JSON mesh parse: "
+                        "the mesh is decoded with np.load (~ms). The small window fields are sent "
+                        "as a JSON 'params' form field."
+                    ),
+                    "tags": ["Obstruction Calculation"],
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "multipart/form-data": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "params": {
+                                            "type": "string",
+                                            "description": (
+                                                "JSON object with the window/direction fields "
+                                                "(same shape as MultiDirectionRequest, minus mesh)."
+                                            ),
+                                        },
+                                        "mesh": {
+                                            "type": "string",
+                                            "format": "binary",
+                                            "description": (
+                                                "NumPy .npy file of an (N, 3) float vertex array "
+                                                "(three vertices per triangle), optionally gzipped."
+                                            ),
+                                        },
+                                    },
+                                    "required": ["params", "mesh"],
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Parallel multi-direction results",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/MultiDirectionEnvelope"}
+                                }
+                            }
+                        },
+                        "400": {
+                            "description": "Invalid request",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                }
+                            }
+                        },
+                        "500": {
+                            "description": "Internal server error",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

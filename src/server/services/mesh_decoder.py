@@ -40,12 +40,22 @@ class NpyMeshDecoder(MeshDecoder):
             raise BadRequest("Mesh payload cannot be empty")
 
         if payload[:2] == self._GZIP_MAGIC:
-            payload = gzip.decompress(payload)
+            try:
+                payload = gzip.decompress(payload)
+            except (OSError, EOFError) as e:
+                raise BadRequest(f"Invalid gzip mesh payload: {e}")
 
         try:
             array = np.load(io.BytesIO(payload), allow_pickle=False)
         except Exception as e:
             raise BadRequest(f"Invalid .npy mesh payload: {e}")
+
+        # np.load also accepts .npz archives (→ NpzFile, not an ndarray); reject
+        # those explicitly so we don't fail later with an opaque AttributeError.
+        if not isinstance(array, np.ndarray):
+            raise BadRequest(
+                "Mesh payload must be a single .npy array, not an .npz archive"
+            )
 
         if array.ndim != 2 or array.shape[1] != 3:
             raise BadRequest(
