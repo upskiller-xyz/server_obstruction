@@ -47,7 +47,8 @@ class GapObstructionCalculator:
         mesh: Mesh,
         window: Window,
         direction_angle: float,
-        config: GapObstructionConfig = GapObstructionConfig()
+        config: GapObstructionConfig = GapObstructionConfig(),
+        tri_arrays=None
     ) -> GapObstructionResult:
         """
         Calculate obstruction using gap detection for a single direction.
@@ -76,5 +77,5 @@ class GapObstructionCalculator:
             precision_deg=config.BINARY_SEARCH_PRECISION_DEG
         )
 
-        # Delegate to orchestrator
-        return orchestrator.calculate(mesh, window, direction_angle)
+        # Delegate to orchestrator (pre-packed tri_arrays reused across directions)
+        return orchestrator.calculate(mesh, window, direction_angle, tri_arrays=tri_arrays)

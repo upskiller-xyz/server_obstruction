@@ -49,6 +49,34 @@ class TestObstructionService:
         assert result.obstruction_angle_degrees >= 0.0
         assert result.obstruction_angle_radians >= 0.0
 
+    def test_multi_direction_packs_tri_arrays_once(self):
+        """The mesh is identical across all 64 directions, so triangle arrays must
+        be packed once per request, not once per direction (the old ~5.5s waste)."""
+        import asyncio
+        from src.components.models import ObstructionRequest
+        import src.components.calculators.ray_triangle_intersector as rti
+
+        window = Window(
+            center=Point3D(x=0.0, y=1.5, z=0.0),
+            normal=Vector3D(x=1.0, y=0.0, z=0.0),
+        )
+        mesh = Mesh.from_vertices([[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]])
+        request = ObstructionRequest(window=window, mesh=mesh)
+
+        orig = rti.RayTriangleIntersector.prepare_arrays
+        calls = {"n": 0}
+
+        def counting(*a, **k):
+            calls["n"] += 1
+            return orig(*a, **k)
+
+        service = ObstructionService()
+        with patch.object(rti.RayTriangleIntersector, "prepare_arrays", counting):
+            result = asyncio.run(service.calculate_all_directions_async(request))
+
+        assert len(result["results"]) == 64
+        assert calls["n"] == 1  # packed once, not 64×
+
     def test_get_status_returns_dict(self):
         """Test get_status returns dictionary with status info"""
         status = ObstructionService.get_status()

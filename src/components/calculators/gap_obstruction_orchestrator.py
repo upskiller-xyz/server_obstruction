@@ -6,12 +6,13 @@ Orchestrates gap-based obstruction calculation pipeline.
 
 import logging
 import time
+from typing import Optional
 
 from src.components.calculators.gap_detection_strategy import GapDetectionStrategy
 from src.components.calculators.gap_verification_service import GapVerificationService
 from src.components.calculators.intersection_calculator import IntersectionCalculator
 from src.components.calculators.obstruction_result_factory import ObstructionResultFactory
-from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
+from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector, TriangleArrays
 from src.components.geometry import Mesh
 from src.components.models import Window, GapObstructionResult
 from src.components.models.performance_metrics import PerformanceMetrics
@@ -39,7 +40,8 @@ class GapObstructionOrchestrator:
         self,
         mesh: Mesh,
         window: Window,
-        direction_angle: float
+        direction_angle: float,
+        tri_arrays: Optional[TriangleArrays] = None
     ) -> GapObstructionResult:
         """
         Calculate obstruction using gap detection for a single direction.
@@ -55,8 +57,13 @@ class GapObstructionOrchestrator:
         start = time.time()
         rays_cast = 0
 
-        # Pack triangle arrays once — shared by elevation angle collection and ray casting
-        tri_arrays = RayTriangleIntersector.prepare_arrays(mesh.triangles)
+        # Pack triangle arrays — shared by elevation angle collection and ray casting.
+        # The mesh is identical across all 64 directions, so the caller packs once and
+        # passes it in (see ObstructionService); packing here per direction was ~5.5s of
+        # redundant Python work. Fall back to packing from the mesh when not supplied
+        # (e.g. direct/unit-test callers).
+        if tri_arrays is None:
+            tri_arrays = RayTriangleIntersector.prepare_arrays(mesh.triangles)
 
         # Step 1: Collect elevation angles using pre-packed arrays
         elevation_angles = IntersectionCalculator.collect_all_elevation_angles_from_arrays(
@@ -69,7 +76,7 @@ class GapObstructionOrchestrator:
             self._min_gap_deg
         )
 
-        if not gaps or not mesh.triangles:
+        if not gaps or tri_arrays.count == 0:
             # No gaps — fully obstructed
             metrics = PerformanceMetrics(
                 elapsed_ms=(time.time() - start) * 1000,
