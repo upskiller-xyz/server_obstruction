@@ -55,14 +55,17 @@ class RequestHandler:
             if not isinstance(request_data, dict):
                 raise BadRequest("'params' must be a JSON object")
 
+            # The binary transport contract requires a mesh file (see OpenAPI);
+            # fail fast with a clear 400 instead of a generic validation error later.
             mesh_file = request.files.get(RequestField.MESH.value)
-            if mesh_file is not None:
-                # Binary decode is ~ms (np.load) vs multi-second JSON parse; timed
-                # to confirm the win. One timer for the whole mesh, not per vertex.
-                with StageTimer("decode_mesh", logger):
-                    request_data[RequestField.MESH.value] = (
-                        RequestHandler._mesh_decoder.decode(mesh_file.read())
-                    )
+            if mesh_file is None:
+                raise BadRequest("Missing 'mesh' file")
+            # Binary decode is ~ms (np.load) vs multi-second JSON parse; timed to
+            # confirm the win. One timer for the whole mesh, not per vertex.
+            with StageTimer("decode_mesh", logger):
+                request_data[RequestField.MESH.value] = (
+                    RequestHandler._mesh_decoder.decode(mesh_file.read())
+                )
 
             binary_endpoint = BinaryEndpointName.by_value(endpoint_str)
             endpoint = BinaryEndpointLogicalMap.get(binary_endpoint)

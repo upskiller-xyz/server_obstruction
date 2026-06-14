@@ -36,5 +36,6 @@ class StageTimer:
         tb: Optional[TracebackType],
     ) -> bool:
         elapsed_ms = (time.perf_counter() - self._t0) * 1000
-        self._logger.info(f"[timing] {self._stage}: {elapsed_ms:.0f}ms")
+        # Parameterized logging: the message is only formatted if INFO is enabled.
+        self._logger.info("[timing] %s: %.0fms", self._stage, elapsed_ms)
         return False  # never suppress exceptions

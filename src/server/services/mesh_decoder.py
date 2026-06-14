@@ -34,16 +34,17 @@ class NpyMeshDecoder(MeshDecoder):
     """
 
     _GZIP_MAGIC = b"\x1f\x8b"
+    # Cap the decompressed mesh to bound memory: a small gzip payload can expand
+    # enormously (zip-bomb / DoS). 512 MB comfortably fits real meshes (a 474k-
+    # triangle mesh is ~17 MB as float32 .npy) while rejecting pathological input.
+    _MAX_DECOMPRESSED_BYTES = 512 * 1024 * 1024
 
     def decode(self, payload: bytes) -> List[list]:
         if not payload:
             raise BadRequest("Mesh payload cannot be empty")
 
         if payload[:2] == self._GZIP_MAGIC:
-            try:
-                payload = gzip.decompress(payload)
-            except (OSError, EOFError) as e:
-                raise BadRequest(f"Invalid gzip mesh payload: {e}")
+            payload = self._gunzip_bounded(payload)
 
         try:
             array = np.load(io.BytesIO(payload), allow_pickle=False)
@@ -63,3 +64,20 @@ class NpyMeshDecoder(MeshDecoder):
             )
 
         return array.tolist()
+
+    def _gunzip_bounded(self, payload: bytes) -> bytes:
+        """Decompress a gzip payload, capping output to guard against zip bombs.
+
+        Reads at most ``_MAX_DECOMPRESSED_BYTES + 1`` so memory stays bounded even
+        for a malicious payload; exceeding the cap (or a corrupt stream) is a 400.
+        """
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(payload)) as gz:
+                data = gz.read(self._MAX_DECOMPRESSED_BYTES + 1)
+        except (OSError, EOFError) as e:
+            raise BadRequest(f"Invalid gzip mesh payload: {e}")
+
+        if len(data) > self._MAX_DECOMPRESSED_BYTES:
+            raise BadRequest("Decompressed mesh exceeds the maximum allowed size")
+
+        return data

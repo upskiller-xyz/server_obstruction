@@ -188,6 +188,15 @@ class TestServerApplication:
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST.value
 
+    def test_binary_endpoint_missing_mesh_returns_400(self, client):
+        """The mesh file is required by the binary contract — fail fast."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': json.dumps(self._params())},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
     def test_binary_endpoint_rejects_npz_archive(self, client):
         """An .npz archive (not a single array) is a client error, not a 500."""
         buf = io.BytesIO()
