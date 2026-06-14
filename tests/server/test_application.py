@@ -1,7 +1,12 @@
 """Tests for ServerApplication class"""
-import pytest
+import gzip
+import io
 import json
 from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
+
 from src.server.application import ServerApplication
 from src.server.base.constants import HTTPStatus, ResponseStatus
 
@@ -124,6 +129,108 @@ class TestServerApplication:
         assert response.status_code in [HTTPStatus.OK.value, HTTPStatus.BAD_REQUEST.value]
         data = json.loads(response.data)
         assert 'status' in data
+
+    @staticmethod
+    def _npy_mesh() -> bytes:
+        """A minimal valid (N, 3) float mesh serialized as .npy bytes."""
+        verts = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+        buf = io.BytesIO()
+        np.save(buf, verts)
+        return buf.getvalue()
+
+    @staticmethod
+    def _params() -> dict:
+        return {"x": 0.5, "y": 0.5, "z": 10.0, "direction_angle": 90.0}
+
+    def test_binary_endpoint_accepts_npy_mesh(self, client):
+        """POST /obstruction_parallel_bin with a multipart .npy mesh succeeds."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={
+                'params': json.dumps(self._params()),
+                'mesh': (io.BytesIO(self._npy_mesh()), 'mesh.npy'),
+            },
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.OK.value
+        assert 'data' in json.loads(response.data)
+
+    def test_binary_endpoint_accepts_gzipped_npy_mesh(self, client):
+        """A gzip-compressed .npy mesh is transparently decompressed."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={
+                'params': json.dumps(self._params()),
+                'mesh': (io.BytesIO(gzip.compress(self._npy_mesh())), 'mesh.npy.gz'),
+            },
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.OK.value
+
+    def test_binary_endpoint_empty_mesh_returns_400(self, client):
+        """An empty mesh payload is a client error, not a 500."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={
+                'params': json.dumps(self._params()),
+                'mesh': (io.BytesIO(b''), 'mesh.npy'),
+            },
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+        assert json.loads(response.data)['status'] == ResponseStatus.ERROR.value
+
+    def test_binary_endpoint_missing_params_returns_400(self, client):
+        """Missing the params form field is a client error."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'mesh': (io.BytesIO(self._npy_mesh()), 'mesh.npy')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_binary_endpoint_missing_mesh_returns_400(self, client):
+        """The mesh file is required by the binary contract — fail fast."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': json.dumps(self._params())},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_binary_endpoint_rejects_npz_archive(self, client):
+        """An .npz archive (not a single array) is a client error, not a 500."""
+        buf = io.BytesIO()
+        np.savez(buf, a=np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32))
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': json.dumps(self._params()), 'mesh': (io.BytesIO(buf.getvalue()), 'm.npz')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_binary_endpoint_rejects_corrupt_gzip(self, client):
+        """A gzip-magic but corrupt payload is a client error, not a 500."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': json.dumps(self._params()), 'mesh': (io.BytesIO(b'\x1f\x8bgarbage'), 'm.npy.gz')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_binary_endpoint_rejects_non_object_params(self, client):
+        """params that is not a JSON object is a client error."""
+        response = client.post(
+            '/obstruction_parallel_bin',
+            data={'params': '[1, 2, 3]', 'mesh': (io.BytesIO(self._npy_mesh()), 'mesh.npy')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+
+    def test_json_endpoint_rejects_non_object_body(self, client):
+        """A non-object JSON body (list/null) is a 400, not a 500."""
+        response = client.post('/obstruction_parallel', data='[1, 2, 3]', content_type='application/json')
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
 
     def test_application_has_cors_enabled(self):
         """Test that CORS is enabled"""

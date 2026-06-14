@@ -93,6 +93,18 @@ class EndpointName(ExtendedEnumMixin, Enum):
     OBSTRUCTION_ALL = "obstruction_all"
     OBSTRUCTION_PARALLEL = "obstruction_parallel"
 
+
+class BinaryEndpointName(ExtendedEnumMixin, Enum):
+    """Binary (multipart) transport variants of JSON endpoints.
+
+    Same computation as the JSON twin; only the mesh payload differs — a
+    gzip/.npy file in a multipart body instead of an inline JSON array. Each
+    maps to a logical ``EndpointName`` (see ``BinaryEndpointLogicalMap``) so all
+    downstream validation/service/response logic is reused unchanged.
+    """
+    OBSTRUCTION_PARALLEL_BIN = "obstruction_parallel_bin"
+
+
 class MathConstants(ExtendedEnumMixin, Enum):
     """Mathematical constants for calculations"""
     EPSILON = 1e-6  # Minimum distance threshold to avoid division by zero

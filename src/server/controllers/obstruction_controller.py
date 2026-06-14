@@ -11,6 +11,7 @@ from src.server.builders import ErrorResponseBuilder
 from src.server.controllers.endpoint_config import ServiceMethod
 from src.server.maps import EndpointResponseMap
 from src.server.services.obstruction_service import ObstructionService
+from src.server.services.timing import StageTimer
 from src.server.validators.request_validator import RequestValidator
 
 logger = logging.getLogger(__name__)
@@ -126,8 +127,11 @@ class ObstructionController:
         if RequestField.DIRECTION_ANGLE.value not in request_data:
             request_data[RequestField.DIRECTION_ANGLE.value] = 0.0
 
-        # Parse request and optional parameters
-        request = ObstructionRequest.from_dict(request_data)
+        # Parse request and optional parameters. `from_dict` builds the Mesh
+        # (Point3D/Triangle objects) — an O(N) Python loop, timed separately from
+        # the ray-casting compute so we can split the two in the latency budget.
+        with StageTimer("mesh_build", logger):
+            request = ObstructionRequest.from_dict(request_data)
         num_directions = request_data.get(OptionalRequestField.NUM_DIRECTIONS.value, None)
         start_angle_degrees = request_data.get(OptionalRequestField.START_ANGLE_DEGREES.value, None)
         end_angle_degrees = request_data.get(OptionalRequestField.END_ANGLE_DEGREES.value, None)
@@ -138,10 +142,13 @@ class ObstructionController:
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        # One timer around the whole multi-direction run (NOT per direction — at 64
+        # directions per-direction logging would add overhead and log noise).
         try:
-            result = loop.run_until_complete(
-                service_method(request, num_directions, start_angle_degrees, end_angle_degrees)
-            )
+            with StageTimer("compute_directions", logger):
+                result = loop.run_until_complete(
+                    service_method(request, num_directions, start_angle_degrees, end_angle_degrees)
+                )
         finally:
             loop.close()
         return result

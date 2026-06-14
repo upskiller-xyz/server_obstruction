@@ -5,7 +5,7 @@ from typing import Callable
 
 from flask import Flask
 
-from src.server.base.constants import EndpointName, HTTPMethod
+from src.server.base.constants import BinaryEndpointName, EndpointName, HTTPMethod
 from src.server.controllers.endpoint_config import EndpointMethodMap
 
 
@@ -51,6 +51,26 @@ class RouteRegistrar:
                 endpoint.value,
                 handler,
                 methods=[EndpointMethodMap.get(endpoint).value]
+            )
+
+    @staticmethod
+    def register_binary_routes(
+        app: Flask,
+        handler_factory: Callable[[str], Callable]
+    ) -> None:
+        """
+        Register binary (multipart) transport routes alongside their JSON twins.
+
+        Args:
+            app: Flask application instance
+            handler_factory: Factory creating a multipart handler per endpoint
+        """
+        for endpoint in BinaryEndpointName.get_members():
+            app.add_url_rule(
+                "/" + endpoint.value,
+                endpoint.value,
+                handler_factory(endpoint.value),
+                methods=[HTTPMethod.POST.value]
             )
 
     @staticmethod
