@@ -19,4 +19,4 @@ python-dotenv>=1.0.0,<2.0.0
 setuptools==66.1.1
 
 # Fast JSON parsing (request body carries the full mesh)
-orjson>=3.9.0
+orjson>=3.9.0,<4.0.0

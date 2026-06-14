@@ -37,8 +37,15 @@ class RequestHandler:
                 raise BadRequest(f"Content-Type must be {ContentType.JSON.value}")
 
             # Parse request body with orjson (~faster than get_json; obstruction
-            # receives the full mesh, so body parsing dominates here too).
-            request_data = orjson.loads(request.get_data())
+            # receives the full mesh, so body parsing dominates here too). Mirror
+            # get_json's error contract: empty/invalid body → 400, not 500.
+            raw = request.get_data()
+            if not raw:
+                raise BadRequest("Request body cannot be empty")
+            try:
+                request_data = orjson.loads(raw)
+            except orjson.JSONDecodeError as e:
+                raise BadRequest(f"Invalid JSON: {e}")
             if not request_data:
                 raise BadRequest("Request body cannot be empty")
 
