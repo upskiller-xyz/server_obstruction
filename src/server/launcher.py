@@ -1,5 +1,6 @@
 """Server launcher for starting the Flask application"""
 import logging
+
 from src.server.application import ServerApplication
 
 

@@ -6,7 +6,8 @@ authors = ["stasja fedorova <stasja.fedorova@upskiller.xyz>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.13"
+# numpy>=1.24,<2.0 ships no wheels for 3.13; cap below it so Poetry can resolve.
+python = ">=3.10,<3.13"
 
 setuptools = "66.1.1"
 

@@ -36,6 +36,12 @@ class ServerApplication:
             app_name: Name of the Flask application
         """
         self._app: Flask = Flask(app_name)
+        # Reject oversized request bodies before they are read into memory (the
+        # mesh upload is unbounded otherwise → OOM/DoS). Default 512 MB comfortably
+        # fits a full JSON mesh (~86 MB) with headroom; override via env if needed.
+        self._app.config["MAX_CONTENT_LENGTH"] = int(
+            os.getenv("MAX_CONTENT_LENGTH_BYTES", str(512 * 1024 * 1024))
+        )
         CORS(self._app)
         self._setup_dependencies()
         self._setup_routes()

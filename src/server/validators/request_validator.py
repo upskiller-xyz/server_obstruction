@@ -1,16 +1,17 @@
 """Request validation logic for obstruction calculations"""
 
-from typing import Dict, Any, List, Type
+from typing import Any, Dict, List, Type
+
 from src.server.base.constants import EndpointName
 from src.server.validators.steps import (
-    ValidationStep,
-    RequiredFieldsValidationStep,
-    MultiDirectionRequiredFieldsValidationStep,
     MeshFormatValidationStep,
-    VertexFormatValidationStep,
+    MultiDirectionRequiredFieldsValidationStep,
     NumericFieldsValidationStep,
+    OptionalParametersValidationStep,
+    RequiredFieldsValidationStep,
+    ValidationStep,
+    VertexFormatValidationStep,
     WindowNotOnMeshValidationStep,
-    OptionalParametersValidationStep
 )
 from src.utils.standard_map import StandardMap
 

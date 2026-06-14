@@ -1,7 +1,8 @@
 """Result assemblers for parallel execution results"""
 
-from typing import Any, Dict, List
 import logging
+from typing import Any, Dict, List
+
 from src.server.base.constants import ResponseField
 
 

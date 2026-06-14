@@ -9,9 +9,13 @@ Window formats:
   - Endpoint format: x1, y1, z1, x2, y2, z2, direction_angle, room_polygon
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
-from src.server.base.constants import RequestField, CENTER_WINDOW_FIELDS, ENDPOINT_WINDOW_FIELDS
+from src.server.base.constants import (
+    CENTER_WINDOW_FIELDS,
+    ENDPOINT_WINDOW_FIELDS,
+    RequestField,
+)
 from src.server.validators.steps.validation_step import ValidationStep
 
 

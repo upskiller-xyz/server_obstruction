@@ -2,10 +2,11 @@
 import gzip
 import io
 import json
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch
+
 from src.server.application import ServerApplication
 from src.server.base.constants import HTTPStatus, ResponseStatus
 

@@ -4,9 +4,15 @@ Builder classes for constructing API responses following Builder Pattern
 These classes use classmethods to build responses, following the principle:
 "Use classmethods for functionality that operates on the class"
 """
-from typing import Dict, Any, Optional
-from src.server.base.constants import ControllerStatus, ResponseStatus, ResponseField, RequestField
+from typing import Any, Dict, Optional
+
 from src.components.models import ObstructionResult
+from src.server.base.constants import (
+    ControllerStatus,
+    RequestField,
+    ResponseField,
+    ResponseStatus,
+)
 from src.server.base.errors import PointOnTriangleError
 
 

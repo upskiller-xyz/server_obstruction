@@ -1,15 +1,15 @@
 """Server-side decorators for endpoint handlers"""
-from functools import wraps
-from typing import Callable, Any, Type, Optional
-from flask import request, jsonify
-from werkzeug.exceptions import BadRequest, UnsupportedMediaType
-from pydantic import BaseModel, ValidationError
-import traceback
 import logging
+import traceback
+from functools import wraps
+from typing import Any, Callable, Optional, Type
 
-from src.server.base.constants import ResponseField, HTTPStatus
+from flask import jsonify, request
+from pydantic import BaseModel, ValidationError
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
+
+from src.server.base.constants import HTTPStatus, ResponseField
 from src.server.enums import EndpointType
-
 
 
 def endpoint_error_handler(

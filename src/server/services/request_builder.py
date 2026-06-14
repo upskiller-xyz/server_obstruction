@@ -3,7 +3,6 @@
 from typing import Any, Dict, List
 
 
-
 class ParallelRequestBuilder:
     """
     Builder Pattern implementation for constructing parallel request payloads

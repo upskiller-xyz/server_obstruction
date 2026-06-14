@@ -1,11 +1,12 @@
 """Endpoint configuration mapping endpoints to validation and service methods"""
 
-from typing import Dict, Callable
 from enum import Enum
-from src.utils.extended_enum import ExtendedEnumMixin
-from src.utils.standard_map import StandardMap
+from typing import Callable, Dict
+
 from src.server.base.constants import BinaryEndpointName, EndpointName, HTTPMethod
 from src.server.services.obstruction_service import ObstructionService
+from src.utils.extended_enum import ExtendedEnumMixin
+from src.utils.standard_map import StandardMap
 
 
 class ServiceMethod(StandardMap):

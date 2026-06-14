@@ -1,12 +1,12 @@
 """Validation step classes for request validation using Strategy Pattern"""
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any
 import logging
-from src.server.base.constants import RequestField, OptionalRequestField
-from src.server.validators.geometry_validator import GeometryValidator
+from abc import ABC, abstractmethod
+from typing import Any, Dict
 
-from src.components.geometry import Point3D, Mesh
+from src.components.geometry import Mesh, Point3D
+from src.server.base.constants import OptionalRequestField, RequestField
+from src.server.validators.geometry_validator import GeometryValidator
 
 
 class ValidationStep(ABC):

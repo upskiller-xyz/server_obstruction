@@ -3,7 +3,9 @@
 import asyncio
 from typing import Any, Dict
 
-from src.components.calculators.gap_obstruction_calculator import GapObstructionCalculator
+from src.components.calculators.gap_obstruction_calculator import (
+    GapObstructionCalculator,
+)
 from src.components.geometry import Mesh
 from src.components.models import GapObstructionResult, ObstructionResult, Window
 from src.server.base.constants import ResponseField

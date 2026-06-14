@@ -4,7 +4,7 @@ Optional parameters validation step
 Validates optional parameters for multi-direction requests.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 from src.server.base.constants import OptionalRequestField
 from src.server.validators.steps.validation_step import ValidationStep

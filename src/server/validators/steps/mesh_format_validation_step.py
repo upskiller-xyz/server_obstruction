@@ -5,8 +5,8 @@ Validates mesh format and structure.
 Accepts a single mesh parameter with combined geometry.
 """
 
-from typing import Dict, Any, List
 import logging
+from typing import Any, Dict, List
 
 from src.server.base.constants import RequestField
 from src.server.validators.steps.validation_step import ValidationStep

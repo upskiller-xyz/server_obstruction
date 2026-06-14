@@ -4,11 +4,11 @@ Window not on mesh validation step
 Validates that window center doesn't lie on any mesh triangle.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
+from src.components.geometry import Mesh, Point3D, ReferencePointCalculator
 from src.server.base.constants import RequestField
 from src.server.validators.geometry_validator import GeometryValidator
-from src.components.geometry import Point3D, Mesh, ReferencePointCalculator
 from src.server.validators.steps.validation_step import ValidationStep
 
 

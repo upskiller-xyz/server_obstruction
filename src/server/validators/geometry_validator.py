@@ -1,9 +1,12 @@
 """Validators for geometric constraints and data integrity"""
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
 import numpy as np
+
 from src.components.geometry import Point3D, Triangle
 from src.server.base.constants import MathConstants
 from src.server.base.errors import PointOnTriangleError
+
 
 class GeometryValidator:
     """

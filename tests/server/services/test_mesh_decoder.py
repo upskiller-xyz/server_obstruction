@@ -56,7 +56,14 @@ def test_wrong_shape_rejected(decoder):
 def test_zip_bomb_capped(decoder, monkeypatch):
     """A gzip payload whose output exceeds the cap is rejected (DoS guard)."""
     # Lower the cap so the test stays cheap; 1 MB of zeros gzips to a few KB.
-    monkeypatch.setattr(decoder, "_MAX_DECOMPRESSED_BYTES", 1024)
+    monkeypatch.setattr(decoder, "_MAX_MESH_BYTES", 1024)
     big = gzip.compress(_npy(np.zeros((30000, 3))))  # well over 1 KB decompressed
     with pytest.raises(BadRequest):
         decoder.decode(big)
+
+
+def test_raw_npy_size_capped(decoder, monkeypatch):
+    """An oversized *uncompressed* .npy payload is rejected (DoS guard)."""
+    monkeypatch.setattr(decoder, "_MAX_MESH_BYTES", 1024)
+    with pytest.raises(BadRequest):
+        decoder.decode(_npy(np.zeros((30000, 3))))

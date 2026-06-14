@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Dict, Callable
+
+from typing import Callable, Dict
 
 from src.server.builders import ResponseBuilder
+
 from ..utils.standard_map import StandardMap
 from .base.constants import EndpointName
 
