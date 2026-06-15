@@ -60,8 +60,9 @@ class Mesh:
 
     @classmethod
     def from_array(cls, vertices_array: np.ndarray) -> 'Mesh':
-        """Create a mesh directly from an (M, 3, 3) vertex array (no copy of objects)."""
-        return cls(vertices_array=np.asarray(vertices_array, dtype=np.float64))
+        """Create a mesh from a vertex array — accepts (M, 3, 3) triangles or a flat
+        (N, 3) vertex array (every 3 vertices → a triangle). Reshapes to (M, 3, 3)."""
+        return cls(vertices_array=np.asarray(vertices_array, dtype=np.float64).reshape(-1, 3, 3))
 
     @property
     def vertices_array(self) -> np.ndarray:

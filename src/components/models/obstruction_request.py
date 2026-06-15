@@ -9,8 +9,10 @@ Window formats:
   - Endpoint format: x1, y1, z1, x2, y2, z2, direction_angle, room_polygon
 """
 
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
+
+import numpy as np
 
 from src.components.geometry import Mesh
 from src.components.models.window import Window
@@ -60,13 +62,17 @@ class ObstructionRequest:
         if mesh_data is None:
             return None
 
-        # List format: all geometry in one mesh
+        # Binary path: (N, 3) numpy array — kept numpy end-to-end, no list rebuild.
+        if isinstance(mesh_data, np.ndarray):
+            return Mesh.from_array(mesh_data) if mesh_data.size else None
+
+        # JSON path: flat list of vertices.
         if isinstance(mesh_data, list):
             return Mesh.from_vertices(mesh_data) if mesh_data else None
 
         raise ValueError(
-            f"Unsupported mesh format: expected a list of vertices, got {type(mesh_data).__name__}. "
-            "Provide mesh as a flat list of [x, y, z] vertex coordinates."
+            f"Unsupported mesh format: expected a list or (N,3) array of vertices, "
+            f"got {type(mesh_data).__name__}."
         )
     
     

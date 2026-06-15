@@ -4,11 +4,11 @@ Window not on mesh validation step
 Validates that window center doesn't lie on any mesh triangle.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
+from src.components.geometry import Mesh, Point3D, ReferencePointCalculator
 from src.server.base.constants import RequestField
 from src.server.validators.geometry_validator import GeometryValidator
-from src.components.geometry import Point3D, Mesh, ReferencePointCalculator
 from src.server.validators.steps.validation_step import ValidationStep
 
 
@@ -27,10 +27,14 @@ class WindowNotOnMeshValidationStep(ValidationStep):
 
         for key in mesh_keys:
             mesh_raw = data.get(key)
-            if not mesh_raw:
+            # `len` handles both list and ndarray (avoids ndarray truth-ambiguity).
+            if mesh_raw is None or len(mesh_raw) == 0:
                 continue
             mesh = Mesh.from_vertices(mesh_raw)
-            GeometryValidator.validate_point_not_on_mesh(window_center, mesh.triangles)
+            # Array-native check: no Triangle objects built (the old ~1.5s hot spot).
+            GeometryValidator.validate_point_not_on_mesh_array(
+                window_center, mesh.vertices_array
+            )
 
     @staticmethod
     def _extract_center(data: Dict[str, Any]) -> Point3D:

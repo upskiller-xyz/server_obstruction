@@ -5,8 +5,10 @@ Validates mesh format and structure.
 Accepts a single mesh parameter with combined geometry.
 """
 
-from typing import Dict, Any, List
 import logging
+from typing import Any, Dict, List
+
+import numpy as np
 
 from src.server.base.constants import RequestField
 from src.server.validators.steps.validation_step import ValidationStep
@@ -27,9 +29,22 @@ class MeshFormatValidationStep(ValidationStep):
     def _validate_single_mesh(cls, data: Dict[str, Any], key: RequestField) -> None:
         """Validate a single mesh field.
 
-        Accepts only a flat list of vertices: [[x, y, z], ...]
+        Accepts a flat list of vertices ``[[x, y, z], ...]`` (JSON path) or an
+        ``(N, 3)`` numpy array (binary path). Trims to a multiple of 3 vertices.
         """
         mesh = data[key.value]
+
+        if isinstance(mesh, np.ndarray):
+            if mesh.ndim != 2 or mesh.shape[1] != 3:
+                raise ValueError(f"{key.value} must be an (N, 3) array of vertices")
+            extra = len(mesh) % 3
+            if extra:
+                logging.warning(
+                    f"{key.value} had {len(mesh)} vertices (not divisible by 3). "
+                    f"Trimmed {extra}."
+                )
+                data[key.value] = mesh[: len(mesh) - extra]
+            return
 
         if not isinstance(mesh, list):
             raise ValueError(f"{key.value} must be a list of vertices")

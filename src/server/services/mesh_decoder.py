@@ -2,25 +2,24 @@
 
 The binary obstruction endpoint accepts the mesh as a NumPy ``.npy`` payload
 (optionally gzip-compressed) in a multipart body instead of an inline JSON
-array. These decoders turn that payload into the plain list-of-vertices
-structure the existing validation pipeline and ``Mesh.from_vertices`` expect,
-so the JSON contract path stays completely untouched — only transport differs.
+array. These decoders return the mesh as an ``(N, 3)`` numpy array; the
+validation pipeline and ``Mesh`` are numpy-aware, so the binary path stays numpy
+end-to-end (no list round-trip). The JSON contract path is untouched.
 """
 
 import gzip
 import io
 from abc import ABC, abstractmethod
-from typing import List
 
 import numpy as np
 from werkzeug.exceptions import BadRequest
 
 
 class MeshDecoder(ABC):
-    """Decode a raw mesh payload into a list of ``[x, y, z]`` vertices."""
+    """Decode a raw mesh payload into an (N, 3) vertex array."""
 
     @abstractmethod
-    def decode(self, payload: bytes) -> List[list]:
+    def decode(self, payload: bytes) -> np.ndarray:
         ...
 
 
@@ -28,9 +27,8 @@ class NpyMeshDecoder(MeshDecoder):
     """Decode a NumPy ``.npy`` mesh payload, transparently gunzipping it.
 
     The mesh is an ``(N, 3)`` float array of vertices (three per triangle).
-    Returns a plain Python list because the validators mutate it in place and
-    ``Mesh.from_vertices`` indexes it row-wise — keeping behaviour identical to
-    the JSON path, only without the multi-second JSON parse.
+    Returns the array as-is — the validators and ``Mesh`` consume numpy directly,
+    so there is no list↔array round-trip (the old ~1.5s validation + 0.1s rebuild).
     """
 
     _GZIP_MAGIC = b"\x1f\x8b"
@@ -40,7 +38,7 @@ class NpyMeshDecoder(MeshDecoder):
     # mesh is ~17 MB as float32 .npy) while rejecting pathological input.
     _MAX_MESH_BYTES = 512 * 1024 * 1024
 
-    def decode(self, payload: bytes) -> List[list]:
+    def decode(self, payload: bytes) -> np.ndarray:
         if not payload:
             raise BadRequest("Mesh payload cannot be empty")
 
@@ -69,7 +67,7 @@ class NpyMeshDecoder(MeshDecoder):
                 f"Mesh array must have shape (N, 3), got {tuple(array.shape)}"
             )
 
-        return array.tolist()
+        return array
 
     def _gunzip_bounded(self, payload: bytes) -> bytes:
         """Decompress a gzip payload, capping output to guard against zip bombs.

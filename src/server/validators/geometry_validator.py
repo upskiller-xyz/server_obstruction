@@ -1,9 +1,12 @@
 """Validators for geometric constraints and data integrity"""
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
 import numpy as np
+
 from src.components.geometry import Point3D, Triangle
 from src.server.base.constants import MathConstants
 from src.server.base.errors import PointOnTriangleError
+
 
 class GeometryValidator:
     """
@@ -171,65 +174,64 @@ class GeometryValidator:
         if n_triangles == 0:
             return None
 
-        # Build vertices array
+        # Build vertices array (legacy object path), then reuse the array core.
         vertices_array = np.empty((n_triangles, 3, 3), dtype=np.float64)
         for i, t in enumerate(triangles):
             vertices_array[i, 0] = t.v1.to_array()
             vertices_array[i, 1] = t.v2.to_array()
             vertices_array[i, 2] = t.v3.to_array()
 
-        point_arr = point.to_array()
+        idx = GeometryValidator._index_on_mesh(point.to_array(), vertices_array, tolerance)
+        return triangles[idx] if idx is not None else None
 
-        # Vectorized plane distance check
+    @staticmethod
+    def _index_on_mesh(
+        point_arr: np.ndarray,
+        vertices_array: np.ndarray,
+        tolerance: float
+    ) -> Optional[int]:
+        """
+        Index of the first triangle the point lies on, or None — array-native.
+
+        Works directly on an (N, 3, 3) vertex array (no Triangle objects, no Python
+        loop over the mesh). The plane-distance test is fully vectorized; only the
+        (typically few) triangles on the point's plane get a barycentric check.
+        """
+        if len(vertices_array) == 0:
+            return None
+
         v1 = vertices_array[:, 0, :]
         v2 = vertices_array[:, 1, :]
         v3 = vertices_array[:, 2, :]
 
-        # Compute plane normals
         edge1 = v2 - v1
         edge2 = v3 - v1
         normals = np.cross(edge1, edge2)
         normal_lengths = np.linalg.norm(normals, axis=1, keepdims=True)
 
-        # Handle degenerate triangles
         valid_mask = normal_lengths.flatten() > 1e-10
         if not valid_mask.any():
             return None
 
         normals = normals / np.maximum(normal_lengths, 1e-10)
 
-        # Compute distances to planes
         point_to_v1 = point_arr - v1
         distances = np.abs(np.sum(point_to_v1 * normals, axis=1))
 
-        # Filter triangles by plane distance
         on_plane_mask = (distances <= tolerance) & valid_mask
-
         if not on_plane_mask.any():
             return None
 
-        # Barycentric coordinates for triangles on plane
-        on_plane_indices = np.where(on_plane_mask)[0]
-
         epsilon = -MathConstants.EPSILON.value
-
-        for idx in on_plane_indices:
-            v1_pt = vertices_array[idx, 0]
-            v2_pt = vertices_array[idx, 1]
-            v3_pt = vertices_array[idx, 2]
-
+        for idx in np.where(on_plane_mask)[0]:
             barycentric = GeometryValidator._calculate_barycentric_coordinates(
-                point_arr, v1_pt, v2_pt, v3_pt
+                point_arr, vertices_array[idx, 0], vertices_array[idx, 1], vertices_array[idx, 2]
             )
-
-            # Skip degenerate triangles
             if barycentric is None:
                 continue
-
             u, v, w = barycentric
-
             if u >= epsilon and v >= epsilon and w >= epsilon:
-                return triangles[idx]
+                return int(idx)
 
         return None
 
@@ -255,4 +257,29 @@ class GeometryValidator:
         )
 
         if triangle is not None:
+            raise PointOnTriangleError(point, triangle)
+
+    @staticmethod
+    def validate_point_not_on_mesh_array(
+        point: Point3D,
+        vertices_array: np.ndarray,
+        tolerance: float = 0
+    ) -> None:
+        """
+        Validate a point is not on any triangle, working on an (N, 3, 3) array.
+
+        Array-native — avoids building/looping 474k Triangle objects (the old hot
+        spot in the all-directions validation, ~1.5s).
+
+        Raises:
+            PointOnTriangleError: If point lies on any triangle
+        """
+        idx = GeometryValidator._index_on_mesh(point.to_array(), vertices_array, tolerance)
+        if idx is not None:
+            verts = vertices_array[idx]
+            triangle = Triangle(
+                Point3D(*verts[0].tolist()),
+                Point3D(*verts[1].tolist()),
+                Point3D(*verts[2].tolist()),
+            )
             raise PointOnTriangleError(point, triangle)
