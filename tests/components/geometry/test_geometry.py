@@ -1,6 +1,7 @@
-import pytest
 import numpy as np
-from src.components.geometry import Point3D, Vector3D, Triangle, Mesh
+import pytest
+
+from src.components.geometry import Mesh, Point3D, Triangle, Vector3D
 
 
 class TestPoint3D:
