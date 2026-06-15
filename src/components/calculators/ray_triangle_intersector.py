@@ -60,6 +60,40 @@ class RayTriangleIntersector:
         return TriangleArrays(v0=v0, v1=v1, v2=v2, count=n)
 
     @classmethod
+    def from_array(cls, vertices_array: np.ndarray) -> TriangleArrays:
+        """
+        Build TriangleArrays directly from an (M, 3, 3) vertex array.
+
+        Pure numpy slicing (~ms) — no Python loop over Triangle objects. The
+        all-directions path keeps the mesh as an array end-to-end, so this replaces
+        ``prepare_arrays`` (which exists for legacy Triangle-object callers).
+
+        Args:
+            vertices_array: (M, 3, 3) — M triangles, 3 vertices, 3 coords
+
+        Returns:
+            TriangleArrays with v0, v1, v2 each of shape (M, 3)
+
+        Raises:
+            ValueError: if vertices_array is not shaped (M, 3, 3)
+        """
+        vertices_array = np.asarray(vertices_array)
+        if vertices_array.ndim != 3 or vertices_array.shape[1:] != (3, 3):
+            raise ValueError(
+                f"vertices_array must be (M, 3, 3), got {tuple(vertices_array.shape)}"
+            )
+        n = len(vertices_array)
+        if n == 0:
+            empty = np.empty((0, 3))
+            return TriangleArrays(v0=empty, v1=empty.copy(), v2=empty.copy(), count=0)
+        return TriangleArrays(
+            v0=np.ascontiguousarray(vertices_array[:, 0, :]),
+            v1=np.ascontiguousarray(vertices_array[:, 1, :]),
+            v2=np.ascontiguousarray(vertices_array[:, 2, :]),
+            count=n,
+        )
+
+    @classmethod
     def batch_hits_any(
         cls,
         origin: np.ndarray,

@@ -5,13 +5,13 @@ Filters triangles based on their height (Z-axis extent).
 Removes triangles that are too short to be relevant for obstruction analysis.
 """
 
-from typing import Tuple
 import logging
+from typing import Tuple
 
-from src.components.geometry import Triangle
-from src.server.base.constants import ANGLES
-from src.components.models import Window
 from src.components.filter.base_filter import TriangleFilter
+from src.components.geometry import Triangle
+from src.components.models import Window
+from src.server.base.constants import ANGLES
 
 
 class HeightTriangleFilter(TriangleFilter):
@@ -45,13 +45,15 @@ class HeightTriangleFilter(TriangleFilter):
             return tuple()
 
         vertices_array = cls._vectorize_triangles(triangles)
-        above_mask = cls._filter_by_height(vertices_array, window.center.z)
-
-        kept = int(above_mask.sum())
-        removed = len(triangles) - kept
-        logging.debug(
-            f"        [HEIGHT-FILTER] Kept {kept}/{len(triangles)} — "
-            f"Filtered: {removed} below window"
-        )
-
+        above_mask = cls.mask(vertices_array, window)
         return cls._build_filtered_list(triangles, above_mask)
+
+    @classmethod
+    def mask(cls, vertices_array: "np.ndarray", window: Window) -> "np.ndarray":
+        """
+        Height keep-mask directly on an (N, 3, 3) vertex array (array-native).
+
+        Returns:
+            Boolean keep-mask (N,) — triangles with at least one vertex above window Z
+        """
+        return cls._filter_by_height(vertices_array, window.center.z)

@@ -7,9 +7,15 @@ from typing import Any, Dict
 
 from src.components.calculators.direction_calculator import DirectionCalculator
 from src.components.calculators.intersection_calculator import IntersectionCalculator
+from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
 from src.components.geometry.mesh import Mesh
 from src.components.models import ObstructionRequest, ObstructionResult
-from src.server.base.constants import ANGLES, AllDirectionDefaults, ResponseField, ResponseStatus
+from src.server.base.constants import (
+    ANGLES,
+    AllDirectionDefaults,
+    ResponseField,
+    ResponseStatus,
+)
 from src.server.services.async_direction_calculator import AsyncDirectionCalculator
 from src.server.services.mesh_filter_service import MeshFilterService
 from src.server.services.thread_pool_manager import ThreadPoolManager
@@ -128,6 +134,12 @@ class ObstructionService:
         mesh = MeshFilterService.apply_coarse_filter(request.mesh, request.window)
         mesh = MeshFilterService.apply_height_filter(mesh, request.window)
 
+        # Build triangle arrays ONCE from the numpy-backed mesh (slice, ~ms — no
+        # Triangle objects), shared (read-only) by all requested directions. Packing
+        # per direction was ~5.5s of redundant Python work; the mesh is identical for
+        # every direction.
+        tri_arrays = RayTriangleIntersector.from_array(mesh.vertices_array)
+
         # Delegate direction calculation to DirectionCalculator
         normal_arr = request.window.normal.to_array()
         base_direction_angle = math.atan2(normal_arr[1], normal_arr[0])
@@ -139,10 +151,10 @@ class ObstructionService:
             end_angle_degrees
         )
 
-        # Create async tasks for all directions
+        # Create async tasks for all directions (sharing the pre-packed tri_arrays)
         tasks = [
             AsyncDirectionCalculator.calculate(
-                mesh,
+                tri_arrays,
                 request.window,
                 float(direction_angle),
                 self._pool_manager

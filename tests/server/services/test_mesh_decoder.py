@@ -21,14 +21,16 @@ def decoder():
     return NpyMeshDecoder()
 
 
-def test_decodes_npy_to_vertex_list(decoder):
+def test_decodes_npy_to_vertex_array(decoder):
     out = decoder.decode(_npy([[0, 0, 0], [1, 0, 0], [0, 1, 0]]))
-    assert out == [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+    assert isinstance(out, np.ndarray)
+    assert out.shape == (3, 3)
+    assert np.allclose(out, [[0, 0, 0], [1, 0, 0], [0, 1, 0]])
 
 
 def test_decodes_gzipped_npy(decoder):
     out = decoder.decode(gzip.compress(_npy([[0, 0, 0], [1, 0, 0], [0, 1, 0]])))
-    assert len(out) == 3
+    assert isinstance(out, np.ndarray) and out.shape == (3, 3)
 
 
 def test_empty_payload_rejected(decoder):

@@ -5,12 +5,13 @@ Removes triangles below and behind window for all-direction calculations.
 """
 
 from typing import Tuple
+
 import numpy as np
 
-from src.components.geometry import Triangle
-from src.server.base.constants import ANGLES
-from src.components.models import Window
 from src.components.filter.base_filter import TriangleFilter
+from src.components.geometry import Triangle
+from src.components.models import Window
+from src.server.base.constants import ANGLES
 
 
 class CoarseTriangleFilter(TriangleFilter):
@@ -48,27 +49,34 @@ class CoarseTriangleFilter(TriangleFilter):
         if not triangles:
             return tuple()
 
-        # Vectorize triangles
         vertices_array = cls._vectorize_triangles(triangles)
+        keep_mask = cls.mask(vertices_array, window)
+        return cls._build_filtered_list(triangles, keep_mask)
 
+    @classmethod
+    def mask(cls, vertices_array: np.ndarray, window: Window) -> np.ndarray:
+        """
+        Compute the coarse keep-mask directly on an (N, 3, 3) vertex array.
+
+        Array-native — no Triangle objects. Used by the all-directions path so the
+        mesh stays numpy end-to-end.
+
+        Returns:
+            Boolean keep-mask (N,) — triangles above and not behind the window
+        """
         # Filter 1: Height (above window)
         above_mask = cls._filter_by_height(vertices_array, window.center.z)
 
-        # Filter 2: Not behind window (simplified - just check if any vertex is not behind)
+        # Filter 2: Not behind window (keep if any vertex is ahead of the window)
         vecs = vertices_array - window.center.to_array()
         normal_horizontal, magnitude = cls._compute_horizontal_normal(window.normal)
 
         if magnitude > 1e-6:
-            # Normalize and compute dot product
             normal_horizontal = normal_horizontal / magnitude
             dists = np.dot(vecs, normal_horizontal)
-            # Keep if any vertex is ahead of window
             ahead_mask = (dists > 0).any(axis=1)
         else:
-            # If window is pointing up/down, just keep all triangles
-            ahead_mask = np.ones(len(triangles), dtype=bool)
+            # Window pointing up/down → keep all triangles
+            ahead_mask = np.ones(len(vertices_array), dtype=bool)
 
-        # Combine filters
-        keep_mask = above_mask & ahead_mask
-
-        return cls._build_filtered_list(triangles, keep_mask)
+        return above_mask & ahead_mask

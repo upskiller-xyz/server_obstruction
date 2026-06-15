@@ -1,9 +1,11 @@
-import pytest
+from unittest.mock import MagicMock, Mock, patch
+
 import numpy as np
-from unittest.mock import Mock, patch, MagicMock
+import pytest
+
+from src.components.geometry import Mesh, Point3D, Vector3D
+from src.components.models import ObstructionResult, Window
 from src.server.services.obstruction_service import ObstructionService
-from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.models import Window, ObstructionResult
 
 
 class TestObstructionService:
@@ -48,6 +50,40 @@ class TestObstructionService:
         assert isinstance(result, ObstructionResult)
         assert result.obstruction_angle_degrees >= 0.0
         assert result.obstruction_angle_radians >= 0.0
+
+    def test_multi_direction_builds_arrays_once_no_triangle_objects(self):
+        """The all-directions path stays numpy end-to-end: triangle arrays are built
+        once per request (not 64×), directly from the array — and Triangle objects are
+        never materialized (``prepare_arrays`` is the legacy object→array loop)."""
+        import asyncio
+
+        from src.components.calculators.ray_triangle_intersector import (
+            RayTriangleIntersector,
+        )
+        from src.components.models import ObstructionRequest
+
+        window = Window(
+            center=Point3D(x=0.0, y=1.5, z=0.0),
+            normal=Vector3D(x=1.0, y=0.0, z=0.0),
+        )
+        mesh = Mesh.from_vertices([[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]])
+        request = ObstructionRequest(window=window, mesh=mesh)
+
+        service = ObstructionService()
+        # wraps= keeps the real classmethod behaviour (correct descriptor binding)
+        # while letting us assert call counts.
+        with patch.object(
+            RayTriangleIntersector, "from_array",
+            wraps=RayTriangleIntersector.from_array,
+        ) as from_array, patch.object(
+            RayTriangleIntersector, "prepare_arrays",
+            wraps=RayTriangleIntersector.prepare_arrays,
+        ) as prepare_arrays:
+            result = asyncio.run(service.calculate_all_directions_async(request))
+
+        assert len(result["results"]) == 64
+        assert from_array.call_count == 1       # built once, not 64×
+        assert prepare_arrays.call_count == 0   # no Triangle objects built
 
     def test_get_status_returns_dict(self):
         """Test get_status returns dictionary with status info"""

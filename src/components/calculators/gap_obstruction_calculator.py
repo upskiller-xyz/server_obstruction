@@ -12,14 +12,20 @@ Derived horizon/zenith angles for backward compatibility.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 from src.components.calculators.boundary_search_strategy import BoundarySearchStrategy
 from src.components.calculators.gap_detection_strategy import GapDetectionStrategy
-from src.components.calculators.gap_obstruction_orchestrator import GapObstructionOrchestrator
+from src.components.calculators.gap_obstruction_orchestrator import (
+    GapObstructionOrchestrator,
+)
 from src.components.calculators.gap_verification_service import GapVerificationService
-from src.components.calculators.obstruction_result_factory import ObstructionResultFactory
+from src.components.calculators.obstruction_result_factory import (
+    ObstructionResultFactory,
+)
+from src.components.calculators.ray_triangle_intersector import TriangleArrays
 from src.components.geometry import Mesh
-from src.components.models import Window, GapObstructionResult
+from src.components.models import GapObstructionResult, Window
 
 
 @dataclass(frozen=True)
@@ -44,10 +50,11 @@ class GapObstructionCalculator:
     @classmethod
     def calculate(
         cls,
-        mesh: Mesh,
+        mesh: Optional[Mesh],
         window: Window,
         direction_angle: float,
-        config: GapObstructionConfig = GapObstructionConfig()
+        config: GapObstructionConfig = GapObstructionConfig(),
+        tri_arrays: Optional[TriangleArrays] = None
     ) -> GapObstructionResult:
         """
         Calculate obstruction using gap detection for a single direction.
@@ -61,6 +68,11 @@ class GapObstructionCalculator:
         Returns:
             GapObstructionResult with gap info and derived horizon/zenith
         """
+        if mesh is None and tri_arrays is None:
+            raise ValueError(
+                "calculate requires either 'mesh' or pre-packed 'tri_arrays'"
+            )
+
         # Initialize components
         boundary_search = BoundarySearchStrategy()
         gap_detector = GapDetectionStrategy()
@@ -76,5 +88,21 @@ class GapObstructionCalculator:
             precision_deg=config.BINARY_SEARCH_PRECISION_DEG
         )
 
-        # Delegate to orchestrator
-        return orchestrator.calculate(mesh, window, direction_angle)
+        # Delegate to orchestrator (pre-packed tri_arrays reused across directions)
+        return orchestrator.calculate(mesh, window, direction_angle, tri_arrays=tri_arrays)
+
+    @classmethod
+    def calculate_from_arrays(
+        cls,
+        tri_arrays: TriangleArrays,
+        window: Window,
+        direction_angle: float,
+        config: GapObstructionConfig = GapObstructionConfig(),
+    ) -> GapObstructionResult:
+        """Array-only entry point — compute from pre-packed ``tri_arrays`` (no Mesh).
+
+        Used by the all-directions path, where the arrays are packed once and shared
+        across directions, so no Triangle objects are ever built and there is no
+        ``mesh=None`` contract violation.
+        """
+        return cls.calculate(None, window, direction_angle, config, tri_arrays=tri_arrays)

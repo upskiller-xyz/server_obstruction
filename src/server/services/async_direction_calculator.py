@@ -1,10 +1,13 @@
 """Async direction calculator for parallel obstruction calculations"""
 
 import asyncio
+from functools import partial
 from typing import Any, Dict
 
-from src.components.calculators.gap_obstruction_calculator import GapObstructionCalculator
-from src.components.geometry import Mesh
+from src.components.calculators.gap_obstruction_calculator import (
+    GapObstructionCalculator,
+)
+from src.components.calculators.ray_triangle_intersector import TriangleArrays
 from src.components.models import GapObstructionResult, ObstructionResult, Window
 from src.server.base.constants import ResponseField
 from src.server.services.thread_pool_manager import ThreadPoolManager
@@ -21,7 +24,7 @@ class AsyncDirectionCalculator:
 
     @staticmethod
     async def calculate(
-        combined_mesh: Mesh,
+        tri_arrays: TriangleArrays,
         window_orig: Window,
         direction_angle: float,
         pool_manager: ThreadPoolManager
@@ -30,10 +33,12 @@ class AsyncDirectionCalculator:
         Calculate obstruction for a single direction using gap-based approach
 
         Args:
-            combined_mesh: Combined and pre-filtered mesh
+            tri_arrays: Pre-packed triangle arrays of the combined/filtered mesh,
+                shared (read-only) across all directions — packed once by the caller
+                instead of per direction (the mesh is identical for every direction)
             window_orig: Original window
             direction_angle: Direction angle in radians
-            pool_manager: Process pool manager for parallel execution
+            pool_manager: Thread pool manager for parallel execution
 
         Returns:
             Dictionary with horizon and zenith results
@@ -41,16 +46,17 @@ class AsyncDirectionCalculator:
         # Create window rotated to this direction
         window = Window.set_angle(window_orig, direction_angle)
 
-        # Execute gap calculation in process pool
-        loop = asyncio.get_event_loop()
+        # Execute gap calculation in the thread pool, reusing the shared tri_arrays.
+        # get_running_loop() is the supported accessor from inside a coroutine.
+        loop = asyncio.get_running_loop()
         executor = pool_manager.get_pool()
 
         gap_result: GapObstructionResult = await loop.run_in_executor(
             executor,
-            GapObstructionCalculator.calculate,
-            combined_mesh,
-            window,
-            direction_angle
+            partial(
+                GapObstructionCalculator.calculate_from_arrays,
+                tri_arrays, window, direction_angle
+            )
         )
 
         # Build backward-compatible response with horizon/zenith
