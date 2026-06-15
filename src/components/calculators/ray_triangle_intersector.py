@@ -73,7 +73,15 @@ class RayTriangleIntersector:
 
         Returns:
             TriangleArrays with v0, v1, v2 each of shape (M, 3)
+
+        Raises:
+            ValueError: if vertices_array is not shaped (M, 3, 3)
         """
+        vertices_array = np.asarray(vertices_array)
+        if vertices_array.ndim != 3 or vertices_array.shape[1:] != (3, 3):
+            raise ValueError(
+                f"vertices_array must be (M, 3, 3), got {tuple(vertices_array.shape)}"
+            )
         n = len(vertices_array)
         if n == 0:
             empty = np.empty((0, 3))
