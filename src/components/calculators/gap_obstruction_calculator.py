@@ -12,14 +12,20 @@ Derived horizon/zenith angles for backward compatibility.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 from src.components.calculators.boundary_search_strategy import BoundarySearchStrategy
 from src.components.calculators.gap_detection_strategy import GapDetectionStrategy
-from src.components.calculators.gap_obstruction_orchestrator import GapObstructionOrchestrator
+from src.components.calculators.gap_obstruction_orchestrator import (
+    GapObstructionOrchestrator,
+)
 from src.components.calculators.gap_verification_service import GapVerificationService
-from src.components.calculators.obstruction_result_factory import ObstructionResultFactory
+from src.components.calculators.obstruction_result_factory import (
+    ObstructionResultFactory,
+)
+from src.components.calculators.ray_triangle_intersector import TriangleArrays
 from src.components.geometry import Mesh
-from src.components.models import Window, GapObstructionResult
+from src.components.models import GapObstructionResult, Window
 
 
 @dataclass(frozen=True)
@@ -44,11 +50,11 @@ class GapObstructionCalculator:
     @classmethod
     def calculate(
         cls,
-        mesh: Mesh,
+        mesh: Optional[Mesh],
         window: Window,
         direction_angle: float,
         config: GapObstructionConfig = GapObstructionConfig(),
-        tri_arrays=None
+        tri_arrays: Optional[TriangleArrays] = None
     ) -> GapObstructionResult:
         """
         Calculate obstruction using gap detection for a single direction.
@@ -62,6 +68,11 @@ class GapObstructionCalculator:
         Returns:
             GapObstructionResult with gap info and derived horizon/zenith
         """
+        if mesh is None and tri_arrays is None:
+            raise ValueError(
+                "calculate requires either 'mesh' or pre-packed 'tri_arrays'"
+            )
+
         # Initialize components
         boundary_search = BoundarySearchStrategy()
         gap_detector = GapDetectionStrategy()

@@ -135,8 +135,8 @@ class ObstructionService:
         mesh = MeshFilterService.apply_height_filter(mesh, request.window)
 
         # Build triangle arrays ONCE from the numpy-backed mesh (slice, ~ms — no
-        # Triangle objects), shared (read-only) by all 64 directions. Packing per
-        # direction was ~5.5s of redundant Python work; the mesh is identical for
+        # Triangle objects), shared (read-only) by all requested directions. Packing
+        # per direction was ~5.5s of redundant Python work; the mesh is identical for
         # every direction.
         tri_arrays = RayTriangleIntersector.from_array(mesh.vertices_array)
 

@@ -11,10 +11,15 @@ from typing import Optional
 from src.components.calculators.gap_detection_strategy import GapDetectionStrategy
 from src.components.calculators.gap_verification_service import GapVerificationService
 from src.components.calculators.intersection_calculator import IntersectionCalculator
-from src.components.calculators.obstruction_result_factory import ObstructionResultFactory
-from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector, TriangleArrays
+from src.components.calculators.obstruction_result_factory import (
+    ObstructionResultFactory,
+)
+from src.components.calculators.ray_triangle_intersector import (
+    RayTriangleIntersector,
+    TriangleArrays,
+)
 from src.components.geometry import Mesh
-from src.components.models import Window, GapObstructionResult
+from src.components.models import GapObstructionResult, Window
 from src.components.models.performance_metrics import PerformanceMetrics
 from src.server.base.constants import GapVerificationStatus, ObstructionStatus
 
@@ -38,7 +43,7 @@ class GapObstructionOrchestrator:
 
     def calculate(
         self,
-        mesh: Mesh,
+        mesh: Optional[Mesh],
         window: Window,
         direction_angle: float,
         tri_arrays: Optional[TriangleArrays] = None
@@ -58,11 +63,15 @@ class GapObstructionOrchestrator:
         rays_cast = 0
 
         # Pack triangle arrays — shared by elevation angle collection and ray casting.
-        # The mesh is identical across all 64 directions, so the caller packs once and
-        # passes it in (see ObstructionService); packing here per direction was ~5.5s of
-        # redundant Python work. Fall back to packing from the mesh when not supplied
-        # (e.g. direct/unit-test callers).
+        # The mesh is identical across every requested direction, so the caller packs
+        # once and passes it in (see ObstructionService); packing here per direction was
+        # ~5.5s of redundant Python work. Fall back to packing from the mesh when not
+        # supplied (e.g. direct/unit-test callers).
         if tri_arrays is None:
+            if mesh is None:
+                raise ValueError(
+                    "calculate requires either 'mesh' or pre-packed 'tri_arrays'"
+                )
             tri_arrays = RayTriangleIntersector.prepare_arrays(mesh.triangles)
 
         # Step 1: Collect elevation angles using pre-packed arrays
