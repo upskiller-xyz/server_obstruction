@@ -33,11 +33,13 @@ class MeshFilterService:
         Returns:
             Filtered mesh
         """
-        if not mesh.triangles:
+        # Array-native: mask the (M,3,3) vertex array directly, no Triangle objects.
+        array = mesh.vertices_array
+        if len(array) == 0:
             return Mesh.empty()
 
-        filtered = HeightTriangleFilter.call(mesh.triangles, window, ANGLES.HORIZON)
-        return Mesh(filtered)
+        keep_mask = HeightTriangleFilter.mask(array, window)
+        return Mesh.from_array(array[keep_mask])
 
     @staticmethod
     def apply_coarse_filter(
@@ -59,10 +61,15 @@ class MeshFilterService:
         if mesh is None:
             return Mesh.empty()
 
-        coarse_filtered = CoarseTriangleFilter.call(mesh.triangles, window)
-        removed = len(mesh.triangles) - len(coarse_filtered)
+        # Array-native: mask the (M,3,3) vertex array directly, no Triangle objects.
+        array = mesh.vertices_array
+        if len(array) == 0:
+            return Mesh.empty()
+
+        keep_mask = CoarseTriangleFilter.mask(array, window)
+        kept = array[keep_mask]
         logging.debug(
-            f"[PRE-FILTER] {label}: removed {removed} triangles "
-            f"({len(coarse_filtered)} remaining)"
+            f"[PRE-FILTER] {label}: removed {len(array) - len(kept)} triangles "
+            f"({len(kept)} remaining)"
         )
-        return Mesh(coarse_filtered)
+        return Mesh.from_array(kept)
