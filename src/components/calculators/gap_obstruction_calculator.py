@@ -90,3 +90,19 @@ class GapObstructionCalculator:
 
         # Delegate to orchestrator (pre-packed tri_arrays reused across directions)
         return orchestrator.calculate(mesh, window, direction_angle, tri_arrays=tri_arrays)
+
+    @classmethod
+    def calculate_from_arrays(
+        cls,
+        tri_arrays: TriangleArrays,
+        window: Window,
+        direction_angle: float,
+        config: GapObstructionConfig = GapObstructionConfig(),
+    ) -> GapObstructionResult:
+        """Array-only entry point — compute from pre-packed ``tri_arrays`` (no Mesh).
+
+        Used by the all-directions path, where the arrays are packed once and shared
+        across directions, so no Triangle objects are ever built and there is no
+        ``mesh=None`` contract violation.
+        """
+        return cls.calculate(None, window, direction_angle, config, tri_arrays=tri_arrays)

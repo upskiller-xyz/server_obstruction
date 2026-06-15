@@ -26,7 +26,10 @@ class Mesh:
         *,
         vertices_array: Optional[np.ndarray] = None,
     ) -> None:
-        # Exactly one source is provided; the other is materialized lazily.
+        # Exactly one source is the authority; the other is materialized lazily.
+        # Passing both is ambiguous (which one is canonical?) — reject it.
+        if triangles is not None and vertices_array is not None:
+            raise ValueError("Mesh takes either 'triangles' or 'vertices_array', not both")
         self._triangles: Optional[Tuple[Triangle, ...]] = (
             tuple(triangles) if triangles is not None else None
         )
@@ -60,9 +63,24 @@ class Mesh:
 
     @classmethod
     def from_array(cls, vertices_array: np.ndarray) -> 'Mesh':
-        """Create a mesh from a vertex array — accepts (M, 3, 3) triangles or a flat
-        (N, 3) vertex array (every 3 vertices → a triangle). Reshapes to (M, 3, 3)."""
-        return cls(vertices_array=np.asarray(vertices_array, dtype=np.float64).reshape(-1, 3, 3))
+        """Create a mesh from a vertex array.
+
+        Accepts an ``(M, 3, 3)`` triangle array or a flat ``(N, 3)`` vertex array
+        (every 3 vertices → a triangle). The shape is validated explicitly so a
+        wrongly-shaped array isn't silently reinterpreted into scrambled triangles.
+
+        Raises:
+            ValueError: if the array isn't (M, 3, 3) or (N, 3) with N divisible by 3
+        """
+        array = np.asarray(vertices_array, dtype=np.float64)
+        if array.ndim == 3 and array.shape[1:] == (3, 3):
+            return cls(vertices_array=array)
+        if array.ndim == 2 and array.shape[1] == 3 and array.shape[0] % 3 == 0:
+            return cls(vertices_array=array.reshape(-1, 3, 3))
+        raise ValueError(
+            f"vertices_array must be (M, 3, 3) or (N, 3) with N divisible by 3, "
+            f"got shape {tuple(array.shape)}"
+        )
 
     @property
     def vertices_array(self) -> np.ndarray:

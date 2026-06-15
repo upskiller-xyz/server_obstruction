@@ -4,7 +4,9 @@ import asyncio
 from functools import partial
 from typing import Any, Dict
 
-from src.components.calculators.gap_obstruction_calculator import GapObstructionCalculator
+from src.components.calculators.gap_obstruction_calculator import (
+    GapObstructionCalculator,
+)
 from src.components.calculators.ray_triangle_intersector import TriangleArrays
 from src.components.models import GapObstructionResult, ObstructionResult, Window
 from src.server.base.constants import ResponseField
@@ -45,14 +47,15 @@ class AsyncDirectionCalculator:
         window = Window.set_angle(window_orig, direction_angle)
 
         # Execute gap calculation in the thread pool, reusing the shared tri_arrays.
-        loop = asyncio.get_event_loop()
+        # get_running_loop() is the supported accessor from inside a coroutine.
+        loop = asyncio.get_running_loop()
         executor = pool_manager.get_pool()
 
         gap_result: GapObstructionResult = await loop.run_in_executor(
             executor,
             partial(
-                GapObstructionCalculator.calculate,
-                None, window, direction_angle, tri_arrays=tri_arrays
+                GapObstructionCalculator.calculate_from_arrays,
+                tri_arrays, window, direction_angle
             )
         )
 

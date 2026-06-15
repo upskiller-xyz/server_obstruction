@@ -198,3 +198,22 @@ class TestMesh:
         """Test that empty vertex list raises error"""
         with pytest.raises(ValueError):
             Mesh.from_vertices([])
+
+    def test_mesh_rejects_both_sources(self):
+        """Passing both triangles and vertices_array is ambiguous → rejected."""
+        with pytest.raises(ValueError):
+            Mesh((), vertices_array=np.zeros((1, 3, 3)))
+
+    def test_from_array_accepts_flat_and_triangle_shapes(self):
+        """(N, 3) flat vertices and (M, 3, 3) triangle arrays both work."""
+        flat = Mesh.from_array(np.zeros((6, 3)))      # 6 vertices → 2 triangles
+        tri = Mesh.from_array(np.zeros((2, 3, 3)))    # already 2 triangles
+        assert flat.vertices_array.shape == (2, 3, 3)
+        assert tri.vertices_array.shape == (2, 3, 3)
+
+    def test_from_array_rejects_wrong_shape(self):
+        """A wrongly-shaped array isn't silently reshaped into scrambled triangles."""
+        with pytest.raises(ValueError):
+            Mesh.from_array(np.zeros((9, 4)))          # (N, 4) — not vertices
+        with pytest.raises(ValueError):
+            Mesh.from_array(np.zeros((4, 3)))          # N=4 not divisible by 3
