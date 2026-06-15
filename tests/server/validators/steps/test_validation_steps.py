@@ -1,7 +1,14 @@
 import pytest
-from src.server.validators.steps.required_fields_validation_step import RequiredFieldsValidationStep
-from src.server.validators.steps.numeric_fields_validation_step import NumericFieldsValidationStep
-from src.server.validators.steps.mesh_format_validation_step import MeshFormatValidationStep
+
+from src.server.validators.steps.mesh_format_validation_step import (
+    MeshFormatValidationStep,
+)
+from src.server.validators.steps.numeric_fields_validation_step import (
+    NumericFieldsValidationStep,
+)
+from src.server.validators.steps.required_fields_validation_step import (
+    RequiredFieldsValidationStep,
+)
 
 
 class TestRequiredFieldsValidationStep:
@@ -111,8 +118,9 @@ class TestNumericFieldsValidationStep:
 class TestMeshFormatValidationStep:
     """Test cases for MeshFormatValidationStep"""
 
-    def test_valid_nested_mesh_passes(self):
-        """Test that valid nested mesh format passes"""
+    def test_nested_mesh_rejected(self):
+        """The legacy nested {"horizon": [...]} mesh format is no longer supported —
+        the mesh must be a flat list of vertices (or an (N,3) array)."""
         data = {
             "x": 0.0,
             "y": 1.5,
@@ -127,14 +135,8 @@ class TestMeshFormatValidationStep:
             }
         }
 
-        # call() raises ValueError on failure, returns None on success
-        try:
+        with pytest.raises(ValueError):
             MeshFormatValidationStep.call(data)
-            validation_passed = True
-        except ValueError:
-            validation_passed = False
-
-        assert validation_passed is True
 
     def test_valid_flat_mesh_passes(self):
         """Test that valid flat mesh format passes"""
@@ -173,13 +175,13 @@ class TestMeshFormatValidationStep:
             MeshFormatValidationStep.call(data)
 
     def test_empty_mesh_passes(self):
-        """Test that empty mesh passes validation (warns but doesn't fail)"""
+        """Test that an empty (flat) mesh passes validation (warns but doesn't fail)"""
         data = {
             "x": 0.0,
             "y": 1.5,
             "z": 0.0,
             "direction_angle": 0.0,
-            "mesh": {"horizon": []}
+            "mesh": []
         }
 
         # Empty mesh should pass (it just logs a warning)

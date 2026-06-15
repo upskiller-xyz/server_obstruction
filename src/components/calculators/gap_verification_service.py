@@ -7,7 +7,10 @@ Service for verifying sky gaps with ray casting.
 import numpy as np
 
 from src.components.calculators.boundary_search_strategy import BoundarySearchStrategy
-from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector, TriangleArrays
+from src.components.calculators.ray_triangle_intersector import (
+    RayTriangleIntersector,
+    TriangleArrays,
+)
 from src.components.geometry.vector import Vector3D
 from src.components.models.gap_verification_result import GapVerificationResult
 from src.server.base.constants import BoundaryDirection, GapVerificationStatus
@@ -42,7 +45,11 @@ class GapVerificationService:
         Returns:
             GapVerificationResult with status and boundaries if sky found
         """
-        # Test midpoint of gap
+        # Probe just inside the gap from its lower edge (gap_low + 1°). The gap was
+        # detected between two obstructions, so testing near the bottom checks whether
+        # sky opens up right above the horizon obstruction; the boundary search below
+        # then refines the exact horizon/zenith. Narrow gaps (<1°) fall back to the
+        # midpoint.
         test_elevation = gap_low + 1.0
         if test_elevation >= gap_high:
             test_elevation = (gap_low + gap_high) * 0.5
