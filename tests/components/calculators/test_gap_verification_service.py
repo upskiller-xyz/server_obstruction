@@ -4,7 +4,7 @@ import pytest
 from src.components.calculators.boundary_search_strategy import BoundarySearchStrategy
 from src.components.calculators.gap_verification_service import GapVerificationService
 from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
-from src.components.geometry import Triangle, Point3D
+from src.components.geometry import Point3D, Triangle
 from src.server.base.constants import GapVerificationStatus
 
 
@@ -35,12 +35,21 @@ class TestGapVerificationService:
         """Prepare triangle arrays for ray casting"""
         return RayTriangleIntersector.prepare_arrays([obstructing_triangle])
 
-    def test_verify_gap_finds_sky(self, service, tri_arrays):
-        """Test that service finds sky in a valid gap"""
+    def test_verify_gap_finds_sky(self, service):
+        """Sky is found when the gap is clear above a low obstruction."""
         origin = np.array([0.0, 0.0, 0.0])
         direction_angle = 0.0
 
-        # Gap between 40-90 degrees should be clear (triangle is at z=3, ~17 deg elevation)
+        # A small, distant triangle at z=3, x∈[8,14] only obstructs ~14–21° elevation
+        # (it does not reach the small-x / overhead region). So the gap 40–90° is clear
+        # and the verifier (probing gap_low+1 = 41°) finds sky.
+        triangle = Triangle(
+            Point3D(8.0, -3.0, 3.0),
+            Point3D(14.0, 0.0, 3.0),
+            Point3D(8.0, 3.0, 3.0),
+        )
+        tri_arrays = RayTriangleIntersector.prepare_arrays([triangle])
+
         result = service.verify_gap(
             gap_low=40.0,
             gap_high=90.0,
@@ -53,21 +62,21 @@ class TestGapVerificationService:
         assert result.status == GapVerificationStatus.SKY_FOUND
         assert result.horizon_deg is not None
         assert result.zenith_deg is not None
-        assert result.rays_cast > 1  # Initial test + binary searches
+        assert result.rays_cast > 1  # initial probe + boundary searches
 
     def test_verify_gap_detects_obstruction(self, service):
-        """Test that service detects obstruction in gap midpoint"""
-        # Triangle at z=8 obstructs ~39 deg elevation; midpoint of gap 35-50 is 42.5 deg (above triangle)
+        """Obstruction is detected when the probed elevation is blocked."""
+        # A large horizontal slab at z=5 spanning the whole forward region blocks every
+        # elevation above the horizon, so the probe ray (gap_low+1 = 36°) hits it.
         triangle = Triangle(
-            Point3D(0.0, -10.0, 8.0),
-            Point3D(10.0, 0.0, 8.0),
-            Point3D(0.0, 10.0, 8.0)
+            Point3D(-20.0, -20.0, 5.0),
+            Point3D(20.0, -20.0, 5.0),
+            Point3D(0.0, 20.0, 5.0),
         )
         tri_arrays = RayTriangleIntersector.prepare_arrays([triangle])
         origin = np.array([0.0, 0.0, 0.0])
         direction_angle = 0.0
 
-        # Test gap whose midpoint is obstructed
         result = service.verify_gap(
             gap_low=35.0,
             gap_high=50.0,
