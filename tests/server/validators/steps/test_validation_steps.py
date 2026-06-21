@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from src.server.validators.steps.mesh_format_validation_step import (
@@ -174,8 +176,9 @@ class TestMeshFormatValidationStep:
         with pytest.raises(ValueError):
             MeshFormatValidationStep.call(data)
 
-    def test_empty_mesh_passes(self):
-        """Test that an empty (flat) mesh passes validation (warns but doesn't fail)"""
+    def test_empty_mesh_passes(self, caplog):
+        """Test that an empty (flat) mesh passes validation: the step returns early
+        for a zero-length mesh, so it neither warns nor raises."""
         data = {
             "x": 0.0,
             "y": 1.5,
@@ -184,11 +187,14 @@ class TestMeshFormatValidationStep:
             "mesh": []
         }
 
-        # Empty mesh should pass (it just logs a warning)
-        try:
-            MeshFormatValidationStep.call(data)
-            validation_passed = True
-        except ValueError:
-            validation_passed = False
+        # Empty mesh should pass (the step returns early; no warning, no error)
+        with caplog.at_level(logging.WARNING):
+            try:
+                MeshFormatValidationStep.call(data)
+                validation_passed = True
+            except ValueError:
+                validation_passed = False
 
         assert validation_passed is True
+        # Returned early — no warning was logged.
+        assert caplog.records == []
