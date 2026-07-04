@@ -24,10 +24,12 @@ ENV THREADS 2
 # Sized for a serverless container with per-instance concurrency = 1 (the
 # platform sends at most one obstruction request per instance):
 # - 1 worker = one request owns the whole instance; multiple gunicorn workers
-#   would each spin up their own ThreadPoolManager pool (cpu-1) and oversubscribe
-#   the CPU when they run concurrently — the failure mode this deploy fixes.
-# - the ThreadPoolManager (cpu-1) parallelizes the 64 directions within that one
-#   request across the instance's vCPUs (NumPy releases the GIL).
+#   would each spin up their own ThreadPoolManager pool and oversubscribe the CPU
+#   when they run concurrently — the failure mode this deploy fixes.
+# - the ThreadPoolManager (max(2, cpu_count-1) threads) parallelizes the 64
+#   directions within that one request across the instance's vCPUs (NumPy releases
+#   the GIL). The floor of 2 means a 1-vCPU instance still spawns 2 threads (mild
+#   self-oversubscription) — size the instance at >= 2 vCPU (recommended 4).
 # - 2 threads keeps the health probe responsive alongside the in-flight request.
 # Override WORKERS via env for a shared VM deploy that must serve concurrently.
 CMD exec gunicorn \
