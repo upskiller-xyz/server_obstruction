@@ -18,14 +18,20 @@ RUN chmod 444 main.py
 RUN chmod 444 /requirements-prod.txt
 
 ENV PORT 8081
-ENV WORKERS 4
+ENV WORKERS 1
 ENV THREADS 2
 
-# Optimized for CPU-bound parallel processing with 32 cores:
-# - 4 workers = handle multiple concurrent requests
-# - 2 threads per worker = 8 total request handlers
-# - ProcessPoolExecutor (31 workers) handles parallelism within each request
-# - gthread worker for async support needed by ProcessPoolExecutor
+# Sized for a serverless container with per-instance concurrency = 1 (the
+# platform sends at most one obstruction request per instance):
+# - 1 worker = one request owns the whole instance; multiple gunicorn workers
+#   would each spin up their own ThreadPoolManager pool and oversubscribe the CPU
+#   when they run concurrently — the failure mode this deploy fixes.
+# - the ThreadPoolManager (max(2, cpu_count-1) threads) parallelizes the 64
+#   directions within that one request across the instance's vCPUs (NumPy releases
+#   the GIL). The floor of 2 means a 1-vCPU instance still spawns 2 threads (mild
+#   self-oversubscription) — size the instance at >= 2 vCPU (recommended 4).
+# - 2 threads keeps the health probe responsive alongside the in-flight request.
+# Override WORKERS via env for a shared VM deploy that must serve concurrently.
 CMD exec gunicorn \
     --bind :$PORT \
     --workers $WORKERS \
