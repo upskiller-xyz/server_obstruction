@@ -67,8 +67,13 @@ class BatchedDirectionSettings:
 
     @classmethod
     def chunk_size(cls) -> int:
-        """Directions processed per batched chunk (default 16)."""
-        return max(1, int(os.getenv(cls._CHUNK_KEY, "16")))
+        """Directions processed per batched chunk.
+
+        Default 8: measured fastest on large meshes (~12k triangles) — bigger
+        chunks (32/64) lose to cache/memory pressure in the (chunk, N, 3) ray
+        broadcast, smaller chunks add Python-loop overhead.
+        """
+        return max(1, int(os.getenv(cls._CHUNK_KEY, "8")))
 
     @classmethod
     def max_cells(cls) -> int:

@@ -21,6 +21,17 @@ ENV PORT 8081
 ENV WORKERS 1
 ENV THREADS 2
 
+# Batched all-directions path (vectorizes the 64 directions into one NumPy pass
+# instead of one thread-pool task each). Declared here so they are tunable as
+# Scaleway container env vars without a rebuild:
+# - OBSTRUCTION_BATCHED=0 falls back to the async per-direction path
+# - OBSTRUCTION_BATCH_CHUNK: directions per batched chunk (memory vs overhead;
+#   8 measured fastest on ~12k-triangle meshes)
+# - OBSTRUCTION_BATCH_MAX_CELLS: N×directions ceiling before async fallback
+ENV OBSTRUCTION_BATCHED 1
+ENV OBSTRUCTION_BATCH_CHUNK 8
+ENV OBSTRUCTION_BATCH_MAX_CELLS 40000000
+
 # Sized for a serverless container with per-instance concurrency = 1 (the
 # platform sends at most one obstruction request per instance):
 # - 1 worker = one request owns the whole instance; multiple gunicorn workers
