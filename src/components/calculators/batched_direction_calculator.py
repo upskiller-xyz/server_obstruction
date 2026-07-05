@@ -60,6 +60,9 @@ class BatchedDirectionSettings:
     _CHUNK_KEY = "OBSTRUCTION_BATCH_CHUNK"
     _MAX_CELLS_KEY = "OBSTRUCTION_BATCH_MAX_CELLS"
 
+    _DEFAULT_CHUNK = 8
+    _DEFAULT_MAX_CELLS = 40_000_000
+
     @classmethod
     def enabled(cls) -> bool:
         """Whether the batched path is enabled (default: yes)."""
@@ -67,13 +70,41 @@ class BatchedDirectionSettings:
 
     @classmethod
     def chunk_size(cls) -> int:
-        """Directions processed per batched chunk (default 16)."""
-        return max(1, int(os.getenv(cls._CHUNK_KEY, "16")))
+        """Directions processed per batched chunk.
+
+        Default 8: measured fastest on large meshes (~12k triangles) — bigger
+        chunks (32/64) lose to cache/memory pressure in the (chunk, N, 3) ray
+        broadcast, smaller chunks add Python-loop overhead.
+        """
+        return cls._positive_int_env(cls._CHUNK_KEY, cls._DEFAULT_CHUNK)
 
     @classmethod
     def max_cells(cls) -> int:
         """N*D ceiling before falling back to the async path (default 40M)."""
-        return int(os.getenv(cls._MAX_CELLS_KEY, str(40_000_000)))
+        return cls._positive_int_env(cls._MAX_CELLS_KEY, cls._DEFAULT_MAX_CELLS)
+
+    @classmethod
+    def _positive_int_env(cls, key: str, default: int) -> int:
+        """Read a positive int from the environment, defensively.
+
+        Runtime-tunable env vars must never crash request handling: an empty or
+        non-integer value falls back to the documented default (with a warning),
+        and values below 1 are clamped to 1.
+        """
+        raw = os.getenv(key)
+        if raw is None:
+            return default
+        try:
+            value = int(raw)
+        except ValueError:
+            logger.warning(
+                "Invalid %s=%r (not an integer); using default %d", key, raw, default
+            )
+            return default
+        if value < 1:
+            logger.warning("%s=%d below minimum; clamping to 1", key, value)
+            return 1
+        return value
 
     @classmethod
     def within_budget(cls, triangle_count: int, num_directions: int) -> bool:

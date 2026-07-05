@@ -122,6 +122,31 @@ class TestBatchedDirectionCalculator:
         finally:
             os.environ.pop("OBSTRUCTION_BATCH_MAX_CELLS", None)
 
+    @pytest.mark.parametrize("bad_value", ["", "abc", "8.5", "  "])
+    def test_chunk_size_falls_back_on_invalid_env(self, bad_value):
+        """A non-integer/empty OBSTRUCTION_BATCH_CHUNK must not crash requests."""
+        os.environ["OBSTRUCTION_BATCH_CHUNK"] = bad_value
+        try:
+            assert BatchedDirectionSettings.chunk_size() == 8
+        finally:
+            os.environ.pop("OBSTRUCTION_BATCH_CHUNK", None)
+
+    def test_chunk_size_clamped_to_minimum(self):
+        """Values below 1 are clamped rather than producing an empty chunk loop."""
+        os.environ["OBSTRUCTION_BATCH_CHUNK"] = "0"
+        try:
+            assert BatchedDirectionSettings.chunk_size() == 1
+        finally:
+            os.environ.pop("OBSTRUCTION_BATCH_CHUNK", None)
+
+    def test_chunk_size_valid_env_override(self):
+        """A valid override is honoured."""
+        os.environ["OBSTRUCTION_BATCH_CHUNK"] = "16"
+        try:
+            assert BatchedDirectionSettings.chunk_size() == 16
+        finally:
+            os.environ.pop("OBSTRUCTION_BATCH_CHUNK", None)
+
 
 def _pack(mesh: Mesh):
     from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
