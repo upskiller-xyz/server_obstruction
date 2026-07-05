@@ -3,7 +3,6 @@
 import logging
 from typing import Any, Tuple
 
-import orjson
 from flask import Response, jsonify, request
 from werkzeug.exceptions import BadRequest
 
@@ -17,6 +16,7 @@ from src.server.base.constants import (
 )
 from src.server.controllers.endpoint_config import BinaryEndpointLogicalMap
 from src.server.controllers.obstruction_controller import ObstructionController
+from src.server.services.json_codec import JsonCodec
 from src.server.services.mesh_decoder import NpyMeshDecoder
 from src.server.services.timing import StageTimer
 
@@ -49,8 +49,8 @@ class RequestHandler:
             if not raw_params:
                 raise BadRequest("Missing 'params' form field")
             try:
-                request_data = orjson.loads(raw_params)
-            except orjson.JSONDecodeError as e:
+                request_data = JsonCodec.loads(raw_params)
+            except JsonCodec.JSONDecodeError as e:
                 raise BadRequest(f"Invalid params JSON: {e}")
             if not isinstance(request_data, dict):
                 raise BadRequest("'params' must be a JSON object")
@@ -107,16 +107,16 @@ class RequestHandler:
             if not request.is_json:
                 raise BadRequest(f"Content-Type must be {ContentType.JSON.value}")
 
-            # Parse request body with orjson (~faster than get_json; obstruction
-            # receives the full mesh, so body parsing dominates here too). Mirror
-            # get_json's error contract: empty/invalid body → 400, not 500.
+            # Parse request body via JsonCodec (orjson when available, ~faster than
+            # get_json; obstruction receives the full mesh, so body parsing dominates
+            # here too). Mirror get_json's error contract: empty/invalid body → 400.
             raw = request.get_data()
             if not raw:
                 raise BadRequest("Request body cannot be empty")
             with StageTimer("parse_body", logger):
                 try:
-                    request_data = orjson.loads(raw)
-                except orjson.JSONDecodeError as e:
+                    request_data = JsonCodec.loads(raw)
+                except JsonCodec.JSONDecodeError as e:
                     raise BadRequest(f"Invalid JSON: {e}")
             # Non-object JSON (list/null/number) would fail confusingly downstream;
             # reject it as a client error. An empty object ({}) is allowed through so

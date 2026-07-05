@@ -5,6 +5,10 @@ import logging
 import math
 from typing import Any, Dict
 
+from src.components.calculators.batched_direction_calculator import (
+    BatchedDirectionCalculator,
+    BatchedDirectionSettings,
+)
 from src.components.calculators.direction_calculator import DirectionCalculator
 from src.components.calculators.intersection_calculator import IntersectionCalculator
 from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
@@ -151,7 +155,23 @@ class ObstructionService:
             end_angle_degrees
         )
 
-        # Create async tasks for all directions (sharing the pre-packed tri_arrays)
+        # Fast path: solve all directions in one vectorized pass (shared origin lets
+        # a single NumPy sweep test one ray per direction against every triangle).
+        # Falls back to the async per-direction path when disabled or when the
+        # N×D broadcast would exceed the memory budget.
+        if (
+            BatchedDirectionSettings.enabled()
+            and BatchedDirectionSettings.within_budget(tri_arrays.count, len(direction_angles))
+        ):
+            results = BatchedDirectionCalculator.calculate(
+                tri_arrays, request.window, direction_angles
+            )
+            return {
+                ResponseField.RESULTS.value: results,
+            }
+
+        # Fallback: create async tasks for all directions (sharing the pre-packed
+        # tri_arrays) and execute them concurrently on the thread pool.
         tasks = [
             AsyncDirectionCalculator.calculate(
                 tri_arrays,
@@ -162,7 +182,6 @@ class ObstructionService:
             for direction_angle in direction_angles
         ]
 
-        # Execute all tasks concurrently
         results = await asyncio.gather(*tasks)
 
         return {

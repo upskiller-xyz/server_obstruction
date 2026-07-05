@@ -103,3 +103,38 @@ class Vector3D:
         norm = np.linalg.norm(direction)
         normalized = direction / norm
         return cls.from_array(normalized)
+
+    @staticmethod
+    def directions_from_azimuth_elevation(
+        azimuths_rad: np.ndarray,
+        elevations_deg: np.ndarray
+    ) -> np.ndarray:
+        """
+        Batched form of ``from_azimuth_elevation`` — build M unit direction vectors.
+
+        Vectorized counterpart used by the all-directions batched path so that all
+        M rays of one binary-search step are built in a single NumPy op instead of
+        M scalar ``from_azimuth_elevation`` calls.
+
+        Args:
+            azimuths_rad: (M,) horizontal direction angles in radians
+            elevations_deg: (M,) elevation angles in degrees (0=horizontal, 90=up)
+
+        Returns:
+            (M, 3) array of unit direction vectors, row i matching the scalar
+            ``from_azimuth_elevation(azimuths_rad[i], elevations_deg[i])``
+        """
+        azimuths_rad = np.asarray(azimuths_rad, dtype=float)
+        elevations_deg = np.asarray(elevations_deg, dtype=float)
+
+        horizontal = np.stack(
+            [np.cos(azimuths_rad), np.sin(azimuths_rad), np.zeros_like(azimuths_rad)],
+            axis=-1
+        )  # (M, 3)
+        elev_rad = np.radians(elevations_deg)
+        directions = (
+            np.cos(elev_rad)[:, np.newaxis] * horizontal
+            + np.sin(elev_rad)[:, np.newaxis] * CoordinateSystem.UP
+        )
+        norms = np.linalg.norm(directions, axis=1, keepdims=True)
+        return directions / norms
