@@ -25,12 +25,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # Check out the exact commit the tag points at (the default for a
+          # tag-push) so the generated changelog matches the release being
+          # processed, not a possibly-newer default-branch tip. The detached HEAD
+          # is fine: the PR step creates its own branch from this commit.
+          # fetch-depth: 0 brings the full history + tags conventional-changelog needs.
+          ref: ${{ github.ref }}
           fetch-depth: 0
-          # The workflow triggers on a tag push, which otherwise checks out a
-          # detached HEAD — the changelog commit then has no branch to push to.
-          # Check out the default branch so the commit lands on it and `git push`
-          # works. fetch-depth: 0 still brings the tags conventional-changelog needs.
-          ref: ${{ github.event.repository.default_branch }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -69,7 +70,9 @@ jobs:
             exit 0
           fi
 
-          VERSION="$(git describe --tags --abbrev=0)"
+          # Use the tag that triggered this run (github.ref_name), not
+          # `git describe`, which could resolve to a different reachable tag.
+          VERSION="${{ github.ref_name }}"
           BRANCH="changelog/${VERSION}"
           BASE="${{ github.event.repository.default_branch }}"
 
