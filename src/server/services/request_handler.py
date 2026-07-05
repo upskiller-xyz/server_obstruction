@@ -116,7 +116,9 @@ class RequestHandler:
             with StageTimer("parse_body", logger):
                 try:
                     request_data = JsonCodec.loads(raw)
-                except JsonCodec.JSONDecodeError as e:
+                # stdlib json raises UnicodeDecodeError on non-UTF8 bytes; treat it
+                # as a malformed body (400) like a JSON decode error, not a 500.
+                except (JsonCodec.JSONDecodeError, UnicodeDecodeError) as e:
                     raise BadRequest(f"Invalid JSON: {e}")
             # Non-object JSON (list/null/number) would fail confusingly downstream;
             # reject it as a client error. An empty object ({}) is allowed through so

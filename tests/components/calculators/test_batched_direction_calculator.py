@@ -75,13 +75,16 @@ class TestBatchedDirectionCalculator:
                 a["zenith"]["obstruction_angle_degrees"], abs=1.0
             )
 
-    def test_empty_mesh_is_unobstructed(self):
-        """No triangles -> every direction falls back to the obstructed default."""
+    def test_empty_mesh_falls_back_to_obstructed_default(self):
+        """No triangles -> every direction returns the 45°/45° obstructed default."""
         empty = Mesh.from_array(np.empty((0, 3, 3)))
         results = BatchedDirectionCalculator.calculate(
             _pack(empty), _window(), np.linspace(0.0, np.pi, 8)
         )
         assert len(results) == 8
+        for entry in results:
+            assert entry["horizon"]["obstruction_angle_degrees"] == pytest.approx(45.0)
+            assert entry["zenith"]["obstruction_angle_degrees"] == pytest.approx(45.0)
 
     def test_chunking_is_invariant(self):
         """Result is independent of how directions are chunked."""
