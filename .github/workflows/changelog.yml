@@ -11,6 +11,13 @@ on:
         required: false
         default: 'false'
 
+# master is protected (requires PR/review), so the changelog lands via a PR
+# rather than a direct push: creating the branch needs contents:write and
+# opening the PR needs pull-requests:write.
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
@@ -19,6 +26,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # The workflow triggers on a tag push, which otherwise checks out a
+          # detached HEAD — the changelog commit then has no branch to push to.
+          # Check out the default branch so the commit lands on it and `git push`
+          # works. fetch-depth: 0 still brings the tags conventional-changelog needs.
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -42,19 +54,44 @@ jobs:
           echo "=== Changelog Changes ==="
           git diff --no-index CHANGELOG.md.bak CHANGELOG.md || true
 
-      - name: Commit changelog
+      - name: Open changelog PR
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Only commit if CHANGELOG.md changed
+          # The generate step leaves a .bak for the diff log; drop it so it is not
+          # picked up as an untracked file.
+          rm -f CHANGELOG.md.bak
+
+          # Nothing to do if the changelog is unchanged.
           if git diff --quiet CHANGELOG.md; then
             echo "No changes to CHANGELOG.md"
+            exit 0
+          fi
+
+          VERSION="$(git describe --tags --abbrev=0)"
+          BRANCH="changelog/${VERSION}"
+          BASE="${{ github.event.repository.default_branch }}"
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          # master is protected, so land the changelog on a dedicated branch and
+          # open a PR instead of pushing to the default branch directly. Re-runs
+          # of the same tag reuse the branch (force-with-lease) and the existing PR.
+          git checkout -b "$BRANCH"
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG.md for ${VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+
+          if gh pr view "$BRANCH" >/dev/null 2>&1; then
+            echo "PR for $BRANCH already exists; branch updated."
           else
-            git add CHANGELOG.md
-            git commit -m "docs: update CHANGELOG.md for $(git describe --tags --abbrev=0)"
-            git push
+            gh pr create \
+              --base "$BASE" \
+              --head "$BRANCH" \
+              --title "docs: update CHANGELOG.md for ${VERSION}" \
+              --body "Automated changelog update for ${VERSION}."
           fi
 
       - name: Upload changelog as artifact
