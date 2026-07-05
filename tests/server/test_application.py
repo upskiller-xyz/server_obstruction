@@ -76,6 +76,21 @@ class TestServerApplication:
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST.value
 
+    def test_horizon_endpoint_non_utf8_body(self, client):
+        """Test POST /horizon with non-UTF8 bytes returns 400, not 500.
+
+        The stdlib json fallback raises UnicodeDecodeError on invalid bytes; the
+        handler must map it to a client error like a JSON decode error.
+        """
+        response = client.post(
+            '/horizon',
+            data=b'\xff\xfe\x00',
+            content_type='application/json'
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST.value
+        data = json.loads(response.data)
+        assert data['status'] == ResponseStatus.ERROR.value
+
     def test_horizon_endpoint_missing_fields(self, client):
         """Test POST /horizon with missing required fields"""
         response = client.post(
