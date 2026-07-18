@@ -14,10 +14,11 @@ WORKDIR /src
 # Upgrade build tooling & purge old bundled/cached wheels the base image ships
 # (fixes pip / setuptools / wheel CVEs; ensurepip stashes vulnerable .whl files
 # that scanners still flag even after an upgrade)
-RUN pip install --no-cache-dir --upgrade "pip>=25.3" "setuptools>=78.1.1" "wheel>=0.46.1" \
-    && find / -type d -name "_bundled" -path "*ensurepip*" -exec rm -rf {} + 2>/dev/null || true \
-    && find / -type f -name "*.whl" -delete 2>/dev/null || true \
-    && rm -rf /root/.cache/pip
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && { \
+        find /usr/local/lib -type d -name "_bundled" -path "*ensurepip*" -exec rm -rf {} + 2>/dev/null; \
+        rm -rf /root/.cache/pip; \
+    }
 
 # Install production dependencies only (smaller image)
 RUN pip install --no-cache-dir -r /requirements-prod.txt
