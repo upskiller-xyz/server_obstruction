@@ -65,7 +65,7 @@ class TestServerLauncher:
         call_kwargs = mock_flask_app.run.call_args[1]
         assert call_kwargs['host'] == "0.0.0.0"
         assert call_kwargs['port'] == 8081
-        assert call_kwargs['debug'] == True
+        assert call_kwargs['debug'] is False  # Werkzeug debugger is opt-in only
 
     @patch('src.server.launcher.ServerApplication')
     def test_run_server_logs_startup_message(self, mock_app_class):

@@ -21,7 +21,7 @@ class ServerLauncher:
         app: ServerApplication,
         host: str = "0.0.0.0",
         port: int = 8081,
-        debug: bool = True
+        debug: bool = False
     ) -> None:
         """
         Run the Flask development server.
@@ -30,7 +30,7 @@ class ServerLauncher:
             app: ServerApplication instance to run
             host: Host to bind to (default: 0.0.0.0)
             port: Port to listen on (default: 8081)
-            debug: Enable debug mode (default: True)
+            debug: Enable debug mode (default: False)
         """
         log_msg = (
             f"Flask app '{app.app.name}' starting on "

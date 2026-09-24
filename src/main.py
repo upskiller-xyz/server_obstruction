@@ -30,6 +30,7 @@ logging.basicConfig(
 
 from src.server.application import ServerApplication
 from src.server.launcher import ServerLauncher
+from src.server.http_policy import HttpPolicy
 
 
 def main() -> None:
@@ -37,8 +38,7 @@ def main() -> None:
     launcher = ServerLauncher()
     application = launcher.create_application()
     port = int(os.getenv("PORT", 8081))
-    debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
-    launcher.run_server(application, port=port, debug=debug)
+    launcher.run_server(application, port=port, debug=HttpPolicy.debug_enabled())
 
 
 # Create app instance for gunicorn only when needed
