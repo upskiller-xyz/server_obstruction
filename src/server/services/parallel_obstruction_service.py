@@ -11,8 +11,12 @@ from src.components.calculators.direction_calculator import DirectionCalculator
 from src.components.models.obstruction_request import ObstructionRequest
 from src.server.base.constants import ResponseField
 from src.server.services.http_header_builder import HTTPHeaderBuilder
+
 from src.server.services.request_builder import ParallelRequestBuilder
 from src.server.services.result_assembler import ParallelResultAssembler
+
+# Per-direction failures are reported without internals (URLs, exception text).
+DIRECTION_FAILED_MESSAGE = "Direction calculation failed"
 
 
 class ParallelObstructionService:
@@ -115,16 +119,16 @@ class ParallelObstructionService:
             return {
                 ResponseField.DIRECTION_ANGLE.value: direction_angle,
                 ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(direction_angle),
-                "error": str(e)
+                "error": DIRECTION_FAILED_MESSAGE
             }
         except Exception as e:
             logging.error(
-                f"[PARALLEL] Direction {direction_index} failed: {str(e)}"
+                f"[PARALLEL] Direction {direction_index} failed: {str(e)}", exc_info=True
             )
             return {
                 ResponseField.DIRECTION_ANGLE.value: direction_angle,
                 ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(direction_angle),
-                "error": str(e)
+                "error": DIRECTION_FAILED_MESSAGE
             }
 
     async def calculate_all_directions_parallel(
