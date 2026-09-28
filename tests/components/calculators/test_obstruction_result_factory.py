@@ -32,13 +32,21 @@ class TestObstructionResultFactory:
         assert result.horizon_deg == 90.0
         assert result.zenith_deg == 90.0
 
-    def test_create_empty_returns_default_fallback(self):
-        """Test creating empty result returns default fallback values"""
-        result = ObstructionResultFactory.create_empty()
+    def test_create_fully_obstructed_returns_fallback_angles(self):
+        """Fully obstructed result carries the 45°/45° fallback angles"""
+        result = ObstructionResultFactory.create_fully_obstructed()
 
         assert isinstance(result, GapObstructionResult)
         assert result.horizon_deg == 45.0
         assert result.zenith_deg == 45.0
+
+    def test_create_unobstructed_returns_full_sky(self):
+        """Unobstructed result is full sky (0°/0°), not the obstructed fallback"""
+        result = ObstructionResultFactory.create_unobstructed()
+
+        assert isinstance(result, GapObstructionResult)
+        assert result.horizon_deg == 0.0
+        assert result.zenith_deg == 0.0
 
     def test_create_from_gap_is_stateless(self):
         """Test that factory method is stateless"""
@@ -47,14 +55,6 @@ class TestObstructionResultFactory:
 
         result1 = ObstructionResultFactory.create_from_gap(horizon_deg, zenith_deg)
         result2 = ObstructionResultFactory.create_from_gap(horizon_deg, zenith_deg)
-
-        assert result1.horizon_deg == result2.horizon_deg
-        assert result1.zenith_deg == result2.zenith_deg
-
-    def test_create_empty_is_stateless(self):
-        """Test that create_empty is stateless"""
-        result1 = ObstructionResultFactory.create_empty()
-        result2 = ObstructionResultFactory.create_empty()
 
         assert result1.horizon_deg == result2.horizon_deg
         assert result1.zenith_deg == result2.zenith_deg

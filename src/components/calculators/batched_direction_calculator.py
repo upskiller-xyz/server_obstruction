@@ -8,6 +8,7 @@ ray per direction against every triangle in a single NumPy sweep.
 
 Semantics are identical to ``GapObstructionOrchestrator.calculate`` run per
 direction:
+  0. Return full sky (0/0) when no triangles survive the pre-filter
   1. Collect plane-mesh intersection elevation angles (batched)
   2. Detect angular gaps per direction (largest first)
   3. Probe each direction's largest unresolved gap; on sky, binary-search the
@@ -41,7 +42,7 @@ from src.server.base.constants import BoundaryDirection, ResponseField
 logger = logging.getLogger(__name__)
 
 # Default fallback angles when a direction admits no sky gap (matches
-# ObstructionResultFactory.create_empty).
+# ObstructionResultFactory.create_fully_obstructed).
 _FULLY_OBSTRUCTED_DEG: float = 45.0
 
 
@@ -185,7 +186,9 @@ class BatchedDirectionCalculator:
         resolved = np.zeros(num, dtype=bool)
 
         if tri_arrays.count == 0:
-            return horizon, zenith
+            # Nothing ahead of/above the window survived the pre-filter: no geometry
+            # can block the sky in any direction (full sky, 0°/0°).
+            return np.zeros(num), np.zeros(num)
 
         angle_lists = BatchedElevationAngleCollector.collect(tri_arrays, origin, azimuths)
         gaps_per_dir = [

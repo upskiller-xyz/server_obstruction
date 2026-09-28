@@ -39,6 +39,34 @@ def _window() -> Window:
     return Window(center=Point3D(0.0, 0.0, 1.5), normal=Vector3D(0.0, 1.0, 0.0))
 
 
+def _plus_x_window() -> Window:
+    """Window facing exactly +X (direction angle 0): the normal is exactly (1, 0, 0)."""
+    return Window(center=Point3D(0.0, 0.0, 1.5), normal=Vector3D.from_horizontal_angle(0.0))
+
+
+def _flush_facade_mesh() -> Mesh:
+    """Building mass behind the +X window whose outer face is flush with the window
+    plane (x = 0): a roof slab above the window and a facade wall, nothing ahead."""
+    return Mesh.from_vertices([
+        # Roof slab at z = 3, from x = -5 up to the flush edge x = 0
+        [-5.0, -3.0, 3.0], [0.0, -3.0, 3.0], [0.0, 3.0, 3.0],
+        [-5.0, -3.0, 3.0], [0.0, 3.0, 3.0], [-5.0, 3.0, 3.0],
+        # Facade wall in the window plane x = 0, beside and above the opening
+        [0.0, -3.0, 0.0], [0.0, -1.0, 0.0], [0.0, -1.0, 3.0],
+        [0.0, -3.0, 0.0], [0.0, -1.0, 3.0], [0.0, -3.0, 3.0],
+        [0.0, 1.0, 0.0], [0.0, 3.0, 0.0], [0.0, 3.0, 3.0],
+        [0.0, 1.0, 0.0], [0.0, 3.0, 3.0], [0.0, 1.0, 3.0],
+    ])
+
+
+def _blocking_wall_mesh() -> Mesh:
+    """A huge wall 0.5 m in front of the +X window, covering every sampled direction."""
+    return Mesh.from_vertices([
+        [0.5, -500.0, -10.0], [0.5, 500.0, -10.0], [0.5, 500.0, 1000.0],
+        [0.5, -500.0, -10.0], [0.5, 500.0, 1000.0], [0.5, -500.0, 1000.0],
+    ])
+
+
 def _run(request: ObstructionRequest, num_directions: int, batched: bool):
     os.environ["OBSTRUCTION_BATCHED"] = "1" if batched else "0"
     loop = asyncio.new_event_loop()
@@ -75,13 +103,39 @@ class TestBatchedDirectionCalculator:
                 a["zenith"]["obstruction_angle_degrees"], abs=1.0
             )
 
-    def test_empty_mesh_falls_back_to_obstructed_default(self):
-        """No triangles -> every direction returns the 45°/45° obstructed default."""
+    def test_empty_mesh_returns_full_sky(self):
+        """No triangles -> nothing can block the sky: every direction is 0°/0°."""
         empty = Mesh.from_array(np.empty((0, 3, 3)))
         results = BatchedDirectionCalculator.calculate(
             _pack(empty), _window(), np.linspace(0.0, np.pi, 8)
         )
         assert len(results) == 8
+        for entry in results:
+            assert entry["horizon"]["obstruction_angle_degrees"] == pytest.approx(0.0)
+            assert entry["zenith"]["obstruction_angle_degrees"] == pytest.approx(0.0)
+
+    @pytest.mark.parametrize("batched", [True, False])
+    def test_flush_facade_facing_plus_x_is_full_sky(self, batched):
+        """Regression: window facing exactly +X, geometry above ends flush in the window
+        plane. The coarse filter drops every triangle (distance exactly 0), which must
+        read as full sky rather than the 45°/45° fully-obstructed fallback."""
+        request = ObstructionRequest(window=_plus_x_window(), mesh=_flush_facade_mesh())
+
+        results = _run(request, 64, batched=batched)
+
+        assert len(results) == 64
+        for entry in results:
+            assert entry["horizon"]["obstruction_angle_degrees"] == pytest.approx(0.0)
+            assert entry["zenith"]["obstruction_angle_degrees"] == pytest.approx(0.0)
+
+    @pytest.mark.parametrize("batched", [True, False])
+    def test_wall_directly_in_front_stays_fully_obstructed(self, batched):
+        """Geometry that blocks every direction still yields the 45°/45° fallback."""
+        request = ObstructionRequest(window=_plus_x_window(), mesh=_blocking_wall_mesh())
+
+        results = _run(request, 64, batched=batched)
+
+        assert len(results) == 64
         for entry in results:
             assert entry["horizon"]["obstruction_angle_degrees"] == pytest.approx(45.0)
             assert entry["zenith"]["obstruction_angle_degrees"] == pytest.approx(45.0)
