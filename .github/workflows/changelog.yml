@@ -5,15 +5,10 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      update_version:
-        description: 'Update version in files'
-        required: false
-        default: 'false'
 
-# master is protected (requires PR/review), so the changelog lands via a PR
-# rather than a direct push: creating the branch needs contents:write and
-# opening the PR needs pull-requests:write.
+# master is protected (changes must go through a PR, commits must be signed), so
+# the changelog lands via a PR rather than a direct push: creating the branch
+# needs contents:write and opening the PR needs pull-requests:write.
 permissions:
   contents: write
   pull-requests: write
@@ -29,66 +24,76 @@ jobs:
           # tag-push) so the generated changelog matches the release being
           # processed, not a possibly-newer default-branch tip. The detached HEAD
           # is fine: the PR step creates its own branch from this commit.
-          # fetch-depth: 0 brings the full history + tags conventional-changelog needs.
+          # fetch-depth: 0 brings the full history + tags git-cliff needs to
+          # derive versions and group commits per release.
           ref: ${{ github.ref }}
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      # git-cliff, not conventional-changelog-cli: the latter reads the version
+      # from package.json, which this Python repo does not have. It therefore
+      # produced a versionless heading with a broken compare link
+      # (`# [](…/compare/v1.0.4...v)`) and an empty release section. git-cliff
+      # derives the version from the git tag and the entries from history, and
+      # rewrites the whole file, so the title stays at the top instead of being
+      # pushed below each new release. Same config as server_lux/server_encoder.
+      - name: Generate full changelog
+        uses: orhun/git-cliff-action@v4
         with:
-          node-version: '18'
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
 
-      - name: Install conventional-changelog-cli
-        run: npm install -g conventional-changelog-cli
-
-      - name: Generate changelog
-        run: |
-          # Backup existing CHANGELOG.md if it exists
-          if [ -f CHANGELOG.md ]; then
-            cp CHANGELOG.md CHANGELOG.md.bak
-          fi
-          
-          # Generate new changelog
-          conventional-changelog -p angular -i CHANGELOG.md -s
-          
-          # Show what changed
-          echo "=== Changelog Changes ==="
-          git diff --no-index CHANGELOG.md.bak CHANGELOG.md || true
+      # Only this release's entries, for the GitHub Release body. Passing the
+      # whole CHANGELOG.md would repeat every past release in every release.
+      - name: Generate release notes
+        uses: orhun/git-cliff-action@v4
+        id: release-notes
+        with:
+          args: --verbose --latest --strip all
+        env:
+          OUTPUT: NOTES.md
+          GITHUB_REPO: ${{ github.repository }}
 
       - name: Open changelog PR
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+          BASE: ${{ github.event.repository.default_branch }}
         run: |
-          # The generate step leaves a .bak for the diff log; drop it so it is not
-          # picked up as an untracked file.
-          rm -f CHANGELOG.md.bak
+          set -euo pipefail
 
-          # Nothing to do if the changelog is unchanged.
-          if git diff --quiet CHANGELOG.md; then
+          # NOTES.md is left on disk untouched — the release step below still needs
+          # it, and it is never staged: the status check and `git add` below are
+          # both scoped to CHANGELOG.md, so it stays untracked and out of the PR.
+
+          # Nothing to do if git-cliff produced no change. Porcelain status, not
+          # `git diff`: where CHANGELOG.md does not exist yet it is untracked, and
+          # git diff ignores untracked files — the step would report "no changes"
+          # exactly when the first changelog is being created.
+          if [ -z "$(git status --porcelain -- CHANGELOG.md)" ]; then
             echo "No changes to CHANGELOG.md"
             exit 0
           fi
 
-          # Use the tag that triggered this run (github.ref_name), not
-          # `git describe`, which could resolve to a different reachable tag.
-          VERSION="${{ github.ref_name }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # A tag push checks out a detached HEAD at the tagged commit; branch
+          # from it so the PR carries only the changelog change. Re-running the
+          # same tag reuses the branch and the open PR instead of failing.
           BRANCH="changelog/${VERSION}"
-          BASE="${{ github.event.repository.default_branch }}"
-
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-          # master is protected, so land the changelog on a dedicated branch and
-          # open a PR instead of pushing to the default branch directly. Re-runs
-          # of the same tag reuse the branch (force-with-lease) and the existing PR.
           git checkout -b "$BRANCH"
           git add CHANGELOG.md
           git commit -m "docs: update CHANGELOG.md for ${VERSION}"
           git push --force-with-lease origin "$BRANCH"
 
-          if gh pr view "$BRANCH" >/dev/null 2>&1; then
-            echo "PR for $BRANCH already exists; branch updated."
+          # Only an OPEN PR counts as "already exists": `gh pr view <branch>`
+          # also resolves a closed one, which would leave the changelog on a
+          # branch with no PR to merge and no way to recover on a re-run.
+          if [ -n "$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[].number')" ]; then
+            echo "Open PR for $BRANCH already exists; branch updated."
           else
             gh pr create \
               --base "$BASE" \
@@ -103,14 +108,12 @@ jobs:
           name: changelog
           path: CHANGELOG.md
 
-      - name: Create Release Notes
+      # softprops/action-gh-release, not the archived actions/create-release@v1,
+      # which is unmaintained and fails outright when a release already exists for
+      # the tag. Same action as server_lux/server_encoder.
+      - name: Create GitHub Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body_path: CHANGELOG.md
-          draft: false
-          prerelease: false
+          body_path: NOTES.md
+          tag_name: ${{ github.ref_name }}
