@@ -1,3 +1,4 @@
+# [](https://github.com/upskiller-xyz/server_obstruction/compare/v1.0.4...v) (2026-10-03)
 # Changelog
 
 All notable changes to this project will be documented in this file.
