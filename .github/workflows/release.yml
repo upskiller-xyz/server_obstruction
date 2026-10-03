@@ -6,10 +6,10 @@ name: Release image
 # Tag scheme: v1.2.0 -> 1.2.0 + latest | master -> git-describe + edge |
 #             dispatch -> branch-sha (+ optional postfix). See infra.lux/README.md.
 #
-# Deploy needs the SCW_CONTAINER_ID variable (the Serverless Container to update;
-# `scw container container list`, or the id in the console URL). Optional:
-# SCW_REGION (default fr-par). The SCW_SECRET_KEY secret is the same one the
-# registry push already uses.
+# Deploy needs the SCW_CONTAINER_ID secret (the Serverless Container to update;
+# `scw container container list`, or the id in the console URL) — a secret rather
+# than a variable so GitHub masks it in logs. Optional: SCW_REGION variable
+# (default fr-par). The SCW_SECRET_KEY secret is the one the registry push uses.
 
 on:
   push:
@@ -58,7 +58,7 @@ jobs:
     env:
       IMAGE: rg.fr-par.scw.cloud/lux-nsp/server-obstruction
       SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
-      CONTAINER_ID: ${{ vars.SCW_CONTAINER_ID }}
+      CONTAINER_ID: ${{ secrets.SCW_CONTAINER_ID }}
       REGION: ${{ vars.SCW_REGION || 'fr-par' }}
       REF_NAME: ${{ github.ref_name }}
       # How long the container may take to become ready before the deploy fails.
@@ -70,7 +70,7 @@ jobs:
           set -euo pipefail
 
           if [ -z "${CONTAINER_ID:-}" ]; then
-            echo "::error::SCW_CONTAINER_ID variable is not set — nothing tells this job which container to update (\`scw container container list\`, or the id in the console URL)."
+            echo "::error::SCW_CONTAINER_ID secret is not set — nothing tells this job which container to update (\`scw container container list\`, or the id in the console URL)."
             exit 1
           fi
           if [ -z "${SCW_SECRET_KEY:-}" ]; then
@@ -94,10 +94,17 @@ jobs:
               -H "Content-Type: application/json" "$@" 2>&1
           }
 
-          echo "Pointing container ${CONTAINER_ID} at ${TARGET}"
+          # curl puts the request URL in its error text, and the URL carries the
+          # container id. GitHub masks the secret anyway; scrubbing keeps the id out
+          # of the log even if that masking is ever bypassed.
+          scrub() {
+            sed "s|${CONTAINER_ID}|***|g"
+          }
+
+          echo "Pointing the container at ${TARGET}"
           if ! patch_result=$(call -X PATCH "$API" \
                 -d "$(jq -nc --arg image "$TARGET" '{registry_image: $image}')"); then
-            echo "::error::Could not point the container at ${TARGET}: ${patch_result}"
+            echo "::error::Could not point the container at ${TARGET}: $(printf '%s' "$patch_result" | scrub)"
             exit 1
           fi
 
@@ -124,12 +131,12 @@ jobs:
               if printf '%s' "$deploy_body" | grep -qiE 'transient|not in a stable state|already|in progress|pending|creating'; then
                 echo "Deploy call refused (HTTP ${deploy_code}) — the update already started one."
               else
-                echo "::error::Deploy request rejected (HTTP ${deploy_code}): ${deploy_body}"
+                echo "::error::Deploy request rejected (HTTP ${deploy_code}): $(printf '%s' "$deploy_body" | scrub)"
                 exit 1
               fi
               ;;
             *)
-              echo "::error::Deploy request failed (HTTP ${deploy_code:-none}): ${deploy_body}"
+              echo "::error::Deploy request failed (HTTP ${deploy_code:-none}): $(printf '%s' "$deploy_body" | scrub)"
               exit 1
               ;;
           esac
@@ -137,7 +144,7 @@ jobs:
           deadline=$(( $(date +%s) + READY_TIMEOUT_SECONDS ))
           while :; do
             if ! container=$(call "$API"); then
-              echo "::error::Could not read the container's state: ${container}"
+              echo "::error::Could not read the container's state: $(printf '%s' "$container" | scrub)"
               exit 1
             fi
             status=$(printf '%s' "$container" | jq -r '.status')
