@@ -102,11 +102,37 @@ jobs:
           fi
 
           # An update starts its own deployment, but asking explicitly keeps the
-          # intent independent of that behaviour. The call is refused while a
-          # deployment is already running, which is a success here, not an error.
-          if ! call -X POST "${API}/deploy" > /dev/null; then
-            echo "Explicit deploy call refused — the update already started one."
-          fi
+          # intent independent of that behaviour. The only acceptable rejection is
+          # "a deployment is already running" — a 403, a 5xx or a timeout must not
+          # be mistaken for that, or a never-requested deployment would be
+          # confirmed by a container that merely still reports the image we just
+          # configured.
+          deploy_response=$(curl -sS --max-time 30 -o - -w '\n%{http_code}' \
+            -X POST "${API}/deploy" \
+            -H "X-Auth-Token: ${SCW_SECRET_KEY}" \
+            -H "Content-Type: application/json" 2>&1 || true)
+          deploy_code="${deploy_response##*$'\n'}"
+          deploy_body="${deploy_response%$'\n'*}"
+
+          case "$deploy_code" in
+            2??)
+              echo "Deployment requested."
+              ;;
+            409|400)
+              # Scaleway refuses a deploy while the container is in a transient
+              # state. Only that specific reason is tolerated.
+              if printf '%s' "$deploy_body" | grep -qiE 'transient|not in a stable state|already|in progress|pending|creating'; then
+                echo "Deploy call refused (HTTP ${deploy_code}) — the update already started one."
+              else
+                echo "::error::Deploy request rejected (HTTP ${deploy_code}): ${deploy_body}"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Deploy request failed (HTTP ${deploy_code:-none}): ${deploy_body}"
+              exit 1
+              ;;
+          esac
 
           deadline=$(( $(date +%s) + READY_TIMEOUT_SECONDS ))
           while :; do
