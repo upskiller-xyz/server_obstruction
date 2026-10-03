@@ -318,6 +318,24 @@ or Scaleway:
 bash build_scw.sh
 ```
 
+#### Releases (automated)
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds and pushes
+the image (`1.2.0` + `latest`) and then points the Scaleway Serverless Container
+at the immutable version tag, waiting until it reports ready. A push to `master`
+only publishes `edge` — it never touches the running container.
+
+The deploy job needs two repository settings beyond the `SCW_SECRET_KEY` secret
+the registry push already uses:
+
+| Setting | Required | Value |
+| --- | --- | --- |
+| `SCW_CONTAINER_ID` (variable) | yes | The Serverless Container to update — `scw container container list`, or the id in the console URL |
+| `SCW_REGION` (variable) | no | Defaults to `fr-par` |
+
+Without `SCW_CONTAINER_ID` the deploy job fails fast rather than silently
+publishing an image nobody serves.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 #### Locally

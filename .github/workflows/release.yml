@@ -1,9 +1,15 @@
 name: Release image
 
 # Build + push the service image to the Scaleway registry via the shared
-# composite action in infra.lux (which runs infra.lux/scripts/release.sh).
+# composite action in infra.lux (which runs infra.lux/scripts/release.sh), then
+# point the running Serverless Container at it — tag pushes only.
 # Tag scheme: v1.2.0 -> 1.2.0 + latest | master -> git-describe + edge |
 #             dispatch -> branch-sha (+ optional postfix). See infra.lux/README.md.
+#
+# Deploy needs the SCW_CONTAINER_ID variable (the Serverless Container to update;
+# `scw container container list`, or the id in the console URL). Optional:
+# SCW_REGION (default fr-par). The SCW_SECRET_KEY secret is the same one the
+# registry push already uses.
 
 on:
   push:
@@ -39,3 +45,100 @@ jobs:
           image: server-obstruction
           postfix: ${{ github.event.inputs.postfix || '' }}
           scw-secret-key: ${{ secrets.SCW_SECRET_KEY }}
+
+  # Scaleway never pulls on its own: a push to the registry leaves the container
+  # on the digest it started with, so a release could be built and never served
+  # until someone clicked Redeploy. Tag pushes only — a master build keeps
+  # producing `edge` without touching prod.
+  deploy:
+    name: Deploy to Scaleway
+    needs: release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: rg.fr-par.scw.cloud/lux-nsp/server-obstruction
+      SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+      CONTAINER_ID: ${{ vars.SCW_CONTAINER_ID }}
+      REGION: ${{ vars.SCW_REGION || 'fr-par' }}
+      REF_NAME: ${{ github.ref_name }}
+      # How long the container may take to become ready before the deploy fails.
+      READY_TIMEOUT_SECONDS: "600"
+      POLL_INTERVAL_SECONDS: "10"
+    steps:
+      - name: Update the container image and wait for it to be ready
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CONTAINER_ID:-}" ]; then
+            echo "::error::SCW_CONTAINER_ID variable is not set — nothing tells this job which container to update (\`scw container container list\`, or the id in the console URL)."
+            exit 1
+          fi
+          if [ -z "${SCW_SECRET_KEY:-}" ]; then
+            echo "::error::SCW_SECRET_KEY secret is not set."
+            exit 1
+          fi
+
+          # release.sh maps the git tag v1.2.0 to the image tag 1.2.0. The
+          # immutable version tag is used, not `latest`, so the container records
+          # exactly which release it serves.
+          VERSION="${REF_NAME#v}"
+          TARGET="${IMAGE}:${VERSION}"
+          API="https://api.scaleway.com/containers/v1beta1/regions/${REGION}/containers/${CONTAINER_ID}"
+
+          # -sS stays quiet but keeps errors; --fail-with-body returns non-zero on a
+          # 4xx/5xx while still printing Scaleway's JSON, so callers can surface the
+          # reason instead of just curl's exit code.
+          call() {
+            curl -sS --fail-with-body --max-time 30 \
+              -H "X-Auth-Token: ${SCW_SECRET_KEY}" \
+              -H "Content-Type: application/json" "$@" 2>&1
+          }
+
+          echo "Pointing container ${CONTAINER_ID} at ${TARGET}"
+          if ! patch_result=$(call -X PATCH "$API" \
+                -d "$(jq -nc --arg image "$TARGET" '{registry_image: $image}')"); then
+            echo "::error::Could not point the container at ${TARGET}: ${patch_result}"
+            exit 1
+          fi
+
+          # An update starts its own deployment, but asking explicitly keeps the
+          # intent independent of that behaviour. The call is refused while a
+          # deployment is already running, which is a success here, not an error.
+          if ! call -X POST "${API}/deploy" > /dev/null; then
+            echo "Explicit deploy call refused — the update already started one."
+          fi
+
+          deadline=$(( $(date +%s) + READY_TIMEOUT_SECONDS ))
+          while :; do
+            if ! container=$(call "$API"); then
+              echo "::error::Could not read the container's state: ${container}"
+              exit 1
+            fi
+            status=$(printf '%s' "$container" | jq -r '.status')
+            running_image=$(printf '%s' "$container" | jq -r '.registry_image')
+
+            case "$status" in
+              ready)
+                if [ "$running_image" = "$TARGET" ]; then
+                  echo "Container is ready on ${running_image}"
+                  exit 0
+                fi
+                # Ready on something else means our update was overwritten (a
+                # concurrent deploy) — never report that as a successful release.
+                echo "::error::Container reports ready but serves ${running_image}, not ${TARGET}."
+                exit 1
+                ;;
+              error|locked)
+                echo "::error::Deployment ended in status '${status}': $(printf '%s' "$container" | jq -r '.error_message // "no message"')"
+                exit 1
+                ;;
+            esac
+
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::Container did not become ready within ${READY_TIMEOUT_SECONDS}s (last status: ${status})."
+              exit 1
+            fi
+
+            echo "status=${status}, waiting ${POLL_INTERVAL_SECONDS}s"
+            sleep "$POLL_INTERVAL_SECONDS"
+          done
