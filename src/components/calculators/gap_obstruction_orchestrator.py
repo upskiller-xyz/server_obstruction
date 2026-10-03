@@ -85,8 +85,19 @@ class GapObstructionOrchestrator:
             self._min_gap_deg
         )
 
-        if not gaps or tri_arrays.count == 0:
-            # No gaps — fully obstructed
+        if tri_arrays.count == 0:
+            # Nothing ahead of/above the window survived the pre-filter — full sky
+            metrics = PerformanceMetrics(
+                elapsed_ms=(time.time() - start) * 1000,
+                rays_cast=0,
+                gaps_tested=0,
+                intersection_points=0
+            )
+            metrics.log_summary(ObstructionStatus.NO_OBSTRUCTION)
+            return self._result_factory.create_unobstructed()
+
+        if not gaps:
+            # Geometry present but no gap wider than the minimum — fully obstructed
             metrics = PerformanceMetrics(
                 elapsed_ms=(time.time() - start) * 1000,
                 rays_cast=0,
@@ -94,7 +105,7 @@ class GapObstructionOrchestrator:
                 intersection_points=len(elevation_angles)
             )
             metrics.log_summary(ObstructionStatus.FULLY_OBSTRUCTED)
-            return self._result_factory.create_empty()
+            return self._result_factory.create_fully_obstructed()
 
         origin = window.center.to_array()
 
@@ -129,4 +140,4 @@ class GapObstructionOrchestrator:
         )
         metrics.log_summary(ObstructionStatus.FULLY_OBSTRUCTED)
 
-        return self._result_factory.create_empty()
+        return self._result_factory.create_fully_obstructed()

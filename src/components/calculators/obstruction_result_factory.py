@@ -31,14 +31,29 @@ class ObstructionResultFactory:
         )
 
     @staticmethod
-    def create_empty() -> GapObstructionResult:
+    def create_fully_obstructed() -> GapObstructionResult:
         """
-        Create empty result (fully obstructed).
+        Create the fully-obstructed fallback result.
+
+        Used only when geometry is present but no angular gap admits sky.
 
         Returns:
-            GapObstructionResult with default fallback angles
+            GapObstructionResult with the 45°/45° fallback angles
         """
         return GapObstructionResult(
-            horizon_deg=45.0,  # Default fallback
+            horizon_deg=45.0,
             zenith_deg=45.0
         )
+
+    @staticmethod
+    def create_unobstructed() -> GapObstructionResult:
+        """
+        Create the unobstructed (full sky) result.
+
+        Used when no geometry remains ahead of and above the window, i.e. nothing
+        can block the sky.
+
+        Returns:
+            GapObstructionResult with 0°/0° (full sky visible)
+        """
+        return GapObstructionResult.empty()

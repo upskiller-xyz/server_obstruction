@@ -56,15 +56,14 @@ class TestGapObstructionOrchestrator:
         )
 
     def test_calculate_with_empty_mesh(self, orchestrator, simple_window):
-        """Test calculation with empty mesh (no obstruction)"""
+        """Empty mesh means nothing can block the sky: full sky (0°/0°)"""
         empty_mesh = Mesh([])
 
         result = orchestrator.calculate(empty_mesh, simple_window, 0.0)
 
         assert isinstance(result, GapObstructionResult)
-        # Empty mesh should return default values
-        assert result.horizon_deg == 45.0
-        assert result.zenith_deg == 45.0
+        assert result.horizon_deg == 0.0
+        assert result.zenith_deg == 0.0
 
     def test_calculate_with_single_obstruction(self, orchestrator, simple_window, low_triangle):
         """Test calculation with single obstructing triangle"""
