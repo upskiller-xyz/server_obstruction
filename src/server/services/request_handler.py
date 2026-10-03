@@ -4,7 +4,7 @@ import logging
 from typing import Any, Tuple
 
 from flask import Response, jsonify, request
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, HTTPException
 
 from src.server.base.constants import (
     BinaryEndpointName,
@@ -82,6 +82,10 @@ class RequestHandler:
                 "error": str(e)
             }), HTTPStatus.BAD_REQUEST.value
 
+        except HTTPException:
+            # Other Werkzeug HTTP errors (e.g. 413 body too large) keep their status.
+            raise
+
         except Exception:
             # Log full traceback server-side; return a generic message so internal
             # details are not leaked to the client.
@@ -141,6 +145,10 @@ class RequestHandler:
                 "status": ResponseStatus.ERROR.value,
                 "error": str(e)
             }), HTTPStatus.BAD_REQUEST.value
+
+        except HTTPException:
+            # Other Werkzeug HTTP errors (e.g. 413 body too large) keep their status.
+            raise
 
         except Exception:
             # Log full traceback server-side; return a generic message so internal

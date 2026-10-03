@@ -5,9 +5,9 @@ import multiprocessing
 import os
 
 from flask import Flask
-from flask_cors import CORS
 
 from src.server.controllers.documentation_controller import DocumentationController
+from src.server.http_policy import MEBIBYTE, HttpPolicy
 from src.server.services.request_handler import RequestHandler
 from src.server.services.route_registrar import RouteRegistrar
 
@@ -37,12 +37,9 @@ class ServerApplication:
         """
         self._app: Flask = Flask(app_name)
         # Reject oversized request bodies before they are read into memory (the
-        # mesh upload is unbounded otherwise → OOM/DoS). Default 512 MB comfortably
-        # fits a full JSON mesh (~86 MB) with headroom; override via env if needed.
-        self._app.config["MAX_CONTENT_LENGTH"] = int(
-            os.getenv("MAX_CONTENT_LENGTH_BYTES", str(512 * 1024 * 1024))
-        )
-        CORS(self._app)
+        # mesh upload is unbounded otherwise → OOM/DoS). Default 256 MiB fits a
+        # full JSON mesh (~86 MB) ~3×; override via MAX_CONTENT_LENGTH_BYTES.
+        HttpPolicy.from_environment(default_max_bytes=256 * MEBIBYTE).apply(self._app)
         self._setup_dependencies()
         self._setup_routes()
 

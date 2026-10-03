@@ -83,8 +83,8 @@ class ObstructionController:
             logger.warning(f"Invalid request data: {str(e)}")
             return ErrorResponseBuilder.validation_error(str(e))
         except Exception as e:
-            logger.error(f"{endpoint.value} failed: {str(e)}")
-            return ErrorResponseBuilder.calculation_error(str(e), endpoint.value)
+            logger.error(f"{endpoint.value} failed: {str(e)}", exc_info=True)
+            return ErrorResponseBuilder.calculation_error(endpoint.value)
 
     @classmethod
     def _call_service(cls, endpoint: EndpointName, request_data: Dict[str, Any]) -> Any:

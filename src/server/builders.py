@@ -132,18 +132,18 @@ class ErrorResponseBuilder:
         return cls.generic_error(f"Invalid request: {error_message}")
 
     @classmethod
-    def calculation_error(cls, error_message: str, operation: str) -> Dict[str, Any]:
+    def calculation_error(cls, operation: str) -> Dict[str, Any]:
         """
-        Build a calculation error response
+        Build a calculation error response. The underlying exception is logged by
+        the caller and never echoed: it can carry internal paths and state.
 
         Args:
-            error_message: Error message
             operation: Name of the operation that failed
 
         Returns:
-            Dictionary with status and formatted error message
+            Dictionary with status and a generic error message
         """
-        return cls.generic_error(f"Calculation failed: {error_message}")
+        return cls.generic_error(f"Calculation failed: {operation}")
 
     @classmethod
     def point_on_triangle_error(cls, error: PointOnTriangleError) -> Dict[str, Any]:
@@ -207,7 +207,7 @@ class ErrorResponseBuilder:
         elif isinstance(exception, ValueError):
             return cls.validation_error(str(exception))
         elif isinstance(exception, Exception):
-            return cls.calculation_error(str(exception), operation or "Operation")
+            return cls.calculation_error(operation or "Operation")
 
         # Fallback to generic error
-        return cls.generic_error(str(exception))
+        return cls.generic_error("Internal server error")
