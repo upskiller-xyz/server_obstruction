@@ -94,7 +94,7 @@ To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-* [Python 3.13+](https://www.python.org/downloads/)
+* [Python 3.14](https://www.python.org/downloads/)
 * [Poetry](https://python-poetry.org/docs/#installation)
 
 ### Installation

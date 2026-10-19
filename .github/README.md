@@ -92,7 +92,7 @@ BREAKING CHANGE: API now accepts single mesh instead of horizon_mesh/zenith_mesh
 ### Python Version
 Edit `tests.yml` to test against multiple Python versions:
 ```yaml
-python-version: ["3.9", "3.10", "3.11"]
+python-version: ["3.14"]
 ```
 
 ### Branches
