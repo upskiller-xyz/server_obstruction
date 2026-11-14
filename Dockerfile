@@ -1,6 +1,6 @@
 
 # Base image pinned by digest (reproducible, tamper-evident); Dependabot bumps it.
-FROM python:3.12@sha256:4d1caded1f729ae443eb803f26ffde7b61e696aeaef62f099abb6dd6b14257c7
+FROM python:3.13@sha256:ecbe213fb818d557fd19db4078244339e2e2e52874f9c81052d3094ea114d797
 
 # Use .dockerignore to exclude unnecessary files (e.g. .git, tests, docs, assets, etc.)
 
