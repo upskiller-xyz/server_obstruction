@@ -1,4 +1,5 @@
 from enum import Enum
+
 from ..utils.extended_enum import ExtendedEnumMixin
 
 
@@ -30,7 +31,7 @@ class ContentType(ExtendedEnumMixin, Enum):
 
     @classmethod
     def is_image(cls, content_type: str) -> bool:
-        return content_type.startswith('image/')
+        return content_type.startswith("image/")
 
 
 class HTTPStatus(ExtendedEnumMixin, Enum):

@@ -23,7 +23,7 @@ class RouteRegistrar:
         app: Flask,
         handler_factory: Callable[[str], Callable],
         status_handler: Callable,
-        routes_handler: Callable
+        routes_handler: Callable,
     ) -> None:
         """
         Register all application routes
@@ -50,13 +50,12 @@ class RouteRegistrar:
                 path,
                 endpoint.value,
                 handler,
-                methods=[EndpointMethodMap.get(endpoint).value]
+                methods=[EndpointMethodMap.get(endpoint).value],
             )
 
     @staticmethod
     def register_binary_routes(
-        app: Flask,
-        handler_factory: Callable[[str], Callable]
+        app: Flask, handler_factory: Callable[[str], Callable]
     ) -> None:
         """
         Register binary (multipart) transport routes alongside their JSON twins.
@@ -70,7 +69,7 @@ class RouteRegistrar:
                 "/" + endpoint.value,
                 endpoint.value,
                 handler_factory(endpoint.value),
-                methods=[HTTPMethod.POST.value]
+                methods=[HTTPMethod.POST.value],
             )
 
     @staticmethod
@@ -78,7 +77,7 @@ class RouteRegistrar:
         app: Flask,
         openapi_handler: Callable,
         swagger_handler: Callable,
-        redoc_handler: Callable
+        redoc_handler: Callable,
     ) -> None:
         """
         Register documentation routes
@@ -89,7 +88,9 @@ class RouteRegistrar:
             swagger_handler: Swagger UI handler
             redoc_handler: ReDoc handler
         """
-        app.add_url_rule("/openapi.json", "openapi_spec", openapi_handler, methods=["GET"])
+        app.add_url_rule(
+            "/openapi.json", "openapi_spec", openapi_handler, methods=["GET"]
+        )
         app.add_url_rule("/docs", "swagger_ui", swagger_handler, methods=["GET"])
         app.add_url_rule("/redoc", "redoc", redoc_handler, methods=["GET"])
 
@@ -104,7 +105,9 @@ class RouteRegistrar:
         logging.info("Registered routes:")
         for rule in app.url_map.iter_rules():
             if rule.methods is not None:
-                methods = ', '.join(sorted(
-                    rule.methods - {HTTPMethod.HEAD.value, HTTPMethod.OPTIONS.value}
-                ))
+                methods = ", ".join(
+                    sorted(
+                        rule.methods - {HTTPMethod.HEAD.value, HTTPMethod.OPTIONS.value}
+                    )
+                )
                 logging.info(f"  {rule.rule:30} [{methods}]")

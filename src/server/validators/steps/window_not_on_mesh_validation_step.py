@@ -21,9 +21,7 @@ class WindowNotOnMeshValidationStep(ValidationStep):
         window_center = cls._extract_center(data)
 
         # Collect all mesh keys present in request
-        mesh_keys = [
-            RequestField.MESH.value
-        ]
+        mesh_keys = [RequestField.MESH.value]
 
         for key in mesh_keys:
             mesh_raw = data.get(key)
@@ -55,5 +53,5 @@ class WindowNotOnMeshValidationStep(ValidationStep):
         return Point3D(
             x=float(data[RequestField.X.value]),
             y=float(data[RequestField.Y.value]),
-            z=float(data[RequestField.Z.value])
+            z=float(data[RequestField.Z.value]),
         )

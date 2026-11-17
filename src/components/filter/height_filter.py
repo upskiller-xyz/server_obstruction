@@ -28,7 +28,7 @@ class HeightTriangleFilter(TriangleFilter):
         triangles: Tuple[Triangle, ...],
         window: Window,
         angle_type: ANGLES,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Triangle, ...]:
         """
         Filter triangles keeping only those with at least one vertex above window center Z.

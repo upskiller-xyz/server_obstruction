@@ -15,7 +15,7 @@ class FilterStrategyMap:
 
     _FILTER_STRATEGY = {
         ANGLES.HORIZON: VerticalSurfaceFilter,
-        ANGLES.ZENITH: NonVerticalSurfaceFilter
+        ANGLES.ZENITH: NonVerticalSurfaceFilter,
     }
 
     @classmethod

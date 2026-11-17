@@ -3,11 +3,14 @@ Vertical plane representation for obstruction calculations
 
 Defines a vertical plane passing through a point with a given direction.
 """
+
 from dataclasses import dataclass
+
 import numpy as np
+
 from src.components.geometry import Point3D, Vector3D
-from src.server.base.constants import MathConstants
 from src.components.models import Window
+from src.server.base.constants import MathConstants
 
 
 @dataclass(frozen=True)
@@ -23,12 +26,13 @@ class VerticalPlane:
     Plane equation: normal · (P - origin) = 0
     where normal is perpendicular to both direction and up
     """
+
     origin: Point3D
     direction: Vector3D  # Horizontal direction (unit vector)
     normal: Vector3D  # Plane normal (perpendicular to direction and up)
 
     @classmethod
-    def from_window(cls, window:Window) -> 'VerticalPlane':
+    def from_window(cls, window: Window) -> "VerticalPlane":
         """
         Create vertical plane from window center and normal direction
 
@@ -59,5 +63,5 @@ class VerticalPlane:
         return cls(
             origin=window.center,
             direction=window.normal,
-            normal=Vector3D.from_array(normal_arr)
+            normal=Vector3D.from_array(normal_arr),
         )

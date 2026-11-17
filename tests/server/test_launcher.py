@@ -1,8 +1,11 @@
 """Tests for ServerLauncher class"""
+
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from src.server.launcher import ServerLauncher
+
 from src.server.application import ServerApplication
+from src.server.launcher import ServerLauncher
 
 
 class TestServerLauncher:
@@ -24,7 +27,7 @@ class TestServerLauncher:
         assert app1 is not app2
         assert app1.app is not app2.app
 
-    @patch('src.server.launcher.ServerApplication')
+    @patch("src.server.launcher.ServerApplication")
     def test_run_server_calls_flask_run(self, mock_app_class):
         """Test that run_server calls Flask's run method"""
         # Setup mock
@@ -40,13 +43,10 @@ class TestServerLauncher:
 
         # Verify Flask run was called with correct parameters
         mock_flask_app.run.assert_called_once_with(
-            host="0.0.0.0",
-            port=8081,
-            debug=True,
-            use_reloader=True
+            host="0.0.0.0", port=8081, debug=True, use_reloader=True
         )
 
-    @patch('src.server.launcher.ServerApplication')
+    @patch("src.server.launcher.ServerApplication")
     def test_run_server_default_parameters(self, mock_app_class):
         """Test run_server with default parameters"""
         # Setup mock
@@ -63,11 +63,11 @@ class TestServerLauncher:
         # Verify Flask run was called with defaults
         mock_flask_app.run.assert_called_once()
         call_kwargs = mock_flask_app.run.call_args[1]
-        assert call_kwargs['host'] == "0.0.0.0"
-        assert call_kwargs['port'] == 8081
-        assert call_kwargs['debug'] is False  # Werkzeug debugger is opt-in only
+        assert call_kwargs["host"] == "0.0.0.0"
+        assert call_kwargs["port"] == 8081
+        assert call_kwargs["debug"] is False  # Werkzeug debugger is opt-in only
 
-    @patch('src.server.launcher.ServerApplication')
+    @patch("src.server.launcher.ServerApplication")
     def test_run_server_logs_startup_message(self, mock_app_class):
         """Test that run_server logs startup information"""
         # Setup mock

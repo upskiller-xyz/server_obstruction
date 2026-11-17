@@ -1,7 +1,8 @@
 """Result assemblers for parallel execution results"""
 
-from typing import Any, Dict, List
 import logging
+from typing import Any, Dict, List
+
 from src.server.base.constants import ResponseField
 
 
@@ -15,10 +16,7 @@ class ParallelResultAssembler:
     """
 
     @staticmethod
-    def assemble_results(
-        results: List[Any],
-        total_time: float
-    ) -> Dict[str, Any]:
+    def assemble_results(results: List[Any], total_time: float) -> Dict[str, Any]:
         """
         Assemble results from parallel execution into final response
 
@@ -58,9 +56,7 @@ class ParallelResultAssembler:
             # Extract zenith angle
             zenith_data = result.get(ResponseField.ZENITH.value)
             if zenith_data:
-                zenith_angles.append(
-                    zenith_data.get("obstruction_angle_degrees", 0.0)
-                )
+                zenith_angles.append(zenith_data.get("obstruction_angle_degrees", 0.0))
 
         return {
             ResponseField.RESULTS.value: results,
@@ -68,5 +64,5 @@ class ParallelResultAssembler:
             "zenith_angles": zenith_angles,
             "direction_angles_degrees": direction_angles_degrees,
             "num_directions": len(results),
-            "total_time_seconds": total_time
+            "total_time_seconds": total_time,
         }

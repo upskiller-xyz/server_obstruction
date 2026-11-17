@@ -8,7 +8,10 @@ from typing import Tuple
 
 import numpy as np
 
-from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector, TriangleArrays
+from src.components.calculators.ray_triangle_intersector import (
+    RayTriangleIntersector,
+    TriangleArrays,
+)
 from src.components.geometry.vector import Vector3D
 from src.server.base.constants import BoundaryDirection
 
@@ -24,7 +27,7 @@ class BoundarySearchStrategy:
         low: float,
         high: float,
         precision: float,
-        boundary_direction: BoundaryDirection
+        boundary_direction: BoundaryDirection,
     ) -> Tuple[float, int]:
         """
         Binary search for gap boundary.
@@ -44,9 +47,7 @@ class BoundarySearchStrategy:
         rays_cast = 0
         while (high - low) > precision:
             mid = (low + high) / 2.0
-            direction = Vector3D.from_azimuth_elevation(
-                direction_angle, mid
-            ).to_array()
+            direction = Vector3D.from_azimuth_elevation(direction_angle, mid).to_array()
             hits = RayTriangleIntersector.batch_hits_any(
                 origin, direction[np.newaxis, :], tri_arrays
             )
@@ -75,5 +76,5 @@ class BoundarySearchStrategy:
         # UPPER: Returns 'high' (lowest obstruction angle above sky gap)
         return (
             low if boundary_direction == BoundaryDirection.LOWER else high,
-            rays_cast
+            rays_cast,
         )

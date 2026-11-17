@@ -42,9 +42,7 @@ class VectorizedElevationAngleCollector:
 
     @classmethod
     def collect_all_angles(
-        cls,
-        triangles: Tuple[Triangle, ...],
-        window: Window
+        cls, triangles: Tuple[Triangle, ...], window: Window
     ) -> List[float]:
         """
         Collect ALL intersection point elevation angles from ALL triangles.
@@ -68,9 +66,7 @@ class VectorizedElevationAngleCollector:
 
     @classmethod
     def collect_all_angles_from_arrays(
-        cls,
-        tri_arrays: TriangleArrays,
-        window: Window
+        cls, tri_arrays: TriangleArrays, window: Window
     ) -> List[float]:
         """
         Collect ALL elevation angles using pre-packed triangle arrays.
@@ -97,11 +93,7 @@ class VectorizedElevationAngleCollector:
 
     @classmethod
     def _collect_from_vertex_arrays(
-        cls,
-        v1: np.ndarray,
-        v2: np.ndarray,
-        v3: np.ndarray,
-        window: Window
+        cls, v1: np.ndarray, v2: np.ndarray, v3: np.ndarray, window: Window
     ) -> List[float]:
         """
         Core vectorized computation on pre-packed vertex arrays.
@@ -149,8 +141,7 @@ class VectorizedElevationAngleCollector:
 
     @classmethod
     def _pack_vertices(
-        cls,
-        triangles: Tuple[Triangle, ...]
+        cls, triangles: Tuple[Triangle, ...]
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Pack triangle vertices into (N, 3) arrays.
@@ -173,10 +164,7 @@ class VectorizedElevationAngleCollector:
 
     @classmethod
     def _signed_distances(
-        cls,
-        vertices: np.ndarray,
-        origin: np.ndarray,
-        normal: np.ndarray
+        cls, vertices: np.ndarray, origin: np.ndarray, normal: np.ndarray
     ) -> np.ndarray:
         """
         Compute signed distances from vertices to plane.
@@ -201,7 +189,7 @@ class VectorizedElevationAngleCollector:
         da: np.ndarray,
         db: np.ndarray,
         window_center: np.ndarray,
-        window_normal: np.ndarray
+        window_normal: np.ndarray,
     ) -> np.ndarray:
         """
         Find plane intersections and elevation angles for a batch of edges.
@@ -253,17 +241,13 @@ class VectorizedElevationAngleCollector:
         if not np.any(in_front):
             return np.empty(0)
 
-        return np.degrees(np.arctan2(
-            vert_above[in_front],
-            horizontal_distance[in_front]
-        ))
+        return np.degrees(
+            np.arctan2(vert_above[in_front], horizontal_distance[in_front])
+        )
 
     @classmethod
     def _horizontal_distances(
-        cls,
-        points: np.ndarray,
-        window_center: np.ndarray,
-        window_normal: np.ndarray
+        cls, points: np.ndarray, window_center: np.ndarray, window_normal: np.ndarray
     ) -> np.ndarray:
         """
         Compute horizontal distances from window to points along viewing direction.

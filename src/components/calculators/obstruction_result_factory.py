@@ -12,8 +12,7 @@ class ObstructionResultFactory:
 
     @staticmethod
     def create_from_gap(
-        horizon_deg: float=0,
-        zenith_deg: float=0
+        horizon_deg: float = 0, zenith_deg: float = 0
     ) -> GapObstructionResult:
         """
         Create result from gap boundaries.
@@ -25,10 +24,7 @@ class ObstructionResultFactory:
         Returns:
             GapObstructionResult
         """
-        return GapObstructionResult(
-            horizon_deg=horizon_deg,
-            zenith_deg=zenith_deg
-        )
+        return GapObstructionResult(horizon_deg=horizon_deg, zenith_deg=zenith_deg)
 
     @staticmethod
     def create_fully_obstructed() -> GapObstructionResult:
@@ -40,10 +36,7 @@ class ObstructionResultFactory:
         Returns:
             GapObstructionResult with the 45°/45° fallback angles
         """
-        return GapObstructionResult(
-            horizon_deg=45.0,
-            zenith_deg=45.0
-        )
+        return GapObstructionResult(horizon_deg=45.0, zenith_deg=45.0)
 
     @staticmethod
     def create_unobstructed() -> GapObstructionResult:

@@ -18,11 +18,11 @@ class MeshFormatValidationStep(ValidationStep):
     """Validates mesh format and structure for all mesh fields present"""
 
     @classmethod
-    def call(cls, content: Dict[str, Any]) -> None: # type: ignore
+    def call(cls, content: Dict[str, Any]) -> None:  # type: ignore
         """Validate mesh(es) are lists with proper structure"""
         mesh_keys: List[RequestField] = [RequestField.MESH]
         mesh_keys = [k for k in mesh_keys if k.value in content]
-        
+
         _ = [cls._validate_single_mesh(content, key) for key in mesh_keys]
 
     @classmethod

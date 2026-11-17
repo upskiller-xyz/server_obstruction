@@ -6,7 +6,7 @@ Calculates horizontal distance from a point to the window along viewing directio
 
 import numpy as np
 
-from src.components.geometry import Point3D, CoordinateSystem
+from src.components.geometry import CoordinateSystem, Point3D
 from src.components.models import Window
 from src.server.base.constants import MathConstants
 
@@ -20,10 +20,7 @@ class HorizontalDistanceCalculator:
     """
 
     @staticmethod
-    def calculate(
-        point: Point3D,
-        window: Window
-    ) -> float:
+    def calculate(point: Point3D, window: Window) -> float:
         """
         Calculate horizontal distance from point to window along viewing direction
 

@@ -21,7 +21,7 @@ class ThreadPoolManager:
     - Does NOT perform calculations
     """
 
-    _instance: Optional['ThreadPoolManager'] = None
+    _instance: Optional["ThreadPoolManager"] = None
     _thread_pool: Optional[ThreadPoolExecutor] = None
     _max_workers: Optional[int] = None
     _lock: threading.Lock = threading.Lock()

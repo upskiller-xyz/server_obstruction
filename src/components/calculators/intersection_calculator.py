@@ -5,15 +5,22 @@ import time
 from typing import List, Tuple
 
 from src.components.calculators.filter_strategy_map import FilterStrategyMap
-from src.components.calculators.plane_triangle_intersector import PlaneTriangleIntersector
+from src.components.calculators.plane_triangle_intersector import (
+    PlaneTriangleIntersector,
+)
 from src.components.calculators.ray_triangle_intersector import TriangleArrays
-from src.components.calculators.vectorized_elevation_angle_collector import VectorizedElevationAngleCollector
-from src.components.calculators.triangle_intersection_finder import TriangleIntersectionFinder
+from src.components.calculators.triangle_intersection_finder import (
+    TriangleIntersectionFinder,
+)
+from src.components.calculators.vectorized_elevation_angle_collector import (
+    VectorizedElevationAngleCollector,
+)
 from src.components.geometry import AngleCalculator, Mesh, Triangle
 from src.components.geometry.vertical_plane import VerticalPlane
 from src.components.models import ObstructionResult, Window
 from src.components.models.intersection import IntersectionResult
 from src.server.base.constants import ANGLES
+
 
 class IntersectionCalculator:
     """
@@ -30,10 +37,7 @@ class IntersectionCalculator:
 
     @classmethod
     def call(
-        cls,
-        mesh: Mesh,
-        window: Window,
-        angle_type: ANGLES = ANGLES.HORIZON
+        cls, mesh: Mesh, window: Window, angle_type: ANGLES = ANGLES.HORIZON
     ) -> ObstructionResult:
         """
         Calculate obstruction angle directly from mesh using plane intersections
@@ -50,9 +54,7 @@ class IntersectionCalculator:
             raise ValueError("window.center and window.normal are required")
 
         # Delegate to internal calculation
-        result = cls._calculate_intersection(
-            mesh.triangles, window, angle_type
-        )
+        result = cls._calculate_intersection(mesh.triangles, window, angle_type)
 
         if result.angle is None:
             return ObstructionResult.no_obstruction()
@@ -60,7 +62,7 @@ class IntersectionCalculator:
         return ObstructionResult(
             obstruction_angle_degrees=AngleCalculator.radians_to_degrees(result.angle),
             obstruction_angle_radians=result.angle,
-            highest_point=result.point
+            highest_point=result.point,
         )
 
     @classmethod
@@ -68,7 +70,7 @@ class IntersectionCalculator:
         cls,
         triangles: Tuple[Triangle, ...],
         window: Window,
-        angle_type: ANGLES = ANGLES.HORIZON
+        angle_type: ANGLES = ANGLES.HORIZON,
     ) -> IntersectionResult:
         """
         Calculate maximum obstruction angle using plane intersections
@@ -136,9 +138,7 @@ class IntersectionCalculator:
 
     @classmethod
     def collect_all_elevation_angles(
-        cls,
-        triangles: Tuple[Triangle, ...],
-        window: Window
+        cls, triangles: Tuple[Triangle, ...], window: Window
     ) -> List[float]:
         """
         Collect ALL elevation angles for gap-based calculation
@@ -156,9 +156,7 @@ class IntersectionCalculator:
 
     @classmethod
     def collect_all_elevation_angles_from_arrays(
-        cls,
-        tri_arrays: TriangleArrays,
-        window: Window
+        cls, tri_arrays: TriangleArrays, window: Window
     ) -> List[float]:
         """
         Collect ALL elevation angles using pre-packed triangle arrays.

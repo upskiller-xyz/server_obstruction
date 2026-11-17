@@ -1,6 +1,8 @@
 import pytest
 
-from src.components.calculators.obstruction_result_factory import ObstructionResultFactory
+from src.components.calculators.obstruction_result_factory import (
+    ObstructionResultFactory,
+)
 from src.components.models import GapObstructionResult
 
 

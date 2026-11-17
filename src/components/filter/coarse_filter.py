@@ -32,7 +32,7 @@ class CoarseTriangleFilter(TriangleFilter):
         triangles: Tuple[Triangle, ...],
         window: Window,
         angle_type: ANGLES = ANGLES.HORIZON,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Triangle, ...]:
         """
         Coarse filter for triangles (above and not behind window)

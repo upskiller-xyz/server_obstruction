@@ -29,7 +29,7 @@ class GapVerificationService:
         origin: np.ndarray,
         direction_angle: float,
         tri_arrays: TriangleArrays,
-        precision: float
+        precision: float,
     ) -> GapVerificationResult:
         """
         Test gap with a single ray, then binary search boundaries if clear.
@@ -64,21 +64,28 @@ class GapVerificationService:
         if hits[0]:
             # Gap is obstructed
             return GapVerificationResult(
-                status=GapVerificationStatus.OBSTRUCTED,
-                rays_cast=1
+                status=GapVerificationStatus.OBSTRUCTED, rays_cast=1
             )
 
         # Sky found! Binary search exact boundaries
         horizon_deg, rays_lower = self._boundary_search.search_boundary(
-            origin, direction_angle, tri_arrays,
-            gap_low, test_elevation, precision,
-            BoundaryDirection.LOWER
+            origin,
+            direction_angle,
+            tri_arrays,
+            gap_low,
+            test_elevation,
+            precision,
+            BoundaryDirection.LOWER,
         )
 
         zenith_boundary, rays_upper = self._boundary_search.search_boundary(
-            origin, direction_angle, tri_arrays,
-            test_elevation, gap_high, precision,
-            BoundaryDirection.UPPER
+            origin,
+            direction_angle,
+            tri_arrays,
+            test_elevation,
+            gap_high,
+            precision,
+            BoundaryDirection.UPPER,
         )
 
         zenith_deg = 90.0 - zenith_boundary
@@ -87,5 +94,5 @@ class GapVerificationService:
             status=GapVerificationStatus.SKY_FOUND,
             horizon_deg=horizon_deg,
             zenith_deg=zenith_deg,
-            rays_cast=1 + rays_lower + rays_upper
+            rays_cast=1 + rays_lower + rays_upper,
         )

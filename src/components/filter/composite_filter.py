@@ -6,11 +6,11 @@ Optimized to filter for both angle types in a single pass.
 
 from typing import Tuple
 
-from src.components.geometry import Triangle
-from src.server.base.constants import ANGLES
-from src.components.models import Window
 from src.components.filter.distance_filter import DistanceTriangleFilter
 from src.components.filter.within_distance_filter import WithinDistanceFilter
+from src.components.geometry import Triangle
+from src.components.models import Window
+from src.server.base.constants import ANGLES
 from src.utils.settings import Settings
 
 
@@ -22,12 +22,12 @@ class CompositeTriangleFilter(DistanceTriangleFilter):
     """
 
     @classmethod
-    def call( # type: ignore
+    def call(  # type: ignore
         cls,
         triangles: Tuple[Triangle, ...],
         window: Window,
         angle_type: ANGLES = ANGLES.HORIZON,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Tuple[Triangle, ...], Tuple[Triangle, ...]]:
         """
         Filter triangles for both horizon and zenith simultaneously
@@ -44,8 +44,12 @@ class CompositeTriangleFilter(DistanceTriangleFilter):
         vecs, above_mask = cls._precompute(triangles, window)
 
         settings = Settings()
-        z_mask = WithinDistanceFilter.run(window, vecs, ANGLES.ZENITH, settings.max_horizontal_distance)
-        h_mask = WithinDistanceFilter.run(window, vecs, ANGLES.HORIZON, settings.min_horizontal_distance)
+        z_mask = WithinDistanceFilter.run(
+            window, vecs, ANGLES.ZENITH, settings.max_horizontal_distance
+        )
+        h_mask = WithinDistanceFilter.run(
+            window, vecs, ANGLES.HORIZON, settings.min_horizontal_distance
+        )
 
         # Build results
         h_filtered = cls._build_filtered_list(triangles, above_mask & h_mask)

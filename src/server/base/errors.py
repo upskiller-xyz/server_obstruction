@@ -1,4 +1,5 @@
 """Validators for geometric constraints and data integrity"""
+
 from src.components.geometry import Point3D, Triangle
 
 
@@ -22,4 +23,3 @@ class PointOnTriangleError(ValueError):
             f"({triangle.v2.x:.3f}, {triangle.v2.y:.3f}, {triangle.v2.z:.3f}), "
             f"({triangle.v3.x:.3f}, {triangle.v3.y:.3f}, {triangle.v3.z:.3f})"
         )
-

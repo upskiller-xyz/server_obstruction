@@ -3,19 +3,22 @@
 Stateless utility class for visualizing obstruction angles from obstruction_all endpoint.
 Follows OOP principles and design patterns from CLAUDE.md.
 """
-from typing import List, Dict, Any, Tuple
+
 from abc import ABC, abstractmethod
 from enum import Enum
-import numpy as np
+from typing import Any, Dict, List, Tuple
+
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
+import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 
 class PlotConfig(Enum):
     """Configuration constants for plot appearance"""
+
     MAX_ANGLE_DEGREES = 90.0
-    BAR_COLOR = 'black'
+    BAR_COLOR = "black"
     FIGURE_WIDTH = 12.0
     FIGURE_HEIGHT = 6.0
     DEFAULT_DPI = 150
@@ -29,27 +32,30 @@ class PlotConfig(Enum):
 
 class AngleType(Enum):
     """Types of obstruction angles"""
-    HORIZON = 'horizon'
-    ZENITH = 'zenith'
+
+    HORIZON = "horizon"
+    ZENITH = "zenith"
 
 
 class ResponseField(Enum):
     """Field names in API responses"""
-    DIRECTION_ANGLE = 'direction_angle'
-    HORIZON = 'horizon'
-    ZENITH = 'zenith'
-    OBSTRUCTION_ANGLE_DEGREES = 'obstruction_angle_degrees'
-    RESULTS = 'results'
-    DATA = 'data'
+
+    DIRECTION_ANGLE = "direction_angle"
+    HORIZON = "horizon"
+    ZENITH = "zenith"
+    OBSTRUCTION_ANGLE_DEGREES = "obstruction_angle_degrees"
+    RESULTS = "results"
+    DATA = "data"
 
 
 class AxisLabel(Enum):
     """Axis labels and titles"""
-    X_LABEL = 'Direction Index'
-    Y_LABEL = 'Obstruction Angle (degrees)'
-    TITLE = 'Obstruction Angles by Direction'
-    HORIZON_TEXT = 'Horizon →'
-    ZENITH_TEXT = '← Zenith'
+
+    X_LABEL = "Direction Index"
+    Y_LABEL = "Obstruction Angle (degrees)"
+    TITLE = "Obstruction Angles by Direction"
+    HORIZON_TEXT = "Horizon →"
+    ZENITH_TEXT = "← Zenith"
 
 
 class ResponseAdapter:
@@ -82,12 +88,17 @@ class ResponseAdapter:
                 return data[ResponseField.RESULTS.value]
 
             # Check for data.horizon/data.zenith (obstruction format)
-            if ResponseField.HORIZON.value in data and ResponseField.ZENITH.value in data:
-                return [{
-                    ResponseField.DIRECTION_ANGLE.value: 0.0,
-                    ResponseField.HORIZON.value: data[ResponseField.HORIZON.value],
-                    ResponseField.ZENITH.value: data[ResponseField.ZENITH.value]
-                }]
+            if (
+                ResponseField.HORIZON.value in data
+                and ResponseField.ZENITH.value in data
+            ):
+                return [
+                    {
+                        ResponseField.DIRECTION_ANGLE.value: 0.0,
+                        ResponseField.HORIZON.value: data[ResponseField.HORIZON.value],
+                        ResponseField.ZENITH.value: data[ResponseField.ZENITH.value],
+                    }
+                ]
 
         # Check if it's obstruction_all format (has 'results' key at top level)
         if ResponseField.RESULTS.value in response_data:
@@ -118,7 +129,9 @@ class HorizonAngleExtractor(IAngleExtractor):
     def extract(self, results: List[Dict[str, Any]]) -> List[float]:
         """Extract horizon angles from results"""
         return [
-            result[ResponseField.HORIZON.value][ResponseField.OBSTRUCTION_ANGLE_DEGREES.value]
+            result[ResponseField.HORIZON.value][
+                ResponseField.OBSTRUCTION_ANGLE_DEGREES.value
+            ]
             for result in results
         ]
 
@@ -129,7 +142,9 @@ class ZenithAngleExtractor(IAngleExtractor):
     def extract(self, results: List[Dict[str, Any]]) -> List[float]:
         """Extract zenith angles from results"""
         return [
-            result[ResponseField.ZENITH.value][ResponseField.OBSTRUCTION_ANGLE_DEGREES.value]
+            result[ResponseField.ZENITH.value][
+                ResponseField.OBSTRUCTION_ANGLE_DEGREES.value
+            ]
             for result in results
         ]
 
@@ -153,7 +168,7 @@ class HorizonBarPlotter(IBarPlotter):
             angles,
             color=PlotConfig.BAR_COLOR.value,
             label=AngleType.HORIZON.value.capitalize(),
-            width=PlotConfig.BAR_WIDTH.value
+            width=PlotConfig.BAR_WIDTH.value,
         )
 
 
@@ -168,7 +183,7 @@ class ZenithBarPlotter(IBarPlotter):
             bottom=PlotConfig.MAX_ANGLE_DEGREES.value,
             color=PlotConfig.BAR_COLOR.value,
             label=AngleType.ZENITH.value.capitalize(),
-            width=PlotConfig.BAR_WIDTH.value
+            width=PlotConfig.BAR_WIDTH.value,
         )
 
 
@@ -202,10 +217,10 @@ class PlotConfigurer:
         """Add horizontal line at 90 degrees (horizon/zenith boundary)"""
         ax.axhline(
             y=PlotConfig.MAX_ANGLE_DEGREES.value,
-            color='gray',
-            linestyle='--',
+            color="gray",
+            linestyle="--",
             linewidth=PlotConfig.LINE_WIDTH.value,
-            alpha=PlotConfig.LINE_ALPHA.value
+            alpha=PlotConfig.LINE_ALPHA.value,
         )
 
     @classmethod
@@ -219,7 +234,7 @@ class PlotConfigurer:
     def _configure_y_axis(cls, ax: Axes) -> None:
         """Configure Y-axis to show angles from bottom (horizon) and top (zenith)"""
         tick_positions = [0, 30, 60, 90, 120, 150, 180]
-        tick_labels = ['0°', '30°', '60°', '90°', '60°', '30°', '0°']
+        tick_labels = ["0°", "30°", "60°", "90°", "60°", "30°", "0°"]
 
         ax.set_yticks(tick_positions)
         ax.set_yticklabels(tick_labels)
@@ -230,24 +245,28 @@ class PlotConfigurer:
     def _add_axis_annotations(cls, ax: Axes) -> None:
         """Add text annotations for horizon and zenith sides"""
         ax.text(
-            -0.5, 45, AxisLabel.HORIZON_TEXT.value,
+            -0.5,
+            45,
+            AxisLabel.HORIZON_TEXT.value,
             rotation=90,
-            verticalalignment='center',
+            verticalalignment="center",
             fontsize=PlotConfig.TEXT_FONT_SIZE.value,
-            alpha=PlotConfig.TEXT_ALPHA.value
+            alpha=PlotConfig.TEXT_ALPHA.value,
         )
         ax.text(
-            -0.5, 135, AxisLabel.ZENITH_TEXT.value,
+            -0.5,
+            135,
+            AxisLabel.ZENITH_TEXT.value,
             rotation=90,
-            verticalalignment='center',
+            verticalalignment="center",
             fontsize=PlotConfig.TEXT_FONT_SIZE.value,
-            alpha=PlotConfig.TEXT_ALPHA.value
+            alpha=PlotConfig.TEXT_ALPHA.value,
         )
 
     @classmethod
     def _add_grid(cls, ax: Axes) -> None:
         """Add grid to plot"""
-        ax.grid(True, alpha=PlotConfig.GRID_ALPHA.value, axis='y')
+        ax.grid(True, alpha=PlotConfig.GRID_ALPHA.value, axis="y")
 
     @classmethod
     def _add_legend(cls, ax: Axes) -> None:
@@ -270,20 +289,18 @@ class ObstructionVisualizer:
     # Strategy Pattern: Map angle types to extractors
     _ANGLE_EXTRACTORS = {
         AngleType.HORIZON: HorizonAngleExtractor(),
-        AngleType.ZENITH: ZenithAngleExtractor()
+        AngleType.ZENITH: ZenithAngleExtractor(),
     }
 
     # Strategy Pattern: Map angle types to plotters
     _BAR_PLOTTERS = {
         AngleType.HORIZON: HorizonBarPlotter(),
-        AngleType.ZENITH: ZenithBarPlotter()
+        AngleType.ZENITH: ZenithBarPlotter(),
     }
 
     @classmethod
     def make(
-        cls,
-        response_data: Dict[str, Any],
-        figsize: Tuple[float, float] = None
+        cls, response_data: Dict[str, Any], figsize: Tuple[float, float] = None
     ) -> None:
         """
         Create and display a bar plot visualization of obstruction angles
@@ -336,7 +353,9 @@ class ObstructionVisualizer:
         return figsize
 
     @classmethod
-    def _extract_angles(cls, results: List[Dict[str, Any]], angle_type: AngleType) -> List[float]:
+    def _extract_angles(
+        cls, results: List[Dict[str, Any]], angle_type: AngleType
+    ) -> List[float]:
         """
         Extract angles using Strategy Pattern
 
@@ -356,7 +375,7 @@ class ObstructionVisualizer:
         ax: Axes,
         x_positions: np.ndarray,
         angles: List[float],
-        angle_type: AngleType
+        angle_type: AngleType,
     ) -> None:
         """
         Plot bars using Strategy Pattern
@@ -369,4 +388,3 @@ class ObstructionVisualizer:
         """
         plotter = cls._BAR_PLOTTERS[angle_type]
         plotter.plot(ax, x_positions, angles)
-

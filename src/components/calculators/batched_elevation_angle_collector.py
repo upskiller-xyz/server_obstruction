@@ -39,10 +39,7 @@ class BatchedElevationAngleCollector:
 
     @classmethod
     def collect(
-        cls,
-        tri_arrays: TriangleArrays,
-        origin: np.ndarray,
-        azimuths: np.ndarray
+        cls, tri_arrays: TriangleArrays, origin: np.ndarray, azimuths: np.ndarray
     ) -> List[np.ndarray]:
         """
         Collect elevation angles per direction.
@@ -69,9 +66,13 @@ class BatchedElevationAngleCollector:
         # Plane normal per direction = normalize(cross(window_normal, up)).
         # window_normal = (cos a, sin a, 0) -> cross with (0,0,1) = (sin a, -cos a, 0),
         # already unit length (window normals are horizontal, magnitude 1).
-        plane_normals = np.stack([sin_a, -cos_a, np.zeros_like(sin_a)], axis=-1)  # (D, 3)
+        plane_normals = np.stack(
+            [sin_a, -cos_a, np.zeros_like(sin_a)], axis=-1
+        )  # (D, 3)
         # Window horizontal normal (unit) used to project the forward distance.
-        window_normals = np.stack([cos_a, sin_a, np.zeros_like(cos_a)], axis=-1)  # (D, 3)
+        window_normals = np.stack(
+            [cos_a, sin_a, np.zeros_like(cos_a)], axis=-1
+        )  # (D, 3)
 
         # Signed distances of each triangle vertex to each direction's plane: (N, D)
         d0 = (tri_arrays.v0 - origin) @ plane_normals.T
@@ -92,10 +93,7 @@ class BatchedElevationAngleCollector:
         ]
         angle_matrix = np.concatenate(edge_angles, axis=0)  # (3N, D)
 
-        return [
-            column[~np.isnan(column)]
-            for column in angle_matrix.T
-        ]
+        return [column[~np.isnan(column)] for column in angle_matrix.T]
 
     @classmethod
     def _edge_elevations(
@@ -105,7 +103,7 @@ class BatchedElevationAngleCollector:
         da: np.ndarray,
         db: np.ndarray,
         origin: np.ndarray,
-        window_normals: np.ndarray
+        window_normals: np.ndarray,
     ) -> np.ndarray:
         """
         Elevation angles for one triangle edge across all directions.
@@ -133,15 +131,15 @@ class BatchedElevationAngleCollector:
         t = np.where(crosses, da / safe_denom, 0.0)  # (N, D)
 
         # Intersection points: pa + t * (pb - pa), broadcast over directions.
-        pa_e = pa[:, np.newaxis, :]           # (N, 1, 3)
-        edge = (pb - pa)[:, np.newaxis, :]    # (N, 1, 3)
+        pa_e = pa[:, np.newaxis, :]  # (N, 1, 3)
+        edge = (pb - pa)[:, np.newaxis, :]  # (N, 1, 3)
         points = pa_e + t[:, :, np.newaxis] * edge  # (N, D, 3)
 
-        vertical = points[:, :, 2] - origin[2]       # (N, D)
-        diff = points - origin                        # (N, D, 3)
+        vertical = points[:, :, 2] - origin[2]  # (N, D)
+        diff = points - origin  # (N, D, 3)
         # Forward distance = diff . window_normal (per direction); window normals
         # are unit horizontal vectors, so this matches the scalar projection.
-        horizontal = np.einsum('ndc,dc->nd', diff, window_normals)  # (N, D)
+        horizontal = np.einsum("ndc,dc->nd", diff, window_normals)  # (N, D)
 
         valid = crosses & (vertical > 0.0) & (horizontal >= 0.0)
         angles = np.degrees(np.arctan2(vertical, horizontal))

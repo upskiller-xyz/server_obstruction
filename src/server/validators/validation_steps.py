@@ -1,12 +1,12 @@
 """Validation step classes for request validation using Strategy Pattern"""
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any
 import logging
-from src.server.base.constants import RequestField, OptionalRequestField
-from src.server.validators.geometry_validator import GeometryValidator
+from abc import ABC, abstractmethod
+from typing import Any, Dict
 
-from src.components.geometry import Point3D, Mesh
+from src.components.geometry import Mesh, Point3D
+from src.server.base.constants import OptionalRequestField, RequestField
+from src.server.validators.geometry_validator import GeometryValidator
 
 
 class ValidationStep(ABC):
@@ -44,7 +44,7 @@ class RequiredFieldsValidationStep(ValidationStep):
             RequestField.Y.value,
             RequestField.Z.value,
             RequestField.DIRECTION_ANGLE.value,
-            RequestField.MESH.value
+            RequestField.MESH.value,
         ]
         missing_fields = [field for field in required_fields if field not in data]
 
@@ -62,7 +62,7 @@ class MultiDirectionRequiredFieldsValidationStep(ValidationStep):
             RequestField.X.value,
             RequestField.Y.value,
             RequestField.Z.value,
-            RequestField.MESH.value
+            RequestField.MESH.value,
         ]
         missing_fields = [field for field in required_fields if field not in data]
 
@@ -122,7 +122,7 @@ class NumericFieldsValidationStep(ValidationStep):
             RequestField.X.value,
             RequestField.Y.value,
             RequestField.Z.value,
-            RequestField.DIRECTION_ANGLE.value
+            RequestField.DIRECTION_ANGLE.value,
         ]
 
         for field in numeric_fields:
@@ -143,17 +143,14 @@ class WindowNotOnMeshValidationStep(ValidationStep):
         window_center = Point3D(
             x=float(data[RequestField.X.value]),
             y=float(data[RequestField.Y.value]),
-            z=float(data[RequestField.Z.value])
+            z=float(data[RequestField.Z.value]),
         )
 
         # Create mesh from vertices
         mesh = Mesh.from_vertices(data[RequestField.MESH.value])
 
         # Validate window center doesn't lie on any triangle
-        GeometryValidator.validate_point_not_on_mesh(
-            window_center,
-            mesh.triangles
-        )
+        GeometryValidator.validate_point_not_on_mesh(window_center, mesh.triangles)
 
 
 class OptionalParametersValidationStep(ValidationStep):
@@ -169,7 +166,9 @@ class OptionalParametersValidationStep(ValidationStep):
                 raise ValueError("num_directions must be a positive integer")
 
         # Validate angle ranges if provided
-        start_angle_degrees = data.get(OptionalRequestField.START_ANGLE_DEGREES.value, None)
+        start_angle_degrees = data.get(
+            OptionalRequestField.START_ANGLE_DEGREES.value, None
+        )
         if start_angle_degrees is not None:
             if not isinstance(start_angle_degrees, (int, float)):
                 raise ValueError("start_angle_degrees must be a number")

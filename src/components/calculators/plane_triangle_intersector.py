@@ -3,8 +3,12 @@
 from typing import List
 
 from src.components.calculators.edge_plane_intersector import EdgePlaneIntersector
-from src.components.calculators.geometric_distance_calculator import GeometricDistanceCalculator
-from src.components.calculators.obstruction_angle_calculator import ObstructionAngleCalculator
+from src.components.calculators.geometric_distance_calculator import (
+    GeometricDistanceCalculator,
+)
+from src.components.calculators.obstruction_angle_calculator import (
+    ObstructionAngleCalculator,
+)
 from src.components.geometry import Mesh, Point3D, Triangle
 from src.components.geometry.intersection_point import IntersectionPoint
 from src.components.geometry.vertical_plane import VerticalPlane
@@ -28,8 +32,7 @@ class PlaneTriangleIntersector:
 
     @staticmethod
     def intersect_triangle_with_plane(
-        triangle: Triangle,
-        plane: VerticalPlane
+        triangle: Triangle, plane: VerticalPlane
     ) -> List[Point3D]:
         """
         Find all intersection points between triangle and plane
@@ -50,7 +53,7 @@ class PlaneTriangleIntersector:
         edges = [
             (triangle.v1, triangle.v2, d1, d2),
             (triangle.v2, triangle.v3, d2, d3),
-            (triangle.v3, triangle.v1, d3, d1)
+            (triangle.v3, triangle.v1, d3, d1),
         ]
 
         # Delegate edge intersection to EdgePlaneIntersector
@@ -67,7 +70,7 @@ class PlaneTriangleIntersector:
         mesh: Mesh,
         plane: VerticalPlane,
         window: Window,
-        angle_type: ANGLES = ANGLES.HORIZON
+        angle_type: ANGLES = ANGLES.HORIZON,
     ) -> List[IntersectionPoint]:
         """
         Find all plane-triangle intersections with calculated angles
@@ -99,10 +102,7 @@ class PlaneTriangleIntersector:
 
     @classmethod
     def calculate_obstruction_angle(
-        cls,
-        point: Point3D,
-        window: Window,
-        angle_type: ANGLES = ANGLES.HORIZON
+        cls, point: Point3D, window: Window, angle_type: ANGLES = ANGLES.HORIZON
     ) -> float | None:
         """
         Calculate obstruction angle from window to point with filtering

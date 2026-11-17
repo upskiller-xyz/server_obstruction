@@ -14,15 +14,11 @@ class TestObstructionService:
     def test_calculate_horizon_returns_result(self):
         """Test calculate_horizon returns ObstructionResult"""
         from src.components.models import ObstructionRequest
+
         window = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
-        mesh = Mesh.from_vertices([
-            [1.0, 0.0, 0.0],
-            [1.0, 3.0, 0.0],
-            [1.0, 1.5, 1.0]
-        ])
+        mesh = Mesh.from_vertices([[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]])
         request = ObstructionRequest(window=window, mesh=mesh)
 
         result = ObstructionService.calculate_horizon(request)
@@ -34,15 +30,11 @@ class TestObstructionService:
     def test_calculate_zenith_returns_result(self):
         """Test calculate_zenith_angle returns ObstructionResult"""
         from src.components.models import ObstructionRequest
+
         window = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
-        mesh = Mesh.from_vertices([
-            [1.0, 0.0, 0.0],
-            [1.0, 3.0, 0.0],
-            [1.0, 1.5, 1.0]
-        ])
+        mesh = Mesh.from_vertices([[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]])
         request = ObstructionRequest(window=window, mesh=mesh)
 
         result = ObstructionService.calculate_zenith_angle(request)
@@ -72,18 +64,23 @@ class TestObstructionService:
         service = ObstructionService()
         # wraps= keeps the real classmethod behaviour (correct descriptor binding)
         # while letting us assert call counts.
-        with patch.object(
-            RayTriangleIntersector, "from_array",
-            wraps=RayTriangleIntersector.from_array,
-        ) as from_array, patch.object(
-            RayTriangleIntersector, "prepare_arrays",
-            wraps=RayTriangleIntersector.prepare_arrays,
-        ) as prepare_arrays:
+        with (
+            patch.object(
+                RayTriangleIntersector,
+                "from_array",
+                wraps=RayTriangleIntersector.from_array,
+            ) as from_array,
+            patch.object(
+                RayTriangleIntersector,
+                "prepare_arrays",
+                wraps=RayTriangleIntersector.prepare_arrays,
+            ) as prepare_arrays,
+        ):
             result = asyncio.run(service.calculate_all_directions_async(request))
 
         assert len(result["results"]) == 64
-        assert from_array.call_count == 1       # built once, not 64×
-        assert prepare_arrays.call_count == 0   # no Triangle objects built
+        assert from_array.call_count == 1  # built once, not 64×
+        assert prepare_arrays.call_count == 0  # no Triangle objects built
 
     def test_get_status_returns_dict(self):
         """Test get_status returns dictionary with status info"""
@@ -93,25 +90,21 @@ class TestObstructionService:
         assert "status" in status
         assert status["status"] == "success"
 
-    @patch('src.server.services.obstruction_service.IntersectionCalculator.call')
+    @patch("src.server.services.obstruction_service.IntersectionCalculator.call")
     def test_calculate_horizon_calls_calculator(self, mock_calc):
         """Test that calculate_horizon calls IntersectionCalculator"""
         from src.components.models import ObstructionRequest
+
         window = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
-        mesh = Mesh.from_vertices([
-            [1.0, 0.0, 0.0],
-            [1.0, 3.0, 0.0],
-            [1.0, 1.5, 1.0]
-        ])
+        mesh = Mesh.from_vertices([[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]])
         request = ObstructionRequest(window=window, mesh=mesh)
 
         mock_result = ObstructionResult(
             obstruction_angle_degrees=45.0,
-            obstruction_angle_radians=np.pi/4,
-            highest_point=Point3D(x=1.0, y=3.0, z=0.0)
+            obstruction_angle_radians=np.pi / 4,
+            highest_point=Point3D(x=1.0, y=3.0, z=0.0),
         )
         mock_calc.return_value = mock_result
 
@@ -123,8 +116,7 @@ class TestObstructionService:
     def test_calculate_horizon_with_empty_mesh(self):
         """Test calculate_horizon with empty mesh"""
         window = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
 
         # This should raise an error or return zero obstruction
@@ -134,8 +126,7 @@ class TestObstructionService:
     def test_calculate_zenith_with_empty_mesh(self):
         """Test calculate_zenith_angle with empty mesh"""
         window = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
 
         # This should raise an error or return zero obstruction

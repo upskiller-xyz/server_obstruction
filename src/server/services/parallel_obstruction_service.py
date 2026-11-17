@@ -1,17 +1,17 @@
 """Parallel obstruction service for multi-direction calculations"""
 
 import asyncio
+import logging
 import math
 import time
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-import logging
+
 from src.components.calculators.direction_calculator import DirectionCalculator
 from src.components.models.obstruction_request import ObstructionRequest
 from src.server.base.constants import ResponseField
 from src.server.services.http_header_builder import HTTPHeaderBuilder
-
 from src.server.services.request_builder import ParallelRequestBuilder
 from src.server.services.result_assembler import ParallelResultAssembler
 
@@ -38,11 +38,7 @@ class ParallelObstructionService:
     - Dependency Injection: microservice URL
     """
 
-    def __init__(
-        self,
-        microservice_url: str,
-        auth_token: Optional[str] = None
-    ):
+    def __init__(self, microservice_url: str, auth_token: Optional[str] = None):
         """
         Initialize parallel obstruction service
 
@@ -62,7 +58,7 @@ class ParallelObstructionService:
         z: float,
         direction_angle: float,
         mesh_vertices: List[List[float]],
-        direction_index: int
+        direction_index: int,
     ) -> Dict[str, Any]:
         """
         Calculate obstruction for a single direction (async)
@@ -79,9 +75,7 @@ class ParallelObstructionService:
         """
         # Build payload using Builder Pattern
         payload = self._request_builder.build_payload(
-            x=x, y=y, z=z,
-            direction_angle=direction_angle,
-            mesh_vertices=mesh_vertices
+            x=x, y=y, z=z, direction_angle=direction_angle, mesh_vertices=mesh_vertices
         )
 
         # Build headers using HTTPHeaderBuilder
@@ -92,9 +86,7 @@ class ParallelObstructionService:
 
             # Make async HTTP request
             async with session.post(
-                self._microservice_url,
-                json=payload,
-                headers=headers
+                self._microservice_url, json=payload, headers=headers
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
@@ -107,9 +99,11 @@ class ParallelObstructionService:
 
             return {
                 ResponseField.DIRECTION_ANGLE.value: direction_angle,
-                ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(direction_angle),
+                ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(
+                    direction_angle
+                ),
                 ResponseField.HORIZON.value: result.get("data", {}).get("horizon"),
-                ResponseField.ZENITH.value: result.get("data", {}).get("zenith")
+                ResponseField.ZENITH.value: result.get("data", {}).get("zenith"),
             }
 
         except aiohttp.ClientError as e:
@@ -118,17 +112,22 @@ class ParallelObstructionService:
             )
             return {
                 ResponseField.DIRECTION_ANGLE.value: direction_angle,
-                ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(direction_angle),
-                "error": DIRECTION_FAILED_MESSAGE
+                ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(
+                    direction_angle
+                ),
+                "error": DIRECTION_FAILED_MESSAGE,
             }
         except Exception as e:
             logging.error(
-                f"[PARALLEL] Direction {direction_index} failed: {str(e)}", exc_info=True
+                f"[PARALLEL] Direction {direction_index} failed: {str(e)}",
+                exc_info=True,
             )
             return {
                 ResponseField.DIRECTION_ANGLE.value: direction_angle,
-                ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(direction_angle),
-                "error": DIRECTION_FAILED_MESSAGE
+                ResponseField.DIRECTION_ANGLE_DEGREES.value: math.degrees(
+                    direction_angle
+                ),
+                "error": DIRECTION_FAILED_MESSAGE,
             }
 
     async def calculate_all_directions_parallel(
@@ -136,7 +135,7 @@ class ParallelObstructionService:
         request: ObstructionRequest,
         num_directions: int = 64,
         start_angle_degrees: float = 17.5,
-        end_angle_degrees: float = 162.5
+        end_angle_degrees: float = 162.5,
     ) -> Dict[str, Any]:
         """
         Calculate obstruction angles for 64 directions in parallel
@@ -165,7 +164,9 @@ class ParallelObstructionService:
         )
 
         if request.mesh is None:
-            raise ValueError("ObstructionRequest.mesh is required for parallel calculation but was None.")
+            raise ValueError(
+                "ObstructionRequest.mesh is required for parallel calculation but was None."
+            )
 
         # Extract mesh vertices for payload
         mesh_vertices = [
@@ -190,7 +191,7 @@ class ParallelObstructionService:
                     request.window.center.z,
                     direction_angle,
                     mesh_vertices,
-                    i
+                    i,
                 )
                 for i, direction_angle in enumerate(direction_angles)
             ]
@@ -205,8 +206,7 @@ class ParallelObstructionService:
 
         # Delegate result assembly to ResultAssembler
         return ParallelResultAssembler.assemble_results(
-            results=results,
-            total_time=total_time
+            results=results, total_time=total_time
         )
 
 
@@ -219,8 +219,7 @@ class ParallelObstructionServiceFactory:
 
     @staticmethod
     def create_service(
-        microservice_url: str,
-        auth_token: Optional[str] = None
+        microservice_url: str, auth_token: Optional[str] = None
     ) -> ParallelObstructionService:
         """
         Create parallel obstruction service
@@ -233,6 +232,5 @@ class ParallelObstructionServiceFactory:
             Configured ParallelObstructionService
         """
         return ParallelObstructionService(
-            microservice_url=microservice_url,
-            auth_token=auth_token
+            microservice_url=microservice_url, auth_token=auth_token
         )
