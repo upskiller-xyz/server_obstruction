@@ -5,11 +5,12 @@ Triangle with projected points and orientation analysis.
 """
 
 from typing import List, Tuple
+
 import numpy as np
 
-from src.components.geometry.projected_point import ProjectedPoint
-from src.components.geometry.point import Point3D
 from src.components.geometry.coordinate_system import CoordinateSystem
+from src.components.geometry.point import Point3D
+from src.components.geometry.projected_point import ProjectedPoint
 from src.server.base.constants import MathConstants, TriangleOrientation
 
 

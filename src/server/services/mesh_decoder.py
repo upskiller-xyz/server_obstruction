@@ -19,8 +19,7 @@ class MeshDecoder(ABC):
     """Decode a raw mesh payload into an (N, 3) vertex array."""
 
     @abstractmethod
-    def decode(self, payload: bytes) -> np.ndarray:
-        ...
+    def decode(self, payload: bytes) -> np.ndarray: ...
 
 
 class NpyMeshDecoder(MeshDecoder):

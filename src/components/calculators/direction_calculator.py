@@ -1,6 +1,8 @@
 import math
-import numpy as np
 from typing import List
+
+import numpy as np
+
 from src.server.base.constants import AllDirectionDefaults
 
 
@@ -23,7 +25,7 @@ class DirectionCalculator:
         base_direction_radians: float,
         num_directions: int | None = None,
         start_angle_degrees: float | None = None,
-        end_angle_degrees: float | None = None
+        end_angle_degrees: float | None = None,
     ) -> np.ndarray:
         """
         Calculate absolute direction angles for multi-direction obstruction
@@ -63,7 +65,7 @@ class DirectionCalculator:
         base_direction_radians: float,
         num_directions: int | None = None,
         start_angle_degrees: float | None = None,
-        end_angle_degrees: float | None = None
+        end_angle_degrees: float | None = None,
     ) -> List[float]:
         """
         Get direction angles in degrees (for response formatting)
@@ -78,6 +80,9 @@ class DirectionCalculator:
             List of absolute direction angles in degrees
         """
         angles_rad = DirectionCalculator.calculate_direction_angles(
-            base_direction_radians, num_directions, start_angle_degrees, end_angle_degrees
+            base_direction_radians,
+            num_directions,
+            start_angle_degrees,
+            end_angle_degrees,
         )
         return [math.degrees(angle) for angle in angles_rad]

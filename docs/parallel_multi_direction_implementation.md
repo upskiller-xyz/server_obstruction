@@ -42,8 +42,8 @@ Defined in [constants.py](../src/components/constants.py):
 ```python
 class AllDirectionDefaults:
     NUM_DIRECTIONS = 64
-    START_ANGLE_DEGREES = 17.5   # Skips extreme left edge
-    END_ANGLE_DEGREES = 162.5     # Skips extreme right edge
+    START_ANGLE_DEGREES = 17.5  # Skips extreme left edge
+    END_ANGLE_DEGREES = 162.5  # Skips extreme right edge
 ```
 
 ### Angle Transformation
@@ -170,13 +170,10 @@ payload = {
     "y": 0.0,
     "z": 1.5,
     "mesh": mesh_vertices,
-    "microservice_url": "http://localhost:8081/obstruction"
+    "microservice_url": "http://localhost:8081/obstruction",
 }
 
-response = requests.post(
-    "http://localhost:8081/obstruction_parallel",
-    json=payload
-)
+response = requests.post("http://localhost:8081/obstruction_parallel", json=payload)
 
 result = response.json()
 print(f"Calculated {result['data']['num_directions']} directions")
@@ -290,7 +287,7 @@ class DirectionCalculator:
         base_direction_radians: float,
         num_directions: int = None,
         start_angle_degrees: float = None,
-        end_angle_degrees: float = None
+        end_angle_degrees: float = None,
     ) -> np.ndarray:
         # Generates 64 evenly spaced absolute direction angles
         ...
@@ -305,7 +302,7 @@ class ParallelObstructionService:
         request: ObstructionRequest,
         num_directions: int = None,
         start_angle_degrees: float = None,
-        end_angle_degrees: float = None
+        end_angle_degrees: float = None,
     ) -> Dict[str, Any]:
         # Coordinates 64 parallel HTTP requests
         ...

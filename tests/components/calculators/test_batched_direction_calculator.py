@@ -28,10 +28,16 @@ def _skyline_mesh(count: int = 40, seed: int = 0) -> Mesh:
         cy = rng.uniform(5.0, 60.0)
         h = rng.uniform(3.0, 25.0)
         w = rng.uniform(1.0, 6.0)
-        vertices.extend([
-            [cx - w, cy, 0.0], [cx + w, cy, 0.0], [cx + w, cy, h],
-            [cx - w, cy, 0.0], [cx + w, cy, h], [cx - w, cy, h],
-        ])
+        vertices.extend(
+            [
+                [cx - w, cy, 0.0],
+                [cx + w, cy, 0.0],
+                [cx + w, cy, h],
+                [cx - w, cy, 0.0],
+                [cx + w, cy, h],
+                [cx - w, cy, h],
+            ]
+        )
     return Mesh.from_vertices(vertices)
 
 
@@ -41,30 +47,52 @@ def _window() -> Window:
 
 def _plus_x_window() -> Window:
     """Window facing exactly +X (direction angle 0): the normal is exactly (1, 0, 0)."""
-    return Window(center=Point3D(0.0, 0.0, 1.5), normal=Vector3D.from_horizontal_angle(0.0))
+    return Window(
+        center=Point3D(0.0, 0.0, 1.5), normal=Vector3D.from_horizontal_angle(0.0)
+    )
 
 
 def _flush_facade_mesh() -> Mesh:
     """Building mass behind the +X window whose outer face is flush with the window
     plane (x = 0): a roof slab above the window and a facade wall, nothing ahead."""
-    return Mesh.from_vertices([
-        # Roof slab at z = 3, from x = -5 up to the flush edge x = 0
-        [-5.0, -3.0, 3.0], [0.0, -3.0, 3.0], [0.0, 3.0, 3.0],
-        [-5.0, -3.0, 3.0], [0.0, 3.0, 3.0], [-5.0, 3.0, 3.0],
-        # Facade wall in the window plane x = 0, beside and above the opening
-        [0.0, -3.0, 0.0], [0.0, -1.0, 0.0], [0.0, -1.0, 3.0],
-        [0.0, -3.0, 0.0], [0.0, -1.0, 3.0], [0.0, -3.0, 3.0],
-        [0.0, 1.0, 0.0], [0.0, 3.0, 0.0], [0.0, 3.0, 3.0],
-        [0.0, 1.0, 0.0], [0.0, 3.0, 3.0], [0.0, 1.0, 3.0],
-    ])
+    return Mesh.from_vertices(
+        [
+            # Roof slab at z = 3, from x = -5 up to the flush edge x = 0
+            [-5.0, -3.0, 3.0],
+            [0.0, -3.0, 3.0],
+            [0.0, 3.0, 3.0],
+            [-5.0, -3.0, 3.0],
+            [0.0, 3.0, 3.0],
+            [-5.0, 3.0, 3.0],
+            # Facade wall in the window plane x = 0, beside and above the opening
+            [0.0, -3.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, -1.0, 3.0],
+            [0.0, -3.0, 0.0],
+            [0.0, -1.0, 3.0],
+            [0.0, -3.0, 3.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 3.0, 0.0],
+            [0.0, 3.0, 3.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 3.0, 3.0],
+            [0.0, 1.0, 3.0],
+        ]
+    )
 
 
 def _blocking_wall_mesh() -> Mesh:
     """A huge wall 0.5 m in front of the +X window, covering every sampled direction."""
-    return Mesh.from_vertices([
-        [0.5, -500.0, -10.0], [0.5, 500.0, -10.0], [0.5, 500.0, 1000.0],
-        [0.5, -500.0, -10.0], [0.5, 500.0, 1000.0], [0.5, -500.0, 1000.0],
-    ])
+    return Mesh.from_vertices(
+        [
+            [0.5, -500.0, -10.0],
+            [0.5, 500.0, -10.0],
+            [0.5, 500.0, 1000.0],
+            [0.5, -500.0, -10.0],
+            [0.5, 500.0, 1000.0],
+            [0.5, -500.0, 1000.0],
+        ]
+    )
 
 
 def _run(request: ObstructionRequest, num_directions: int, batched: bool):
@@ -131,7 +159,9 @@ class TestBatchedDirectionCalculator:
     @pytest.mark.parametrize("batched", [True, False])
     def test_wall_directly_in_front_stays_fully_obstructed(self, batched):
         """Geometry that blocks every direction still yields the 45°/45° fallback."""
-        request = ObstructionRequest(window=_plus_x_window(), mesh=_blocking_wall_mesh())
+        request = ObstructionRequest(
+            window=_plus_x_window(), mesh=_blocking_wall_mesh()
+        )
 
         results = _run(request, 64, batched=batched)
 
@@ -143,10 +173,10 @@ class TestBatchedDirectionCalculator:
     def test_chunking_is_invariant(self):
         """Result is independent of how directions are chunked."""
         request = ObstructionRequest(window=_window(), mesh=_skyline_mesh())
-        from src.server.services.mesh_filter_service import MeshFilterService
         from src.components.calculators.ray_triangle_intersector import (
             RayTriangleIntersector,
         )
+        from src.server.services.mesh_filter_service import MeshFilterService
 
         mesh = MeshFilterService.apply_coarse_filter(request.mesh, request.window)
         mesh = MeshFilterService.apply_height_filter(mesh, request.window)
@@ -203,5 +233,8 @@ class TestBatchedDirectionCalculator:
 
 
 def _pack(mesh: Mesh):
-    from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
+    from src.components.calculators.ray_triangle_intersector import (
+        RayTriangleIntersector,
+    )
+
     return RayTriangleIntersector.from_array(mesh.vertices_array)

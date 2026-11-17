@@ -44,19 +44,26 @@ class DocumentationController:
         routes = []
         for rule in app.url_map.iter_rules():
             if rule.methods is not None:
-                routes.append({
-                    'endpoint': rule.endpoint,
-                    'methods': sorted(list(
-                        rule.methods - {HTTPMethod.HEAD.value, HTTPMethod.OPTIONS.value}
-                    )),
-                    'path': rule.rule
-                })
-        routes.sort(key=lambda x: x['path'])
-        return jsonify({
-            'status': ResponseStatus.SUCCESS.value,
-            'total_routes': len(routes),
-            'routes': routes
-        })
+                routes.append(
+                    {
+                        "endpoint": rule.endpoint,
+                        "methods": sorted(
+                            list(
+                                rule.methods
+                                - {HTTPMethod.HEAD.value, HTTPMethod.OPTIONS.value}
+                            )
+                        ),
+                        "path": rule.rule,
+                    }
+                )
+        routes.sort(key=lambda x: x["path"])
+        return jsonify(
+            {
+                "status": ResponseStatus.SUCCESS.value,
+                "total_routes": len(routes),
+                "routes": routes,
+            }
+        )
 
     @staticmethod
     def get_openapi_spec() -> Response:
@@ -70,7 +77,7 @@ class DocumentationController:
             title="Obstruction Calculation API",
             description="Service for calculating horizon and zenith obstruction angles from 3D mesh data",
             version=version,
-            base_url="/"
+            base_url="/",
         )
         return jsonify(spec)
 

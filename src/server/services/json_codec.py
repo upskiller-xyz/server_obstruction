@@ -12,6 +12,7 @@ from typing import Any, Union
 
 try:
     import orjson
+
     _HAS_ORJSON = True
 except ImportError:  # pragma: no cover - depends on optional dependency
     orjson = None

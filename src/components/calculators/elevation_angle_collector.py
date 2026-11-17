@@ -4,7 +4,9 @@ from typing import List, Tuple
 
 import numpy as np
 
-from src.components.calculators.plane_triangle_intersector import PlaneTriangleIntersector
+from src.components.calculators.plane_triangle_intersector import (
+    PlaneTriangleIntersector,
+)
 from src.components.geometry import Point3D, Triangle
 from src.components.geometry.vertical_plane import VerticalPlane
 from src.components.models import Window
@@ -21,9 +23,7 @@ class ElevationAngleCollector:
 
     @classmethod
     def collect_all_angles(
-        cls,
-        triangles: Tuple[Triangle, ...],
-        window: Window
+        cls, triangles: Tuple[Triangle, ...], window: Window
     ) -> List[float]:
         """
         Collect ALL intersection point elevation angles from ALL triangles
@@ -57,11 +57,7 @@ class ElevationAngleCollector:
         return sorted(angles)
 
     @classmethod
-    def _calculate_elevation_angle(
-        cls,
-        point: Point3D,
-        window: Window
-    ) -> float | None:
+    def _calculate_elevation_angle(cls, point: Point3D, window: Window) -> float | None:
         """
         Calculate elevation angle for a single point
 
@@ -82,6 +78,4 @@ class ElevationAngleCollector:
         if horizontal_distance < 0:
             return None
 
-        return float(np.degrees(
-            np.arctan2(vertical_distance, horizontal_distance)
-        ))
+        return float(np.degrees(np.arctan2(vertical_distance, horizontal_distance)))

@@ -23,7 +23,7 @@ class TestRequiredFieldsValidationStep:
             "y": 1.5,
             "z": 0.0,
             "direction_angle": 0.0,
-            "mesh": {"horizon": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]}
+            "mesh": {"horizon": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]},
         }
 
         # call() raises ValueError on failure, returns None on success
@@ -42,7 +42,7 @@ class TestRequiredFieldsValidationStep:
             "y": 1.5,
             # Missing 'z'
             "direction_angle": 0.0,
-            "mesh": {"horizon": [[1.0, 0.0, 0.0]]}
+            "mesh": {"horizon": [[1.0, 0.0, 0.0]]},
         }
 
         with pytest.raises(ValueError, match="Missing required fields"):
@@ -54,7 +54,7 @@ class TestRequiredFieldsValidationStep:
             "x": 0.0,
             "y": 1.5,
             "z": 0.0,
-            "direction_angle": 0.0
+            "direction_angle": 0.0,
             # Missing 'mesh'
         }
 
@@ -72,7 +72,7 @@ class TestNumericFieldsValidationStep:
             "y": 1.5,
             "z": -2.3,
             "direction_angle": 1.57,
-            "mesh": {"horizon": [[1.0, 0.0, 0.0]]}
+            "mesh": {"horizon": [[1.0, 0.0, 0.0]]},
         }
 
         # call() raises ValueError on failure, returns None on success
@@ -91,7 +91,7 @@ class TestNumericFieldsValidationStep:
             "y": "1.5",
             "z": "-2.3",
             "direction_angle": "1.57",
-            "mesh": {"horizon": [[1.0, 0.0, 0.0]]}
+            "mesh": {"horizon": [[1.0, 0.0, 0.0]]},
         }
 
         # call() raises ValueError on failure, returns None on success
@@ -110,7 +110,7 @@ class TestNumericFieldsValidationStep:
             "y": 1.5,
             "z": 0.0,
             "direction_angle": 0.0,
-            "mesh": {"horizon": [[1.0, 0.0, 0.0]]}
+            "mesh": {"horizon": [[1.0, 0.0, 0.0]]},
         }
 
         with pytest.raises(ValueError, match="must be a number"):
@@ -128,13 +128,7 @@ class TestMeshFormatValidationStep:
             "y": 1.5,
             "z": 0.0,
             "direction_angle": 0.0,
-            "mesh": {
-                "horizon": [
-                    [1.0, 0.0, 0.0],
-                    [1.0, 3.0, 0.0],
-                    [1.0, 1.5, 1.0]
-                ]
-            }
+            "mesh": {"horizon": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]]},
         }
 
         with pytest.raises(ValueError):
@@ -147,11 +141,7 @@ class TestMeshFormatValidationStep:
             "y": 1.5,
             "z": 0.0,
             "direction_angle": 0.0,
-            "mesh": [
-                [1.0, 0.0, 0.0],
-                [1.0, 3.0, 0.0],
-                [1.0, 1.5, 1.0]
-            ]
+            "mesh": [[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]],
         }
 
         # call() raises ValueError on failure, returns None on success
@@ -170,7 +160,7 @@ class TestMeshFormatValidationStep:
             "y": 1.5,
             "z": 0.0,
             "direction_angle": 0.0,
-            "mesh": "not_a_list"
+            "mesh": "not_a_list",
         }
 
         with pytest.raises(ValueError):
@@ -179,13 +169,7 @@ class TestMeshFormatValidationStep:
     def test_empty_mesh_passes(self, caplog):
         """Test that an empty (flat) mesh passes validation: the step returns early
         for a zero-length mesh, so it neither warns nor raises."""
-        data = {
-            "x": 0.0,
-            "y": 1.5,
-            "z": 0.0,
-            "direction_angle": 0.0,
-            "mesh": []
-        }
+        data = {"x": 0.0, "y": 1.5, "z": 0.0, "direction_angle": 0.0, "mesh": []}
 
         # Empty mesh should pass (the step returns early; no warning, no error)
         with caplog.at_level(logging.WARNING):

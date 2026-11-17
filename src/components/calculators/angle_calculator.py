@@ -5,6 +5,7 @@ Calculator for obstruction angles from vertical and horizontal distances.
 """
 
 from typing import Callable, Dict
+
 import numpy as np
 
 from src.server.base.constants import ANGLES, MathConstants
@@ -31,10 +32,7 @@ class AngleCalculator:
         return float(np.degrees(radians))
 
     @staticmethod
-    def horizon_angle(
-        vertical_distance: float,
-        horizontal_distance: float
-    ) -> float:
+    def horizon_angle(vertical_distance: float, horizontal_distance: float) -> float:
         """
         Calculate obstruction angle from vertical and horizontal distances
 
@@ -53,10 +51,7 @@ class AngleCalculator:
         return float(np.arctan(vertical_distance / horizontal_distance))
 
     @staticmethod
-    def zenith_angle(
-        vertical_distance: float,
-        horizontal_distance: float
-    ) -> float:
+    def zenith_angle(vertical_distance: float, horizontal_distance: float) -> float:
         """
         Calculate zenith angle from vertical and horizontal distances
 
@@ -81,7 +76,7 @@ class AngleCalculator:
         cls,
         vertical_distance: float,
         horizontal_distance: float,
-        angle: ANGLES = ANGLES.HORIZON
+        angle: ANGLES = ANGLES.HORIZON,
     ) -> float:
         """
         Calculate angle using the specified angle type
@@ -95,9 +90,9 @@ class AngleCalculator:
             Angle in radians
         """
         _content: Dict[ANGLES, Callable] = {
-                ANGLES.HORIZON: cls.horizon_angle,
-                ANGLES.ZENITH: cls.zenith_angle
-            }
+            ANGLES.HORIZON: cls.horizon_angle,
+            ANGLES.ZENITH: cls.zenith_angle,
+        }
         method = _content.get(angle, cls.horizon_angle)
-        
+
         return method(vertical_distance, horizontal_distance)

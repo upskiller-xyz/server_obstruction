@@ -4,15 +4,16 @@ Distance-based triangle filtering for obstruction calculations
 Filters triangles based on height and horizontal distance criteria.
 """
 
-from typing import Tuple
-import numpy as np
 import logging
+from typing import Tuple
 
-from src.components.geometry import Triangle
-from src.server.base.constants import ANGLES
-from src.components.models import Window
+import numpy as np
+
 from src.components.filter.base_filter import TriangleFilter
 from src.components.filter.within_distance_filter import WithinDistanceFilter
+from src.components.geometry import Triangle
+from src.components.models import Window
+from src.server.base.constants import ANGLES
 from src.utils.settings import Settings
 
 
@@ -32,7 +33,7 @@ class DistanceTriangleFilter(TriangleFilter):
         triangles: Tuple[Triangle, ...],
         window: Window,
         angle_type: ANGLES,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Triangle, ...]:
         """
         Filter triangles for horizon obstruction (VECTORIZED)
@@ -63,7 +64,7 @@ class DistanceTriangleFilter(TriangleFilter):
         triangles: Tuple[Triangle, ...],
         above_mask: np.ndarray,
         mask: np.ndarray,
-        angle_type: ANGLES
+        angle_type: ANGLES,
     ) -> None:
         """
         Log filtering statistics
@@ -77,13 +78,17 @@ class DistanceTriangleFilter(TriangleFilter):
         n_triangles = len(triangles)
         keep_mask = above_mask & mask
         stats = {
-            'kept': int(keep_mask.sum()),
-            'below': int((~above_mask).sum()),
-            'too_close_or_behind': int((above_mask & ~mask).sum())
+            "kept": int(keep_mask.sum()),
+            "below": int((~above_mask).sum()),
+            "too_close_or_behind": int((above_mask & ~mask).sum()),
         }
 
         settings = Settings()
-        distance = settings.min_horizontal_distance if angle_type == ANGLES.HORIZON else settings.max_horizontal_distance
+        distance = (
+            settings.min_horizontal_distance
+            if angle_type == ANGLES.HORIZON
+            else settings.max_horizontal_distance
+        )
 
         logging.debug(
             f"        [DISTANCE-FILTER] Kept {stats['kept']}/{n_triangles} - "
@@ -93,9 +98,7 @@ class DistanceTriangleFilter(TriangleFilter):
 
     @classmethod
     def _precompute(
-        cls,
-        triangles: Tuple[Triangle, ...],
-        window: Window
+        cls, triangles: Tuple[Triangle, ...], window: Window
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Precompute vectorized data and height filter

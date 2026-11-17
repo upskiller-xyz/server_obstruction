@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Any
+
 from enum import Enum
+from typing import Any
 
 
 class ExtendedEnumMixin:
@@ -51,4 +52,5 @@ class ExtendedEnum(ExtendedEnumMixin, Enum):
     Correct:   class MyEnum(ExtendedEnumMixin, Enum)
     Incorrect: class MyEnum(ExtendedEnum)  # Will fail!
     """
+
     OTHER = ""

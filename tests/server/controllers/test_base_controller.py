@@ -1,6 +1,9 @@
 """Tests for base ServerController class"""
-import pytest
+
 from unittest.mock import Mock
+
+import pytest
+
 from src.server.controllers.base_controller import ServerController
 from src.server.enums import ServerStatus
 
@@ -33,10 +36,7 @@ class TestServerController:
         mock_service1.initialize = Mock()
         mock_service2 = Mock()  # No initialize method
 
-        services = {
-            "service1": mock_service1,
-            "service2": mock_service2
-        }
+        services = {"service1": mock_service1, "service2": mock_service2}
 
         controller = ServerController(services=services)
         controller.initialize()
@@ -66,9 +66,9 @@ class TestServerController:
         status = controller.get_status()
 
         assert isinstance(status, dict)
-        assert 'status' in status
-        assert 'services' in status
-        assert status['status'] == ServerStatus.RUNNING.value
+        assert "status" in status
+        assert "services" in status
+        assert status["status"] == ServerStatus.RUNNING.value
 
     def test_get_status_includes_service_statuses(self):
         """Test get_status() includes status from services"""
@@ -80,19 +80,17 @@ class TestServerController:
         # Service without get_status - use a spec to prevent auto-creation
         class SimpleService:
             pass
+
         mock_service2 = SimpleService()
 
-        services = {
-            "service1": mock_service1,
-            "service2": mock_service2
-        }
+        services = {"service1": mock_service1, "service2": mock_service2}
 
         controller = ServerController(services=services)
         controller.initialize()
         status = controller.get_status()
 
-        assert status['services']['service1'] == {"ready": True}
-        assert status['services']['service2'] == "ready"
+        assert status["services"]["service1"] == {"ready": True}
+        assert status["services"]["service2"] == "ready"
         # Verify initialize was called
         mock_service1.initialize.assert_called_once()
 
@@ -101,5 +99,5 @@ class TestServerController:
         controller = ServerController()
         status = controller.get_status()
 
-        assert status['status'] == ServerStatus.STARTING.value
-        assert status['services'] == {}
+        assert status["status"] == ServerStatus.STARTING.value
+        assert status["services"] == {}

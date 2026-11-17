@@ -29,7 +29,9 @@ class Mesh:
         # Exactly one source is the authority; the other is materialized lazily.
         # Passing both is ambiguous (which one is canonical?) — reject it.
         if triangles is not None and vertices_array is not None:
-            raise ValueError("Mesh takes either 'triangles' or 'vertices_array', not both")
+            raise ValueError(
+                "Mesh takes either 'triangles' or 'vertices_array', not both"
+            )
         self._triangles: Optional[Tuple[Triangle, ...]] = (
             tuple(triangles) if triangles is not None else None
         )
@@ -38,12 +40,12 @@ class Mesh:
             self._triangles = ()
 
     @classmethod
-    def empty(cls) -> 'Mesh':
+    def empty(cls) -> "Mesh":
         """Create an empty mesh with no triangles."""
         return cls(())
 
     @classmethod
-    def from_vertices(cls, vertices: List[List[float]]) -> 'Mesh':
+    def from_vertices(cls, vertices: List[List[float]]) -> "Mesh":
         """
         Create mesh from a flat list of [x, y, z] vertices (every 3 → a triangle).
 
@@ -62,7 +64,7 @@ class Mesh:
         return cls(vertices_array=array)
 
     @classmethod
-    def from_array(cls, vertices_array: np.ndarray) -> 'Mesh':
+    def from_array(cls, vertices_array: np.ndarray) -> "Mesh":
         """Create a mesh from a vertex array.
 
         Accepts an ``(M, 3, 3)`` triangle array or a flat ``(N, 3)`` vertex array

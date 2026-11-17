@@ -6,11 +6,12 @@ Provides abstract base class and common filtering utilities using Template Metho
 
 from abc import ABC
 from typing import Tuple
+
 import numpy as np
 
-from src.components.geometry import Vector3D, Triangle
-from src.server.base.constants import ANGLES
+from src.components.geometry import Triangle, Vector3D
 from src.components.models import Window
+from src.server.base.constants import ANGLES
 
 
 class TriangleFilter(ABC):
@@ -33,7 +34,7 @@ class TriangleFilter(ABC):
         triangles: Tuple[Triangle, ...],
         window: Window,
         angle_type: ANGLES,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Triangle, ...]:
         """
         Filter triangles based on specific criteria (implemented by subclasses)
@@ -70,10 +71,7 @@ class TriangleFilter(ABC):
         return vertices_array
 
     @staticmethod
-    def _filter_by_height(
-        vertices_array: np.ndarray,
-        window_z: float
-    ) -> np.ndarray:
+    def _filter_by_height(vertices_array: np.ndarray, window_z: float) -> np.ndarray:
         """
         Filter triangles by height (above window)
 
@@ -88,7 +86,9 @@ class TriangleFilter(ABC):
         return max_z_per_triangle > window_z
 
     @staticmethod
-    def _compute_horizontal_normal(window_normal: Vector3D) -> Tuple[np.ndarray, np.floating]:
+    def _compute_horizontal_normal(
+        window_normal: Vector3D,
+    ) -> Tuple[np.ndarray, np.floating]:
         """
         Compute horizontal component of window normal and its magnitude
 
@@ -105,8 +105,7 @@ class TriangleFilter(ABC):
 
     @staticmethod
     def _build_filtered_list(
-        triangles: Tuple[Triangle, ...],
-        keep_mask: np.ndarray
+        triangles: Tuple[Triangle, ...], keep_mask: np.ndarray
     ) -> Tuple[Triangle, ...]:
         """
         Build filtered triangle list from boolean mask

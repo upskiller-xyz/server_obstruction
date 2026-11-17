@@ -9,8 +9,9 @@ Usage:
     python example/parallel_request_example.py
 """
 
-import requests
 import json
+
+import requests
 from sample_constructions import SimpleWall
 
 
@@ -22,13 +23,7 @@ def create_parallel_obstruction_request():
         Dictionary with request payload
     """
     # Create a simple wall mesh for testing
-    wall = SimpleWall(
-        center_x=5.0,
-        center_y=0.0,
-        center_z=1.5,
-        width=10.0,
-        height=3.0
-    )
+    wall = SimpleWall(center_x=5.0, center_y=0.0, center_z=1.5, width=10.0, height=3.0)
 
     # Window position (looking at the wall)
     window_x = 0.0
@@ -48,21 +43,16 @@ def create_parallel_obstruction_request():
         "x": window_x,
         "y": window_y,
         "z": window_z,
-
         # Mesh geometry
         "mesh": mesh_vertices,
-
         # Microservice URL (replace with your actual service URL)
         # This should point to the /obstruction endpoint of your deployed service
         "microservice_url": "http://localhost:8081/obstruction",
-
         # Optional: Number of directions (default 64)
         "num_directions": 64,
-
         # Optional: Angle range (default 17.5° to 162.5°)
         "start_angle_degrees": 17.5,
         "end_angle_degrees": 162.5,
-
         # Optional: GCP authentication token
         # "auth_token": "your-gcp-bearer-token-here"
     }
@@ -84,15 +74,15 @@ def send_parallel_request(server_url: str, request_payload: dict):
     endpoint = f"{server_url}/obstruction_parallel"
 
     print(f"Sending request to {endpoint}...")
-    print(f"Window position: ({request_payload['x']}, {request_payload['y']}, {request_payload['z']})")
+    print(
+        f"Window position: ({request_payload['x']}, {request_payload['y']}, {request_payload['z']})"
+    )
     print(f"Number of directions: {request_payload.get('num_directions', 64)}")
     print(f"Mesh vertices: {len(request_payload['mesh'])}")
 
     # Send POST request
     response = requests.post(
-        endpoint,
-        json=request_payload,
-        headers={"Content-Type": "application/json"}
+        endpoint, json=request_payload, headers={"Content-Type": "application/json"}
     )
 
     # Check response

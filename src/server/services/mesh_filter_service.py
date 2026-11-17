@@ -19,10 +19,7 @@ class MeshFilterService:
     """
 
     @staticmethod
-    def apply_height_filter(
-        mesh: Mesh,
-        window: Window
-    ) -> Mesh:
+    def apply_height_filter(mesh: Mesh, window: Window) -> Mesh:
         """
         Apply height-only filtering (remove triangles below window)
 
@@ -43,9 +40,7 @@ class MeshFilterService:
 
     @staticmethod
     def apply_coarse_filter(
-        mesh: Optional[Mesh],
-        window: Window,
-        label: str = ""
+        mesh: Optional[Mesh], window: Window, label: str = ""
     ) -> Mesh:
         """
         Apply coarse triangle filter to a mesh

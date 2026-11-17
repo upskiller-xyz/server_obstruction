@@ -32,9 +32,7 @@ class ObstructionController:
     - Response strategies: Different response builders per result type
     """
 
-
     # Strategy Pattern: Map endpoints to response formatting methods
-    
 
     # Endpoints that require async processing
     ASYNC_ENDPOINTS = {EndpointName.OBSTRUCTION_PARALLEL}
@@ -42,11 +40,13 @@ class ObstructionController:
     # Endpoints that require multi-direction parameter processing
     MULTI_DIRECTION_ENDPOINTS = {
         EndpointName.OBSTRUCTION_ALL,
-        EndpointName.OBSTRUCTION_PARALLEL
+        EndpointName.OBSTRUCTION_PARALLEL,
     }
 
     @classmethod
-    def call(cls, endpoint: EndpointName, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    def call(
+        cls, endpoint: EndpointName, request_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Main entry point for all controller operations
 
@@ -66,7 +66,6 @@ class ObstructionController:
             ValueError: If endpoint is not recognized
         """
         try:
-
             # Step 1: Validate request using Strategy Pattern
             RequestValidator.call(endpoint, request_data)
 
@@ -110,7 +109,6 @@ class ObstructionController:
         request = ObstructionRequest.from_dict(request_data)
         return ServiceMethod.get(endpoint)(request)
 
-
     @classmethod
     def _parallel(cls, endpoint: EndpointName, request_data: Dict[str, Any]) -> Any:
         """
@@ -132,9 +130,15 @@ class ObstructionController:
         # the ray-casting compute so we can split the two in the latency budget.
         with StageTimer("mesh_build", logger):
             request = ObstructionRequest.from_dict(request_data)
-        num_directions = request_data.get(OptionalRequestField.NUM_DIRECTIONS.value, None)
-        start_angle_degrees = request_data.get(OptionalRequestField.START_ANGLE_DEGREES.value, None)
-        end_angle_degrees = request_data.get(OptionalRequestField.END_ANGLE_DEGREES.value, None)
+        num_directions = request_data.get(
+            OptionalRequestField.NUM_DIRECTIONS.value, None
+        )
+        start_angle_degrees = request_data.get(
+            OptionalRequestField.START_ANGLE_DEGREES.value, None
+        )
+        end_angle_degrees = request_data.get(
+            OptionalRequestField.END_ANGLE_DEGREES.value, None
+        )
 
         # Create service instance for instance methods
         service = ObstructionService()
@@ -147,12 +151,13 @@ class ObstructionController:
         try:
             with StageTimer("compute_directions", logger):
                 result = loop.run_until_complete(
-                    service_method(request, num_directions, start_angle_degrees, end_angle_degrees)
+                    service_method(
+                        request, num_directions, start_angle_degrees, end_angle_degrees
+                    )
                 )
         finally:
             loop.close()
         return result
-    
 
     @classmethod
     def _format_response(cls, endpoint: EndpointName, result: Any) -> Dict[str, Any]:
@@ -167,7 +172,6 @@ class ObstructionController:
             Formatted response dictionary
         """
         return EndpointResponseMap.get(endpoint)(result)
-    
 
     @classmethod
     def get_status(cls) -> Dict[str, Any]:

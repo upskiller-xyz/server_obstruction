@@ -1,43 +1,44 @@
 """Request validation logic for obstruction calculations"""
 
-from typing import Dict, Any, List, Type
+from typing import Any, Dict, List, Type
+
 from src.server.base.constants import EndpointName
 from src.server.validators.steps import (
-    ValidationStep,
-    RequiredFieldsValidationStep,
-    MultiDirectionRequiredFieldsValidationStep,
     MeshFormatValidationStep,
-    VertexFormatValidationStep,
+    MultiDirectionRequiredFieldsValidationStep,
     NumericFieldsValidationStep,
+    OptionalParametersValidationStep,
+    RequiredFieldsValidationStep,
+    ValidationStep,
+    VertexFormatValidationStep,
     WindowNotOnMeshValidationStep,
-    OptionalParametersValidationStep
 )
 from src.utils.standard_map import StandardMap
 
 OBSTRUCTION_VALIDATION_STEPS: List[Type[ValidationStep]] = [
-        RequiredFieldsValidationStep,
-        MeshFormatValidationStep,
-        VertexFormatValidationStep,
-        NumericFieldsValidationStep,
-        WindowNotOnMeshValidationStep
-    ]
+    RequiredFieldsValidationStep,
+    MeshFormatValidationStep,
+    VertexFormatValidationStep,
+    NumericFieldsValidationStep,
+    WindowNotOnMeshValidationStep,
+]
 
 MULTI_DIRECTION_VALIDATION_STEPS: List[Type[ValidationStep]] = [
     MultiDirectionRequiredFieldsValidationStep,
     MeshFormatValidationStep,
     VertexFormatValidationStep,
     WindowNotOnMeshValidationStep,
-    OptionalParametersValidationStep
+    OptionalParametersValidationStep,
 ]
 
-class EndpointValidation(StandardMap):
 
+class EndpointValidation(StandardMap):
     _content: Dict[EndpointName, list[Type[ValidationStep]]] = {
         EndpointName.OBSTRUCTION_ALL: MULTI_DIRECTION_VALIDATION_STEPS,
         EndpointName.OBSTRUCTION_PARALLEL: MULTI_DIRECTION_VALIDATION_STEPS,
-        EndpointName.STATUS: []  # Status endpoint needs no validation
+        EndpointName.STATUS: [],  # Status endpoint needs no validation
     }
-    _default:list[Type[ValidationStep]] = OBSTRUCTION_VALIDATION_STEPS
+    _default: list[Type[ValidationStep]] = OBSTRUCTION_VALIDATION_STEPS
 
 
 class RequestValidator:
@@ -54,10 +55,9 @@ class RequestValidator:
     """
 
     # Strategy Pattern: Define validation pipelines for different request types
-    
 
     @classmethod
-    def call(cls, endpoint:EndpointName, data: Dict[str, Any]) -> None:
+    def call(cls, endpoint: EndpointName, data: Dict[str, Any]) -> None:
         """
         Validate obstruction calculation request data
 
@@ -70,4 +70,3 @@ class RequestValidator:
         """
         steps = EndpointValidation.get(endpoint)
         _ = [s.call(data) for s in steps]
-        

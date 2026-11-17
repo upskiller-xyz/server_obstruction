@@ -94,7 +94,7 @@ class TestVector3D:
 
     def test_from_horizontal_angle_90_degrees(self):
         """Test vector creation with 90 degree horizontal angle"""
-        vector = Vector3D.from_horizontal_angle(np.pi/2)
+        vector = Vector3D.from_horizontal_angle(np.pi / 2)
         # Should point in positive Y direction (in XY plane)
         assert abs(vector.x) < 1e-10
         assert abs(vector.y - 1.0) < 1e-10
@@ -148,39 +148,34 @@ class TestMesh:
 
     def test_mesh_creation_from_vertices(self):
         """Test mesh creation from vertex list"""
-        vertices = [
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0]
-        ]
+        vertices = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
         mesh = Mesh.from_vertices(vertices)
         assert len(mesh.triangles) == 1
 
     def test_mesh_multiple_triangles(self):
         """Test mesh with multiple triangles"""
         vertices = [
-            [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
-            [1.0, 1.0, 0.0], [2.0, 1.0, 0.0], [1.0, 2.0, 0.0]
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
         ]
         mesh = Mesh.from_vertices(vertices)
         assert len(mesh.triangles) == 2
 
     def test_mesh_invalid_vertex_count(self):
         """Test that invalid vertex count raises error"""
-        vertices = [
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0]
-        ]
-        with pytest.raises(ValueError, match="Number of vertices must be divisible by 3"):
+        vertices = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
+        with pytest.raises(
+            ValueError, match="Number of vertices must be divisible by 3"
+        ):
             Mesh.from_vertices(vertices)
 
     def test_mesh_immutability(self):
         """Test that Mesh is immutable"""
-        vertices = [
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0]
-        ]
+        vertices = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
         mesh = Mesh.from_vertices(vertices)
         with pytest.raises((AttributeError, TypeError)):
             mesh.triangles = ()
@@ -188,8 +183,12 @@ class TestMesh:
     def test_get_all_points(self):
         """Test getting all points from mesh"""
         vertices = [
-            [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
-            [1.0, 1.0, 0.0], [2.0, 1.0, 0.0], [1.0, 2.0, 0.0]
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
         ]
         mesh = Mesh.from_vertices(vertices)
         points = mesh.get_all_points()
@@ -207,14 +206,14 @@ class TestMesh:
 
     def test_from_array_accepts_flat_and_triangle_shapes(self):
         """(N, 3) flat vertices and (M, 3, 3) triangle arrays both work."""
-        flat = Mesh.from_array(np.zeros((6, 3)))      # 6 vertices → 2 triangles
-        tri = Mesh.from_array(np.zeros((2, 3, 3)))    # already 2 triangles
+        flat = Mesh.from_array(np.zeros((6, 3)))  # 6 vertices → 2 triangles
+        tri = Mesh.from_array(np.zeros((2, 3, 3)))  # already 2 triangles
         assert flat.vertices_array.shape == (2, 3, 3)
         assert tri.vertices_array.shape == (2, 3, 3)
 
     def test_from_array_rejects_wrong_shape(self):
         """A wrongly-shaped array isn't silently reshaped into scrambled triangles."""
         with pytest.raises(ValueError):
-            Mesh.from_array(np.zeros((9, 4)))          # (N, 4) — not vertices
+            Mesh.from_array(np.zeros((9, 4)))  # (N, 4) — not vertices
         with pytest.raises(ValueError):
-            Mesh.from_array(np.zeros((4, 3)))          # N=4 not divisible by 3
+            Mesh.from_array(np.zeros((4, 3)))  # N=4 not divisible by 3

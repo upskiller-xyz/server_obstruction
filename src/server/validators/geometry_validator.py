@@ -1,4 +1,5 @@
 """Validators for geometric constraints and data integrity"""
+
 from typing import Optional, Tuple
 
 import numpy as np
@@ -19,10 +20,7 @@ class GeometryValidator:
 
     @staticmethod
     def _calculate_barycentric_coordinates(
-        point: np.ndarray,
-        v1: np.ndarray,
-        v2: np.ndarray,
-        v3: np.ndarray
+        point: np.ndarray, v1: np.ndarray, v2: np.ndarray, v3: np.ndarray
     ) -> Optional[Tuple[float, float, float]]:
         """
         Calculate barycentric coordinates of point with respect to triangle
@@ -67,10 +65,7 @@ class GeometryValidator:
 
     @staticmethod
     def _point_distance_to_plane(
-        point: np.ndarray,
-        v1: np.ndarray,
-        v2: np.ndarray,
-        v3: np.ndarray
+        point: np.ndarray, v1: np.ndarray, v2: np.ndarray, v3: np.ndarray
     ) -> float:
         """
         Calculate perpendicular distance from point to triangle plane
@@ -90,7 +85,7 @@ class GeometryValidator:
         normal_mag = np.linalg.norm(normal)
         if normal_mag < MathConstants.EPSILON.value:
             # Degenerate triangle
-            return float('inf')
+            return float("inf")
 
         normal = normal / normal_mag
 
@@ -104,7 +99,7 @@ class GeometryValidator:
     def is_point_on_triangle(
         point: Point3D,
         triangle: Triangle,
-        tolerance: float = MathConstants.EPSILON.value
+        tolerance: float = MathConstants.EPSILON.value,
     ) -> bool:
         """
         Check if a point lies on a triangle (within tolerance)
@@ -136,7 +131,9 @@ class GeometryValidator:
             return False
 
         # Check if point is within triangle boundaries using barycentric coordinates
-        barycentric = GeometryValidator._calculate_barycentric_coordinates(p, v1, v2, v3)
+        barycentric = GeometryValidator._calculate_barycentric_coordinates(
+            p, v1, v2, v3
+        )
 
         # Degenerate triangle - point cannot be considered "on" it
         if barycentric is None:
@@ -156,7 +153,7 @@ class GeometryValidator:
     def find_triangle_containing_point(
         point: Point3D,
         triangles: Tuple[Triangle, ...],
-        tolerance: float = MathConstants.EPSILON.value
+        tolerance: float = MathConstants.EPSILON.value,
     ) -> Optional[Triangle]:
         """
         Find the first triangle that contains the given point (vectorized)
@@ -181,14 +178,14 @@ class GeometryValidator:
             vertices_array[i, 1] = t.v2.to_array()
             vertices_array[i, 2] = t.v3.to_array()
 
-        idx = GeometryValidator._index_on_mesh(point.to_array(), vertices_array, tolerance)
+        idx = GeometryValidator._index_on_mesh(
+            point.to_array(), vertices_array, tolerance
+        )
         return triangles[idx] if idx is not None else None
 
     @staticmethod
     def _index_on_mesh(
-        point_arr: np.ndarray,
-        vertices_array: np.ndarray,
-        tolerance: float
+        point_arr: np.ndarray, vertices_array: np.ndarray, tolerance: float
     ) -> Optional[int]:
         """
         Index of the first triangle the point lies on, or None — array-native.
@@ -225,7 +222,10 @@ class GeometryValidator:
         epsilon = -MathConstants.EPSILON.value
         for idx in np.where(on_plane_mask)[0]:
             barycentric = GeometryValidator._calculate_barycentric_coordinates(
-                point_arr, vertices_array[idx, 0], vertices_array[idx, 1], vertices_array[idx, 2]
+                point_arr,
+                vertices_array[idx, 0],
+                vertices_array[idx, 1],
+                vertices_array[idx, 2],
             )
             if barycentric is None:
                 continue
@@ -237,9 +237,7 @@ class GeometryValidator:
 
     @staticmethod
     def validate_point_not_on_mesh(
-        point: Point3D,
-        triangles: Tuple[Triangle, ...],
-        tolerance: float = 0
+        point: Point3D, triangles: Tuple[Triangle, ...], tolerance: float = 0
     ) -> None:
         """
         Validate that a point does not lie on any triangle in the mesh
@@ -261,9 +259,7 @@ class GeometryValidator:
 
     @staticmethod
     def validate_point_not_on_mesh_array(
-        point: Point3D,
-        vertices_array: np.ndarray,
-        tolerance: float = 0
+        point: Point3D, vertices_array: np.ndarray, tolerance: float = 0
     ) -> None:
         """
         Validate a point is not on any triangle, working on an (N, 3, 3) array.
@@ -274,7 +270,9 @@ class GeometryValidator:
         Raises:
             PointOnTriangleError: If point lies on any triangle
         """
-        idx = GeometryValidator._index_on_mesh(point.to_array(), vertices_array, tolerance)
+        idx = GeometryValidator._index_on_mesh(
+            point.to_array(), vertices_array, tolerance
+        )
         if idx is not None:
             verts = vertices_array[idx]
             triangle = Triangle(

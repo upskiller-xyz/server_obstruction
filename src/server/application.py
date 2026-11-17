@@ -62,7 +62,7 @@ class ServerApplication:
         logging.info(f"  Workers (processes):  {workers}")
         logging.info(f"  Threads per worker:   {threads}")
         logging.info(f"  Max concurrent reqs:  {max_concurrent} ({workers}×{threads})")
-        logging.info(f"  Workers per core:     {workers/cpu_count:.1f}x")
+        logging.info(f"  Workers per core:     {workers / cpu_count:.1f}x")
         logging.info("=" * 60)
 
     def _setup_routes(self) -> None:
@@ -71,20 +71,25 @@ class ServerApplication:
 
         Delegates route registration to dedicated service
         """
+
         # Create handler factory
         def create_handler(endpoint_value: str):
             """Create a route handler for the given endpoint"""
+
             def handler():
                 return RequestHandler.handle_json_post(endpoint_value)
-            handler.__name__ = f'handler_{endpoint_value}'
+
+            handler.__name__ = f"handler_{endpoint_value}"
             return handler
 
         # Create binary (multipart) handler factory
         def create_binary_handler(endpoint_value: str):
             """Create a multipart route handler for the given binary endpoint"""
+
             def handler():
                 return RequestHandler.handle_multipart_post(endpoint_value)
-            handler.__name__ = f'handler_{endpoint_value}'
+
+            handler.__name__ = f"handler_{endpoint_value}"
             return handler
 
         # Delegate main route registration to RouteRegistrar
@@ -92,13 +97,12 @@ class ServerApplication:
             self._app,
             handler_factory=create_handler,
             status_handler=self._get_status,
-            routes_handler=self._list_routes
+            routes_handler=self._list_routes,
         )
 
         # Register binary transport routes (e.g. /obstruction_parallel_bin)
         RouteRegistrar.register_binary_routes(
-            self._app,
-            handler_factory=create_binary_handler
+            self._app, handler_factory=create_binary_handler
         )
 
         # Delegate documentation route registration
@@ -106,7 +110,7 @@ class ServerApplication:
             self._app,
             openapi_handler=DocumentationController.get_openapi_spec,
             swagger_handler=DocumentationController.get_swagger_ui,
-            redoc_handler=DocumentationController.get_redoc
+            redoc_handler=DocumentationController.get_redoc,
         )
 
         # Log all registered routes

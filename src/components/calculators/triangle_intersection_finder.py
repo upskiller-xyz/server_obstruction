@@ -3,7 +3,9 @@
 import numpy as np
 
 from src.components.calculators.distance_calculator import DistanceCalculator
-from src.components.calculators.plane_triangle_intersector import PlaneTriangleIntersector
+from src.components.calculators.plane_triangle_intersector import (
+    PlaneTriangleIntersector,
+)
 from src.components.geometry import Point3D, Triangle
 from src.components.geometry.vertical_plane import VerticalPlane
 from src.components.models import Window
@@ -25,7 +27,7 @@ class TriangleIntersectionFinder:
         triangle: Triangle,
         plane: VerticalPlane,
         window: Window,
-        angle_type: ANGLES
+        angle_type: ANGLES,
     ) -> Point3D | None:
         """
         Get the intersection point with maximum distance

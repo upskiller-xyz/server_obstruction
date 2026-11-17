@@ -1,6 +1,7 @@
 """Internal exception details never reach the caller."""
-from src.server.builders import ErrorResponseBuilder
+
 from src.server.base.constants import ResponseField
+from src.server.builders import ErrorResponseBuilder
 
 SECRET = "/srv/app/secret.py"
 

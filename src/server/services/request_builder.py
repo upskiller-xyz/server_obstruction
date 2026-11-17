@@ -3,7 +3,6 @@
 from typing import Any, Dict, List
 
 
-
 class ParallelRequestBuilder:
     """
     Builder Pattern implementation for constructing parallel request payloads
@@ -19,7 +18,7 @@ class ParallelRequestBuilder:
         y: float,
         z: float,
         direction_angle: float,
-        mesh_vertices: List[List[float]]
+        mesh_vertices: List[List[float]],
     ) -> Dict[str, Any]:
         """
         Build payload for single direction request
@@ -37,5 +36,5 @@ class ParallelRequestBuilder:
             "y": y,
             "z": z,
             "direction_angle": direction_angle,
-            "mesh": mesh_vertices
+            "mesh": mesh_vertices,
         }

@@ -11,6 +11,7 @@ wrap per-direction or per-ray work — at 64 directions that would add thousands
 log lines and measurable overhead. One ``perf_counter`` pair + one log line per
 stage is negligible.
 """
+
 import logging
 import time
 from types import TracebackType

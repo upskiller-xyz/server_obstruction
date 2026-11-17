@@ -1,6 +1,15 @@
 from typing import List
+
 import numpy as np
-from src.components.geometry import Point3D, Vector3D, Mesh, CoordinateSystem, ProjectionPlane, ProjectedPoint
+
+from src.components.geometry import (
+    CoordinateSystem,
+    Mesh,
+    Point3D,
+    ProjectedPoint,
+    ProjectionPlane,
+    Vector3D,
+)
 from src.components.models import Window
 from src.server.base.constants import MathConstants
 
@@ -42,7 +51,7 @@ class OrthographicProjectionCalculator:
             origin=window.center,
             u_axis=u_axis,
             v_axis=v_axis,
-            normal=plane_normal  # Geometric normal to the plane
+            normal=plane_normal,  # Geometric normal to the plane
         )
 
     @classmethod

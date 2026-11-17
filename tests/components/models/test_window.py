@@ -1,4 +1,5 @@
 import pytest
+
 from src.components.geometry import Point3D, Vector3D
 from src.components.models import Window
 from src.server.base.constants import RequestField
@@ -32,7 +33,7 @@ class TestWindow:
             RequestField.X.value: 0.0,
             RequestField.Y.value: 1.5,
             RequestField.Z.value: 0.0,
-            RequestField.DIRECTION_ANGLE.value: 0.0
+            RequestField.DIRECTION_ANGLE.value: 0.0,
         }
 
         window = Window.from_dict(data)
@@ -48,21 +49,22 @@ class TestWindow:
             RequestField.X.value: 0.0,
             RequestField.Y.value: 1.5,
             RequestField.Z.value: 0.0,
-            RequestField.DIRECTION_ANGLE.value: 1.5708  # 90 degrees
+            RequestField.DIRECTION_ANGLE.value: 1.5708,  # 90 degrees
         }
 
         window = Window.from_dict(data)
 
         assert isinstance(window.normal, Vector3D)
         # Normal should be a unit vector
-        magnitude = (window.normal.x**2 + window.normal.y**2 + window.normal.z**2)**0.5
+        magnitude = (
+            window.normal.x**2 + window.normal.y**2 + window.normal.z**2
+        ) ** 0.5
         assert abs(magnitude - 1.0) < 0.01
 
     def test_set_angle(self):
         """Test set_angle creates new window with updated direction"""
         window1 = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
 
         window2 = Window.set_angle(window1, 1.5708)
@@ -87,8 +89,8 @@ class TestWindow:
                 [0.0, 0.0],
                 [10.0, 0.0],
                 [10.0, 10.0],
-                [0.0, 10.0]
-            ]
+                [0.0, 10.0],
+            ],
         }
 
         window = Window.from_endpoints(data)

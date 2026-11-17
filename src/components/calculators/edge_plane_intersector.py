@@ -16,12 +16,7 @@ class EdgePlaneIntersector:
     """
 
     @staticmethod
-    def intersect(
-        p1: Point3D,
-        p2: Point3D,
-        d1: float,
-        d2: float
-    ) -> Optional[Point3D]:
+    def intersect(p1: Point3D, p2: Point3D, d1: float, d2: float) -> Optional[Point3D]:
         """
         Find intersection point of edge (p1, p2) with plane
 
@@ -39,7 +34,10 @@ class EdgePlaneIntersector:
             return None
 
         # Edge lies on plane if both distances are ~0
-        if abs(d1) < MathConstants.EPSILON.value and abs(d2) < MathConstants.EPSILON.value:
+        if (
+            abs(d1) < MathConstants.EPSILON.value
+            and abs(d2) < MathConstants.EPSILON.value
+        ):
             return None
 
         # Calculate intersection parameter t

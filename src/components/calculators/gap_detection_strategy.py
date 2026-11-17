@@ -12,8 +12,7 @@ class GapDetectionStrategy:
 
     @staticmethod
     def find_gaps(
-        elevation_angles: List[float],
-        min_gap_deg: float
+        elevation_angles: List[float], min_gap_deg: float
     ) -> List[Tuple[float, float, float]]:
         """
         Find angular gaps between consecutive intersection points.

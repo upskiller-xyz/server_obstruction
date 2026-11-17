@@ -4,7 +4,7 @@ Optional parameters validation step
 Validates optional parameters for multi-direction requests.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 from src.server.base.constants import OptionalRequestField
 from src.server.validators.steps.validation_step import ValidationStep
@@ -23,7 +23,9 @@ class OptionalParametersValidationStep(ValidationStep):
                 raise ValueError("num_directions must be a positive integer")
 
         # Validate angle ranges if provided
-        start_angle_degrees = data.get(OptionalRequestField.START_ANGLE_DEGREES.value, None)
+        start_angle_degrees = data.get(
+            OptionalRequestField.START_ANGLE_DEGREES.value, None
+        )
         if start_angle_degrees is not None:
             if not isinstance(start_angle_degrees, (int, float)):
                 raise ValueError("start_angle_degrees must be a number")

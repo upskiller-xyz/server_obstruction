@@ -13,6 +13,7 @@ from src.server.base.constants import ObstructionStatus
 @dataclass(frozen=True)
 class PerformanceMetrics:
     """Performance metrics for gap calculation."""
+
     elapsed_ms: float
     rays_cast: int
     gaps_tested: int

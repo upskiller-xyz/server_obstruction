@@ -27,12 +27,12 @@ class CoordinateSystem:
     Z_AXIS = np.array([0.0, 0.0, 1.0])
 
     # Semantic names (numpy arrays)
-    UP = Z_AXIS          # Vertical up direction
-    FORWARD = X_AXIS     # Default forward direction (angle=0)
-    NORTH = Y_AXIS       # North direction (angle=π/2)
+    UP = Z_AXIS  # Vertical up direction
+    FORWARD = X_AXIS  # Default forward direction (angle=0)
+    NORTH = Y_AXIS  # North direction (angle=π/2)
 
     # Index mapping for coordinate components
-    VERTICAL_INDEX = 2   # Z component is vertical
+    VERTICAL_INDEX = 2  # Z component is vertical
     HORIZONTAL_INDICES = [0, 1]  # X, Y components are horizontal
 
     @classmethod

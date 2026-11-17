@@ -1,9 +1,12 @@
 """Unit tests for geometric validators"""
+
 import unittest
+
 import numpy as np
-from src.server.validators.geometry_validator import GeometryValidator
-from src.server.base.errors import PointOnTriangleError
+
 from src.components.geometry import Point3D, Triangle
+from src.server.base.errors import PointOnTriangleError
+from src.server.validators.geometry_validator import GeometryValidator
 
 
 class TestGeometryValidator(unittest.TestCase):
@@ -15,28 +18,29 @@ class TestGeometryValidator(unittest.TestCase):
         self.triangle_horizontal = Triangle(
             v1=Point3D(0.0, 0.0, 0.0),
             v2=Point3D(1.0, 0.0, 0.0),
-            v3=Point3D(0.5, 1.0, 0.0)
+            v3=Point3D(0.5, 1.0, 0.0),
         )
 
         # Vertical triangle
         self.triangle_vertical = Triangle(
             v1=Point3D(0.0, 0.0, 0.0),
             v2=Point3D(1.0, 0.0, 0.0),
-            v3=Point3D(0.5, 0.0, 1.0)
+            v3=Point3D(0.5, 0.0, 1.0),
         )
 
     def test_point_on_triangle_center(self):
         """Test point at triangle center"""
         # Center of horizontal triangle
         center = Point3D(0.5, 0.33333, 0.0)
-        result = GeometryValidator.is_point_on_triangle(center, self.triangle_horizontal)
+        result = GeometryValidator.is_point_on_triangle(
+            center, self.triangle_horizontal
+        )
         self.assertTrue(result)
 
     def test_point_on_triangle_vertex(self):
         """Test point at triangle vertex"""
         result = GeometryValidator.is_point_on_triangle(
-            self.triangle_horizontal.v1,
-            self.triangle_horizontal
+            self.triangle_horizontal.v1, self.triangle_horizontal
         )
         self.assertTrue(result)
 
@@ -44,13 +48,17 @@ class TestGeometryValidator(unittest.TestCase):
         """Test point on triangle edge"""
         # Midpoint of edge between v1 and v2
         edge_point = Point3D(0.5, 0.0, 0.0)
-        result = GeometryValidator.is_point_on_triangle(edge_point, self.triangle_horizontal)
+        result = GeometryValidator.is_point_on_triangle(
+            edge_point, self.triangle_horizontal
+        )
         self.assertTrue(result)
 
     def test_point_outside_triangle(self):
         """Test point outside triangle boundaries"""
         outside = Point3D(2.0, 2.0, 0.0)
-        result = GeometryValidator.is_point_on_triangle(outside, self.triangle_horizontal)
+        result = GeometryValidator.is_point_on_triangle(
+            outside, self.triangle_horizontal
+        )
         self.assertFalse(result)
 
     def test_point_above_triangle_plane(self):
@@ -149,13 +157,14 @@ class TestGeometryValidator(unittest.TestCase):
         triangle = Triangle(
             v1=Point3D(50.173, 59.752, 9.800),
             v2=Point3D(50.173, 59.741, 9.763),
-            v3=Point3D(50.173, 59.752, 9.753)
+            v3=Point3D(50.173, 59.752, 9.753),
         )
 
         # Point should NOT be considered on the triangle
         result = GeometryValidator.is_point_on_triangle(point, triangle)
-        self.assertFalse(result,
-                        "Point should not be considered on the reported triangle")
+        self.assertFalse(
+            result, "Point should not be considered on the reported triangle"
+        )
 
         # Validate that the point is correctly identified as NOT on the mesh
         triangles = (triangle,)
@@ -178,13 +187,13 @@ class TestGeometryValidator(unittest.TestCase):
         # Any point
         point = np.array([0.5, 1.0, 0.0])
 
-        result = GeometryValidator._calculate_barycentric_coordinates(
-            point, v1, v2, v3
-        )
+        result = GeometryValidator._calculate_barycentric_coordinates(point, v1, v2, v3)
 
         # Result should be None for degenerate triangle
-        self.assertIsNone(result, "Barycentric coordinates should be None for degenerate triangle")
+        self.assertIsNone(
+            result, "Barycentric coordinates should be None for degenerate triangle"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

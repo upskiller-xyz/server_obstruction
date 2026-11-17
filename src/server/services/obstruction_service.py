@@ -62,9 +62,7 @@ class ObstructionService:
             f"[CALC-START] Horizon calculation with "
             f"{len(request.mesh.triangles)} triangles"
         )
-        return IntersectionCalculator.call(
-            request.mesh, request.window, ANGLES.HORIZON
-        )
+        return IntersectionCalculator.call(request.mesh, request.window, ANGLES.HORIZON)
 
     @classmethod
     def calculate_zenith_angle(cls, request: ObstructionRequest) -> ObstructionResult:
@@ -90,8 +88,7 @@ class ObstructionService:
 
     @classmethod
     def calculate_both_angles(
-        cls,
-        request: ObstructionRequest
+        cls, request: ObstructionRequest
     ) -> Dict[str, ObstructionResult]:
         """
         Calculate both horizon and zenith angles in a single request
@@ -112,7 +109,7 @@ class ObstructionService:
         request: ObstructionRequest,
         num_directions: int | None = None,
         start_angle_degrees: float | None = None,
-        end_angle_degrees: float | None = None
+        end_angle_degrees: float | None = None,
     ) -> Dict[str, Any]:
         """
         Calculate obstruction angles for multiple directions using gap-based approach
@@ -149,10 +146,7 @@ class ObstructionService:
         base_direction_angle = math.atan2(normal_arr[1], normal_arr[0])
 
         direction_angles = DirectionCalculator.calculate_direction_angles(
-            base_direction_angle,
-            num_directions,
-            start_angle_degrees,
-            end_angle_degrees
+            base_direction_angle, num_directions, start_angle_degrees, end_angle_degrees
         )
 
         # Fast path: solve all directions in one vectorized pass (shared origin lets
@@ -161,7 +155,9 @@ class ObstructionService:
         # N×D broadcast would exceed the memory budget.
         if (
             BatchedDirectionSettings.enabled()
-            and BatchedDirectionSettings.within_budget(tri_arrays.count, len(direction_angles))
+            and BatchedDirectionSettings.within_budget(
+                tri_arrays.count, len(direction_angles)
+            )
         ):
             results = BatchedDirectionCalculator.calculate(
                 tri_arrays, request.window, direction_angles
@@ -174,10 +170,7 @@ class ObstructionService:
         # tri_arrays) and execute them concurrently on the thread pool.
         tasks = [
             AsyncDirectionCalculator.calculate(
-                tri_arrays,
-                request.window,
-                float(direction_angle),
-                self._pool_manager
+                tri_arrays, request.window, float(direction_angle), self._pool_manager
             )
             for direction_angle in direction_angles
         ]
@@ -196,6 +189,4 @@ class ObstructionService:
         Returns:
             Dictionary with status
         """
-        return {
-            ResponseField.STATUS.value: ResponseStatus.SUCCESS.value
-        }
+        return {ResponseField.STATUS.value: ResponseStatus.SUCCESS.value}

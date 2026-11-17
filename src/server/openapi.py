@@ -1,5 +1,6 @@
 """OpenAPI specification generator from Pydantic models for auto-documentation"""
-from typing import Dict, Any
+
+from typing import Any, Dict
 
 
 class OpenAPISpecGenerator:
@@ -10,7 +11,7 @@ class OpenAPISpecGenerator:
         title: str = "Obstruction Calculation API",
         description: str = "Service for calculating horizon and zenith obstruction angles from 3D mesh data",
         version: str = "0.1.0",
-        base_url: str = "/"
+        base_url: str = "/",
     ) -> Dict[str, Any]:
         """
         Generate OpenAPI 3.0 specification.
@@ -30,20 +31,13 @@ class OpenAPISpecGenerator:
                 "title": title,
                 "description": description,
                 "version": version,
-                "contact": {
-                    "name": "API Support"
-                }
+                "contact": {"name": "API Support"},
             },
             "servers": [
-                {
-                    "url": base_url,
-                    "description": "Obstruction Calculation Server"
-                }
+                {"url": base_url, "description": "Obstruction Calculation Server"}
             ],
             "paths": OpenAPISpecGenerator._generate_paths(),
-            "components": {
-                "schemas": OpenAPISpecGenerator._generate_schemas()
-            }
+            "components": {"schemas": OpenAPISpecGenerator._generate_schemas()},
         }
 
     @staticmethod
@@ -60,11 +54,13 @@ class OpenAPISpecGenerator:
                             "description": "Server status",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/StatusResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/StatusResponse"
+                                    }
                                 }
-                            }
+                            },
                         }
-                    }
+                    },
                 }
             },
             "/routes": {
@@ -77,11 +73,13 @@ class OpenAPISpecGenerator:
                             "description": "List of registered routes",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/RoutesResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/RoutesResponse"
+                                    }
                                 }
-                            }
+                            },
                         }
-                    }
+                    },
                 }
             },
             "/horizon": {
@@ -96,36 +94,44 @@ class OpenAPISpecGenerator:
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ObstructionRequest"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ObstructionRequest"
+                                }
                             }
-                        }
+                        },
                     },
                     "responses": {
                         "200": {
                             "description": "Horizon angle calculated successfully",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/SingleAngleEnvelope"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/SingleAngleEnvelope"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "400": {
                             "description": "Invalid request (missing fields, bad mesh format, window on mesh surface)",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "500": {
                             "description": "Internal server error",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 }
             },
             "/zenith": {
@@ -140,36 +146,44 @@ class OpenAPISpecGenerator:
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ObstructionRequest"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ObstructionRequest"
+                                }
                             }
-                        }
+                        },
                     },
                     "responses": {
                         "200": {
                             "description": "Zenith angle calculated successfully",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/SingleAngleEnvelope"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/SingleAngleEnvelope"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "400": {
                             "description": "Invalid request",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "500": {
                             "description": "Internal server error",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 }
             },
             "/obstruction": {
@@ -184,36 +198,44 @@ class OpenAPISpecGenerator:
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/ObstructionRequest"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ObstructionRequest"
+                                }
                             }
-                        }
+                        },
                     },
                     "responses": {
                         "200": {
                             "description": "Both angles calculated successfully",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/BothAnglesEnvelope"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/BothAnglesEnvelope"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "400": {
                             "description": "Invalid request",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "500": {
                             "description": "Internal server error",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 }
             },
             "/obstruction_all": {
@@ -229,36 +251,44 @@ class OpenAPISpecGenerator:
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/MultiDirectionRequest"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/MultiDirectionRequest"
+                                }
                             }
-                        }
+                        },
                     },
                     "responses": {
                         "200": {
                             "description": "Multi-direction results",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/MultiDirectionEnvelope"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/MultiDirectionEnvelope"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "400": {
                             "description": "Invalid request",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "500": {
                             "description": "Internal server error",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 }
             },
             "/obstruction_parallel": {
@@ -275,36 +305,44 @@ class OpenAPISpecGenerator:
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/MultiDirectionRequest"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/MultiDirectionRequest"
+                                }
                             }
-                        }
+                        },
                     },
                     "responses": {
                         "200": {
                             "description": "Parallel multi-direction results",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/MultiDirectionEnvelope"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/MultiDirectionEnvelope"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "400": {
                             "description": "Invalid request",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "500": {
                             "description": "Internal server error",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 }
             },
             "/obstruction_parallel_bin": {
@@ -344,36 +382,42 @@ class OpenAPISpecGenerator:
                                     "required": ["params", "mesh"],
                                 }
                             }
-                        }
+                        },
                     },
                     "responses": {
                         "200": {
                             "description": "Parallel multi-direction results",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/MultiDirectionEnvelope"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/MultiDirectionEnvelope"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "400": {
                             "description": "Invalid request",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
+                            },
                         },
                         "500": {
                             "description": "Internal server error",
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
                                 }
-                            }
-                        }
-                    }
+                            },
+                        },
+                    },
                 }
-            }
+            },
         }
 
     @staticmethod
@@ -393,39 +437,39 @@ class OpenAPISpecGenerator:
                 "properties": {
                     "x": {
                         "type": "number",
-                        "description": "Window centre X coordinate (centre format)"
+                        "description": "Window centre X coordinate (centre format)",
                     },
                     "y": {
                         "type": "number",
-                        "description": "Window centre Y coordinate (centre format)"
+                        "description": "Window centre Y coordinate (centre format)",
                     },
                     "z": {
                         "type": "number",
-                        "description": "Window centre Z coordinate / height (centre format)"
+                        "description": "Window centre Z coordinate / height (centre format)",
                     },
                     "x1": {
                         "type": "number",
-                        "description": "First endpoint X coordinate (endpoint format)"
+                        "description": "First endpoint X coordinate (endpoint format)",
                     },
                     "y1": {
                         "type": "number",
-                        "description": "First endpoint Y coordinate (endpoint format)"
+                        "description": "First endpoint Y coordinate (endpoint format)",
                     },
                     "z1": {
                         "type": "number",
-                        "description": "First endpoint Z coordinate (endpoint format)"
+                        "description": "First endpoint Z coordinate (endpoint format)",
                     },
                     "x2": {
                         "type": "number",
-                        "description": "Second endpoint X coordinate (endpoint format)"
+                        "description": "Second endpoint X coordinate (endpoint format)",
                     },
                     "y2": {
                         "type": "number",
-                        "description": "Second endpoint Y coordinate (endpoint format)"
+                        "description": "Second endpoint Y coordinate (endpoint format)",
                     },
                     "z2": {
                         "type": "number",
-                        "description": "Second endpoint Z coordinate (endpoint format)"
+                        "description": "Second endpoint Z coordinate (endpoint format)",
                     },
                     "room_polygon": {
                         "type": "array",
@@ -433,13 +477,13 @@ class OpenAPISpecGenerator:
                             "type": "array",
                             "items": {"type": "number"},
                             "minItems": 2,
-                            "maxItems": 3
+                            "maxItems": 3,
                         },
-                        "description": "Room floor polygon used to compute the outward-facing reference point (endpoint format)"
+                        "description": "Room floor polygon used to compute the outward-facing reference point (endpoint format)",
                     },
                     "direction_angle": {
                         "type": "number",
-                        "description": "Window outward-facing direction in radians (0 = +X axis, counter-clockwise)"
+                        "description": "Window outward-facing direction in radians (0 = +X axis, counter-clockwise)",
                     },
                     "mesh": {
                         "type": "array",
@@ -448,25 +492,21 @@ class OpenAPISpecGenerator:
                             "items": {"type": "number"},
                             "minItems": 3,
                             "maxItems": 3,
-                            "description": "Vertex [x, y, z]"
+                            "description": "Vertex [x, y, z]",
                         },
                         "description": (
                             "Flat list of triangle vertices. Every three consecutive vertices form one triangle. "
                             "Total vertex count must be divisible by 3."
-                        )
-                    }
+                        ),
+                    },
                 },
                 "example": {
                     "x": 0.0,
                     "y": 0.0,
                     "z": 3.0,
                     "direction_angle": 0.0,
-                    "mesh": [
-                        [10.0, -5.0, 0.0],
-                        [10.0, -5.0, 5.0],
-                        [10.0,  5.0, 0.0]
-                    ]
-                }
+                    "mesh": [[10.0, -5.0, 0.0], [10.0, -5.0, 5.0], [10.0, 5.0, 0.0]],
+                },
             },
             "MultiDirectionRequest": {
                 "type": "object",
@@ -477,8 +517,14 @@ class OpenAPISpecGenerator:
                 ),
                 "required": ["x", "y", "z", "mesh"],
                 "properties": {
-                    "x": {"type": "number", "description": "Window centre X coordinate"},
-                    "y": {"type": "number", "description": "Window centre Y coordinate"},
+                    "x": {
+                        "type": "number",
+                        "description": "Window centre X coordinate",
+                    },
+                    "y": {
+                        "type": "number",
+                        "description": "Window centre Y coordinate",
+                    },
                     "z": {"type": "number", "description": "Window centre Z / height"},
                     "mesh": {
                         "type": "array",
@@ -486,40 +532,36 @@ class OpenAPISpecGenerator:
                             "type": "array",
                             "items": {"type": "number"},
                             "minItems": 3,
-                            "maxItems": 3
+                            "maxItems": 3,
                         },
-                        "description": "Flat list of triangle vertices (same format as ObstructionRequest)"
+                        "description": "Flat list of triangle vertices (same format as ObstructionRequest)",
                     },
                     "num_directions": {
                         "type": "integer",
                         "default": 64,
                         "minimum": 1,
-                        "description": "Number of evenly-spaced directions to evaluate"
+                        "description": "Number of evenly-spaced directions to evaluate",
                     },
                     "start_angle_degrees": {
                         "type": "number",
                         "default": 17.5,
-                        "description": "Start of the angular sweep range in degrees, relative to window normal"
+                        "description": "Start of the angular sweep range in degrees, relative to window normal",
                     },
                     "end_angle_degrees": {
                         "type": "number",
                         "default": 162.5,
-                        "description": "End of the angular sweep range in degrees, relative to window normal"
-                    }
+                        "description": "End of the angular sweep range in degrees, relative to window normal",
+                    },
                 },
                 "example": {
                     "x": 0.0,
                     "y": 0.0,
                     "z": 3.0,
-                    "mesh": [
-                        [10.0, -5.0, 0.0],
-                        [10.0, -5.0, 5.0],
-                        [10.0,  5.0, 0.0]
-                    ],
+                    "mesh": [[10.0, -5.0, 0.0], [10.0, -5.0, 5.0], [10.0, 5.0, 0.0]],
                     "num_directions": 64,
                     "start_angle_degrees": 17.5,
-                    "end_angle_degrees": 162.5
-                }
+                    "end_angle_degrees": 162.5,
+                },
             },
             # ── Shared sub-schemas ───────────────────────────────────────────
             "Point3D": {
@@ -527,8 +569,8 @@ class OpenAPISpecGenerator:
                 "properties": {
                     "x": {"type": "number"},
                     "y": {"type": "number"},
-                    "z": {"type": "number"}
-                }
+                    "z": {"type": "number"},
+                },
             },
             "ObstructionAngle": {
                 "type": "object",
@@ -536,25 +578,25 @@ class OpenAPISpecGenerator:
                 "properties": {
                     "obstruction_angle_degrees": {
                         "type": "number",
-                        "description": "Obstruction angle in degrees"
+                        "description": "Obstruction angle in degrees",
                     },
                     "obstruction_angle_radians": {
                         "type": "number",
-                        "description": "Obstruction angle in radians"
+                        "description": "Obstruction angle in radians",
                     },
                     "highest_point": {
                         "oneOf": [
                             {"$ref": "#/components/schemas/Point3D"},
-                            {"type": "null"}
+                            {"type": "null"},
                         ],
-                        "description": "3D coordinates of the highest obstructing point, or null if none found"
-                    }
+                        "description": "3D coordinates of the highest obstructing point, or null if none found",
+                    },
                 },
                 "example": {
                     "obstruction_angle_degrees": 11.31,
                     "obstruction_angle_radians": 0.1974,
-                    "highest_point": {"x": 10.0, "y": 0.0, "z": 5.0}
-                }
+                    "highest_point": {"x": 10.0, "y": 0.0, "z": 5.0},
+                },
             },
             "DirectionResult": {
                 "type": "object",
@@ -562,23 +604,23 @@ class OpenAPISpecGenerator:
                 "properties": {
                     "direction_angle": {
                         "type": "number",
-                        "description": "Absolute direction angle in radians"
+                        "description": "Absolute direction angle in radians",
                     },
                     "direction_angle_degrees": {
                         "type": "number",
-                        "description": "Absolute direction angle in degrees"
+                        "description": "Absolute direction angle in degrees",
                     },
                     "horizon": {"$ref": "#/components/schemas/ObstructionAngle"},
-                    "zenith": {"$ref": "#/components/schemas/ObstructionAngle"}
-                }
+                    "zenith": {"$ref": "#/components/schemas/ObstructionAngle"},
+                },
             },
             # ── Response envelope schemas ────────────────────────────────────
             "SingleAngleEnvelope": {
                 "type": "object",
                 "properties": {
                     "status": {"type": "string", "example": "success"},
-                    "data": {"$ref": "#/components/schemas/ObstructionAngle"}
-                }
+                    "data": {"$ref": "#/components/schemas/ObstructionAngle"},
+                },
             },
             "BothAnglesEnvelope": {
                 "type": "object",
@@ -587,11 +629,13 @@ class OpenAPISpecGenerator:
                     "data": {
                         "type": "object",
                         "properties": {
-                            "horizon": {"$ref": "#/components/schemas/ObstructionAngle"},
-                            "zenith": {"$ref": "#/components/schemas/ObstructionAngle"}
-                        }
-                    }
-                }
+                            "horizon": {
+                                "$ref": "#/components/schemas/ObstructionAngle"
+                            },
+                            "zenith": {"$ref": "#/components/schemas/ObstructionAngle"},
+                        },
+                    },
+                },
             },
             "MultiDirectionEnvelope": {
                 "type": "object",
@@ -602,20 +646,22 @@ class OpenAPISpecGenerator:
                         "properties": {
                             "results": {
                                 "type": "array",
-                                "items": {"$ref": "#/components/schemas/DirectionResult"},
-                                "description": "One result object per evaluated direction"
+                                "items": {
+                                    "$ref": "#/components/schemas/DirectionResult"
+                                },
+                                "description": "One result object per evaluated direction",
                             },
                             "num_directions": {
                                 "type": "integer",
-                                "description": "Number of directions evaluated"
+                                "description": "Number of directions evaluated",
                             },
                             "total_time_seconds": {
                                 "type": "number",
-                                "description": "Total wall-clock time for the calculation"
-                            }
-                        }
-                    }
-                }
+                                "description": "Total wall-clock time for the calculation",
+                            },
+                        },
+                    },
+                },
             },
             "StatusResponse": {
                 "type": "object",
@@ -625,10 +671,10 @@ class OpenAPISpecGenerator:
                         "type": "object",
                         "properties": {
                             "controller": {"type": "string", "example": "ready"},
-                            "service": {"type": "object"}
-                        }
-                    }
-                }
+                            "service": {"type": "object"},
+                        },
+                    },
+                },
             },
             "RoutesResponse": {
                 "type": "object",
@@ -643,12 +689,12 @@ class OpenAPISpecGenerator:
                                 "methods": {
                                     "type": "array",
                                     "items": {"type": "string"},
-                                    "example": ["POST"]
-                                }
-                            }
-                        }
-                    }
-                }
+                                    "example": ["POST"],
+                                },
+                            },
+                        },
+                    },
+                },
             },
             "ErrorResponse": {
                 "type": "object",
@@ -656,12 +702,12 @@ class OpenAPISpecGenerator:
                     "status": {"type": "string", "example": "error"},
                     "error": {
                         "type": "string",
-                        "description": "Human-readable error message"
-                    }
+                        "description": "Human-readable error message",
+                    },
                 },
                 "example": {
                     "status": "error",
-                    "error": "Invalid mesh format: expected a list of vertices, got dict."
-                }
-            }
+                    "error": "Invalid mesh format: expected a list of vertices, got dict.",
+                },
+            },
         }

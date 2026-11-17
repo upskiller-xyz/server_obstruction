@@ -6,20 +6,19 @@ Supports both center format (x, y, z) and endpoint format (x1..z2 + room_polygon
 Accepts single mesh parameter with combined geometry.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
-from src.server.base.constants import RequestField, CENTER_WINDOW_FIELDS, ENDPOINT_WINDOW_FIELDS
+from src.server.base.constants import (
+    CENTER_WINDOW_FIELDS,
+    ENDPOINT_WINDOW_FIELDS,
+    RequestField,
+)
 from src.server.validators.steps.validation_step import ValidationStep
 
 
 def _has_any_mesh(data: Dict[str, Any]) -> bool:
     """Check if the request has mesh data in any supported format."""
-    return (
-        RequestField.MESH.value in data
-    )
-
-
-
+    return RequestField.MESH.value in data
 
 
 class MultiDirectionRequiredFieldsValidationStep(ValidationStep):
@@ -29,7 +28,9 @@ class MultiDirectionRequiredFieldsValidationStep(ValidationStep):
     def call(cls, data: Dict[str, Any]) -> None:
         """Check for required fields in multi-direction requests"""
         is_endpoint_format = RequestField.X1.value in data
-        window_fields = ENDPOINT_WINDOW_FIELDS if is_endpoint_format else CENTER_WINDOW_FIELDS
+        window_fields = (
+            ENDPOINT_WINDOW_FIELDS if is_endpoint_format else CENTER_WINDOW_FIELDS
+        )
 
         missing_fields = [field for field in window_fields if field not in data]
 
