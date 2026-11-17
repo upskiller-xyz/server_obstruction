@@ -9,8 +9,6 @@ readme = "README.md"
 # numpy>=2.3 needs Python >=3.11; the runtime (Docker/CI) is 3.14.
 python = ">=3.11,<3.15"
 
-setuptools = ">=81.0.0,<84.0.0"
-
 flask = "^3.0.0"
 werkzeug = "^3.0.0"
 requests = "^2.32.0"

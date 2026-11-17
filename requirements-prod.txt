@@ -18,8 +18,6 @@ pydantic>=2.12.0,<3.0.0
 # CORS support
 flask-cors>=6.0.0,<7.0.0
 python-dotenv>=1.0.0,<2.0.0
-# Utilities
-setuptools>=81.0.0,<84.0.0
 
 # Fast JSON parsing (request body carries the full mesh)
 orjson>=3.11.4,<4.0.0
