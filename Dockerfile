@@ -1,6 +1,8 @@
 
 # Base image pinned by digest (reproducible, tamper-evident); Dependabot bumps it.
-FROM python:3.12@sha256:4d1caded1f729ae443eb803f26ffde7b61e696aeaef62f099abb6dd6b14257c7
+# python:3.14.8-slim-trixie (multi-arch index): slim carries far fewer OS
+# packages/CVEs than the full image; every dependency installs from a wheel.
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
 
 # Use .dockerignore to exclude unnecessary files (e.g. .git, tests, docs, assets, etc.)
 
@@ -16,7 +18,7 @@ WORKDIR /src
 # --build-arg if a newer patched release is needed. These pins clear the
 # pip / setuptools / wheel CVE scan findings (setuptools 83 also vendors the
 # patched jaraco.context 6.1 + wheel 0.46.3 under setuptools/_vendor/).
-ARG PIP_VERSION=26.1.2
+ARG PIP_VERSION=26.2.1
 ARG SETUPTOOLS_VERSION=83.0.0
 ARG WHEEL_VERSION=0.47.0
 # Upgrade build tooling, then purge the vulnerable bundled .whl the base image
