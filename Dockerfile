@@ -1,54 +1,43 @@
+# Obstruction image on Project Hummingbird (Red Hat hardened, distroless Python).
+#
+# Two stages: the -builder image (has pip and a shell) builds a venv, and the
+# distroless runtime image (no shell, no package manager, runs as UID 65532)
+# only receives the venv and the source. Both are pinned by index digest
+# (multi-arch); Dependabot bumps them, or bump tag and digest together:
+#   docker buildx imagetools inspect registry.access.redhat.com/hi/python:3.14
+#
+# Every dependency installs from a wheel; no OS packages are needed.
 
-# Base image pinned by digest (reproducible, tamper-evident); Dependabot bumps it.
-# python:3.14.8-slim-trixie (multi-arch index): slim carries far fewer OS
-# packages/CVEs than the full image; every dependency installs from a wheel.
-FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+FROM registry.access.redhat.com/hi/python:3.14-builder@sha256:b7ae4033035309fb6e1c6e9d2efa3b7d53bee243fdafe3ca13da4c782110ce54 AS build
 
-# Use .dockerignore to exclude unnecessary files (e.g. .git, tests, docs, assets, etc.)
+# The builder image runs as 65532 too; installing into /opt needs root.
+USER 0
+RUN python3 -m venv /opt/venv
+# Production dependencies only (smaller image)
+COPY requirements-prod.txt /tmp/requirements-prod.txt
+# pip is only needed to build the venv; removing it keeps it (and its CVEs)
+# out of the runtime image.
+RUN /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-prod.txt \
+    && /opt/venv/bin/pip uninstall -y pip
 
-# Copy only production requirements and main files to root
-COPY requirements-prod.txt ./
+FROM registry.access.redhat.com/hi/python:3.14@sha256:1ac4921724237d985a35cc23bbcd779fd5b984089e039182bf8e22cd108490d6
 
-# Copy only necessary source files to /src
+COPY --from=build /opt/venv /opt/venv
+# Copied as root-owned files, so the runtime user cannot modify them; the
+# service never writes to disk (gunicorn worker heartbeats go to /dev/shm).
+COPY requirements-prod.txt /requirements-prod.txt
+COPY gunicorn.conf.py /gunicorn.conf.py
 COPY src/ /src/
 
 WORKDIR /src
 
-# Pinned build-tooling versions keep the image reproducible; override with
-# --build-arg if a newer patched release is needed. These pins clear the
-# pip / setuptools / wheel CVE scan findings (setuptools 83 also vendors the
-# patched jaraco.context 6.1 + wheel 0.46.3 under setuptools/_vendor/).
-ARG PIP_VERSION=26.2.1
-ARG SETUPTOOLS_VERSION=83.0.0
-ARG WHEEL_VERSION=0.47.0
-# Upgrade build tooling, then purge the vulnerable bundled .whl the base image
-# ships: the scoped find deletes the ensurepip _bundled wheels (old pip/
-# setuptools/wheel that scanners flag), plus the pip cache. Scoped to
-# /usr/local/lib on purpose (no full-filesystem scan). The block ends in
-# `true`, so this best-effort cleanup never fails the build; the pip upgrade
-# stays &&-gated so a failed upgrade still does.
-RUN pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}" "setuptools==${SETUPTOOLS_VERSION}" "wheel==${WHEEL_VERSION}" \
-    && { \
-        find /usr/local/lib -type d -name "_bundled" -path "*ensurepip*" -exec rm -rf {} + 2>/dev/null; \
-        rm -rf /root/.cache/pip; \
-        true; \
-    }
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONUNBUFFERED=1
 
-# Install production dependencies only (smaller image)
-RUN pip install --no-cache-dir -r /requirements-prod.txt
-
-RUN chmod 444 main.py
-RUN chmod 444 /requirements-prod.txt
-
-# Unprivileged runtime user (no shell, no home); the service never writes to disk
-# (gunicorn worker heartbeats go to /dev/shm).
-RUN groupadd --system --gid 10001 app \
-    && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
-USER app
-
-ENV PORT 8081
-ENV WORKERS 1
-ENV THREADS 2
+# Read by gunicorn.conf.py (CMD has no shell to expand them).
+ENV PORT=8081 \
+    WORKERS=1 \
+    THREADS=2
 
 # Batched all-directions path (vectorizes the 64 directions into one NumPy pass
 # instead of one thread-pool task each). Declared here so they are tunable as
@@ -57,9 +46,15 @@ ENV THREADS 2
 # - OBSTRUCTION_BATCH_CHUNK: directions per batched chunk (memory vs overhead;
 #   8 measured fastest on ~12k-triangle meshes)
 # - OBSTRUCTION_BATCH_MAX_CELLS: N×directions ceiling before async fallback
-ENV OBSTRUCTION_BATCHED 1
-ENV OBSTRUCTION_BATCH_CHUNK 8
-ENV OBSTRUCTION_BATCH_MAX_CELLS 40000000
+ENV OBSTRUCTION_BATCHED=1 \
+    OBSTRUCTION_BATCH_CHUNK=8 \
+    OBSTRUCTION_BATCH_MAX_CELLS=40000000
+
+# The image default (65532), stated explicitly so a base-image change cannot
+# silently make the service run as root.
+USER 65532
+
+EXPOSE 8081
 
 # Sized for a serverless container with per-instance concurrency = 1 (the
 # platform sends at most one obstruction request per instance):
@@ -72,17 +67,6 @@ ENV OBSTRUCTION_BATCH_MAX_CELLS 40000000
 #   self-oversubscription) — size the instance at >= 2 vCPU (recommended 4).
 # - 2 threads keeps the health probe responsive alongside the in-flight request.
 # Override WORKERS via env for a shared VM deploy that must serve concurrently.
-CMD exec gunicorn \
-    --bind :$PORT \
-    --workers $WORKERS \
-    --threads $THREADS \
-    --worker-class gthread \
-    --timeout 900 \
-    --max-requests 1000 \
-    --max-requests-jitter 100 \
-    --worker-tmp-dir /dev/shm \
-    main:app
-
-
-# Run the application
-# CMD ["python", "main.py"]
+# Bind, workers, threads, gthread, timeout 900, max-requests 1000 (+100 jitter)
+# and the /dev/shm worker tmp dir are set in gunicorn.conf.py.
+CMD ["gunicorn", "-c", "/gunicorn.conf.py", "main:app"]

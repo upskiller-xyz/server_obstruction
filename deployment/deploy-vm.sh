@@ -38,9 +38,8 @@ echo ""
 echo "=================================================="
 echo "  Deployment Configuration"
 echo "=================================================="
-docker-compose exec obstruction-server sh -c 'echo "Workers: $WORKERS"'
-docker-compose exec obstruction-server sh -c 'echo "Threads: $THREADS"'
-docker-compose exec obstruction-server sh -c 'echo "Log Level: $LOG_LEVEL"'
+# The image has no shell (distroless); read the env with the container's python.
+docker-compose exec obstruction-server python -c 'import os; [print(k + ":", os.environ.get(v)) for k, v in (("Workers", "WORKERS"), ("Threads", "THREADS"), ("Log Level", "LOG_LEVEL"))]'
 
 echo ""
 echo "=================================================="

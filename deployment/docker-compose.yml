@@ -29,7 +29,7 @@ services:
       # Optional: Mount logs directory for persistence
       - ./logs:/var/log/obstruction-server
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3

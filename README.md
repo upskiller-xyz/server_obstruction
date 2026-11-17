@@ -306,6 +306,8 @@ docker build -t obstruction-server .
 docker run -p 8081:8081 obstruction-server
 ```
 
+The image is built on [Project Hummingbird](https://gitlab.com/redhat/hummingbird/containers) (Red Hat hardened, distroless Python 3.14): a builder stage creates the venv, and the runtime image has no shell or package manager and runs as UID 65532. Both base images are pinned by digest. `PORT`, `WORKERS` and `THREADS` are read by `gunicorn.conf.py`, so they stay tunable as env vars.
+
 #### Cloud Deployment
 Deploy to Google Cloud Platform:
 ```sh
