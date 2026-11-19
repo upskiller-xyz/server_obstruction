@@ -18,6 +18,7 @@ example/
 
 *.csv
 *.json
+!src/components/solar/data/clear_sky_taus.json
 .venv/*
 *.pdf
 *.pptx

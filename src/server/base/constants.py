@@ -92,6 +92,8 @@ class EndpointName(ExtendedEnumMixin, Enum):
     ZENITH = "zenith"
     OBSTRUCTION_ALL = "obstruction_all"
     OBSTRUCTION_PARALLEL = "obstruction_parallel"
+    SVL = "svl"
+    SUNLIGHT_HOURS = "sunlight_hours"
 
 class MathConstants(ExtendedEnumMixin, Enum):
     """Mathematical constants for calculations"""

@@ -8,6 +8,11 @@ from src.server.validators.steps.vertex_format_validation_step import VertexForm
 from src.server.validators.steps.numeric_fields_validation_step import NumericFieldsValidationStep
 from src.server.validators.steps.window_not_on_mesh_validation_step import WindowNotOnMeshValidationStep
 from src.server.validators.steps.optional_parameters_validation_step import OptionalParametersValidationStep
+from src.server.validators.steps.solar_request_validation_step import (
+    SolarRequestValidationStep,
+    SvlRequestValidationStep,
+    SolarWindowsNotOnMeshValidationStep,
+)
 
 __all__ = [
     'ValidationStep',
@@ -17,5 +22,8 @@ __all__ = [
     'VertexFormatValidationStep',
     'NumericFieldsValidationStep',
     'WindowNotOnMeshValidationStep',
-    'OptionalParametersValidationStep'
+    'OptionalParametersValidationStep',
+    'SolarRequestValidationStep',
+    'SvlRequestValidationStep',
+    'SolarWindowsNotOnMeshValidationStep'
 ]

@@ -227,6 +227,48 @@ if result['status'] == 'success':
 
 **Example Script**: See [parallel_request_example.py](example/parallel_request_example.py) for a complete working example.
 
+#### Solar Analysis (SVL and Sunlight Hours)
+Both endpoints take one room with its windows and reuse the multi-direction obstruction calculation to know when the sun is hidden by the surrounding geometry. Times are in apparent solar time; `model_y_bearing_degrees` is the compass bearing of the model +Y axis (0 = +Y is true north).
+
+```python
+import math
+import requests
+
+payload = {
+    "city": "stockholm-arlanda-ap",   # Climate station key (same as the DA simulation)
+    "latitude": 59.33,                # Optional with city; required without it
+    "model_y_bearing_degrees": 0.0,   # Optional (default 0)
+    "room_area": 15.0,                # m², only needed for /svl
+    "building_type": "residential",   # Optional: "residential" (default) or "non-residential", /svl rating
+    "ground_reflectance": 0.2,        # Optional (default 0.2), only used by /svl
+    "windows": [
+        {
+            "id": "W1",
+            "x": 0.0, "y": 0.0, "z": 1.5,
+            "direction_angle": -math.pi / 2,   # Facing south
+            "area": 2.0,                       # Glazed area in m², only needed for /svl
+            "g_glazing": 0.6,                  # Optional (default 0.6)
+            "g_syst": 0.12,                    # Optional: real product, replaces g_glazing
+                                               # and shading_type
+            "shading_type": "external_blind"   # Optional: none, internal_blind, mid_pane_blind,
+                                               # external_blind, external_screen
+        }
+    ],
+    "mesh": [[-30.0, -20.0, 0.0], [30.0, -20.0, 0.0], [30.0, -20.0, 14.0]]  # Optional
+}
+
+# Peak solar heat gain (solvärmelast) - Miljöbyggnad Indikator 2
+svl = requests.post("http://localhost:8081/svl", json=payload).json()["data"]
+print(f"SVL: {svl['svl_peak_w_m2']:.1f} W/m² ({svl['svl_rating']}, {svl['svl_method']})")
+
+# Sunlight hours on 21 March - EN 17037
+sun = requests.post("http://localhost:8081/sunlight_hours", json=payload).json()["data"]
+print(f"Sunlight: {sun['sunlight_hours']:.1f} h ({sun['sunlight_level']})")
+```
+
+- `/svl`: every solar hour between the spring and the autumn equinox of a cloudless year is evaluated, the gains of all windows of the room are added hour by hour and the peak of that sum is returned (windows on different façades do not peak at the same time) and the direct sun is removed when obstructed (`svl_method: clear_sky_obstruction`; without a mesh the sky is unobstructed, `svl_method: clear_sky`). With `city` the sky is the ASHRAE clear-sky model with the monthly optical depths of that climate station (`svl_climate_station` in the response; table in `src/components/solar/data/clear_sky_taus.json`, 341 stations in SE/NO/DK); without `city` a generic ASHRAE clear sky is used. Irradiance on the glazing = direct beam + sky diffuse (ASHRAE Y factor, brighter around the sun) + ground-reflected (`ground_reflectance`); obstructions remove the direct beam when they hide the sun and scale the diffuse and ground-reflected parts by the sky view fraction of the window (`sky_view_fraction` per window in the response). The simplified value of the manual is returned next to the calculated one as a reference (`svl_simplified_w_m2`): the same formula with a fixed irradiance, the largest of `800 × g_syst × A_glas / A_rum` for the windows of one direction and `560 × g_syst × A_glas / A_rum` for the windows of two perpendicular façades (east and west are never added). `g_syst = g_glazing × Fc`, with Fc the guide value of DIN 4108-2:2013-02 Table 7 for the `shading_type` (internal or mid-pane blind 0.75; external blind or screen 0.25, and 0.30 on solar control glazing with g ≤ 0.40); when the g_syst of the real product is known (manufacturer, EN ISO 52022), send it as `g_syst`. Windows facing north (outside 90°–270°) are not assessed (`excluded_by_orientation`). Rating by `building_type`: `residential` (bostäder, default) Guld ≤ 18, Silver ≤ 29, Brons ≤ 38 W/m²; `non-residential` (lokaler) Guld ≤ 22, Silver ≤ 32, Brons ≤ 40 W/m².
+- `/sunlight_hours`: 10-minute steps on 21 March; the sun counts above the minimum solar altitude γs,min, calculated from the latitude with the closed form of Vychytil & Mohelníková 2024 (Stockholm 8.26°, Oslo 8.16°, Copenhagen 9.92°; override with `min_sun_altitude_degrees`), within the effective angle of the window and when not obstructed. Room hours are the union over all windows. Levels: minimum ≥ 1.5 h, medium ≥ 3 h, high ≥ 4 h.
+
 #### GCP Deployment Recommendations for Parallel Execution
 
 When deploying on Google Cloud Platform to handle parallel multi-direction requests:

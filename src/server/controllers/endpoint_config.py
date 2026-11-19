@@ -6,6 +6,7 @@ from src.utils.extended_enum import ExtendedEnumMixin
 from src.utils.standard_map import StandardMap
 from src.server.base.constants import EndpointName, HTTPMethod
 from src.server.services.obstruction_service import ObstructionService
+from src.server.services.solar_service import SolarService
 
 
 class ServiceMethod(StandardMap):
@@ -19,6 +20,15 @@ class ServiceMethod(StandardMap):
         EndpointName.OBSTRUCTION: ObstructionService.calculate_both_angles
     }
     _default: Callable = ObstructionService.calculate_horizon
+
+class RawRequestServiceMethod(StandardMap):
+    """Service methods that parse the raw request dictionary themselves"""
+    _content: Dict[EndpointName, Callable] = {
+        EndpointName.SVL: SolarService.calculate_svl,
+        EndpointName.SUNLIGHT_HOURS: SolarService.calculate_sunlight_hours,
+    }
+    _default: Callable | None = None
+
 
 class EndpointMethodMap(StandardMap):
     _content:Dict[EndpointName, HTTPMethod] = {

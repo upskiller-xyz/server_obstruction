@@ -1,6 +1,8 @@
 """OpenAPI specification generator from Pydantic models for auto-documentation"""
 from typing import Dict, Any
 
+from src.server.solar_openapi import SolarOpenAPISpec
+
 
 class OpenAPISpecGenerator:
     """Generates OpenAPI 3.0 specification for Flask API using Pydantic models"""
@@ -40,9 +42,15 @@ class OpenAPISpecGenerator:
                     "description": "Obstruction Calculation Server"
                 }
             ],
-            "paths": OpenAPISpecGenerator._generate_paths(),
+            "paths": {
+                **OpenAPISpecGenerator._generate_paths(),
+                **SolarOpenAPISpec.paths(),
+            },
             "components": {
-                "schemas": OpenAPISpecGenerator._generate_schemas()
+                "schemas": {
+                    **OpenAPISpecGenerator._generate_schemas(),
+                    **SolarOpenAPISpec.schemas(),
+                }
             }
         }
 

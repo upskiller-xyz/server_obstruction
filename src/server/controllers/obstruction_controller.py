@@ -8,7 +8,7 @@ from src.components.models import ObstructionRequest
 from src.server.base.constants import EndpointName, OptionalRequestField, RequestField
 from src.server.base.errors import PointOnTriangleError
 from src.server.builders import ErrorResponseBuilder
-from src.server.controllers.endpoint_config import ServiceMethod
+from src.server.controllers.endpoint_config import RawRequestServiceMethod, ServiceMethod
 from src.server.maps import EndpointResponseMap
 from src.server.services.obstruction_service import ObstructionService
 from src.server.validators.request_validator import RequestValidator
@@ -100,6 +100,11 @@ class ObstructionController:
         # Special case: status endpoint doesn't need request parsing
         if endpoint == EndpointName.STATUS:
             return ObstructionService.get_status()
+
+        # Endpoints that parse the raw request themselves (solar analyses)
+        raw_request_method = RawRequestServiceMethod.get(endpoint)
+        if raw_request_method is not None:
+            return raw_request_method(request_data)
 
         # Prepare request for multi-direction endpoints
         if endpoint in cls.MULTI_DIRECTION_ENDPOINTS:

@@ -10,7 +10,10 @@ from src.server.validators.steps import (
     VertexFormatValidationStep,
     NumericFieldsValidationStep,
     WindowNotOnMeshValidationStep,
-    OptionalParametersValidationStep
+    OptionalParametersValidationStep,
+    SolarRequestValidationStep,
+    SvlRequestValidationStep,
+    SolarWindowsNotOnMeshValidationStep
 )
 from src.utils.standard_map import StandardMap
 
@@ -30,11 +33,29 @@ MULTI_DIRECTION_VALIDATION_STEPS: List[Type[ValidationStep]] = [
     OptionalParametersValidationStep
 ]
 
+SOLAR_MESH_VALIDATION_STEPS: List[Type[ValidationStep]] = [
+    MeshFormatValidationStep,
+    VertexFormatValidationStep,
+    SolarWindowsNotOnMeshValidationStep
+]
+
+SVL_VALIDATION_STEPS: List[Type[ValidationStep]] = [
+    SvlRequestValidationStep,
+    *SOLAR_MESH_VALIDATION_STEPS
+]
+
+SUNLIGHT_HOURS_VALIDATION_STEPS: List[Type[ValidationStep]] = [
+    SolarRequestValidationStep,
+    *SOLAR_MESH_VALIDATION_STEPS
+]
+
 class EndpointValidation(StandardMap):
 
     _content: Dict[EndpointName, list[Type[ValidationStep]]] = {
         EndpointName.OBSTRUCTION_ALL: MULTI_DIRECTION_VALIDATION_STEPS,
         EndpointName.OBSTRUCTION_PARALLEL: MULTI_DIRECTION_VALIDATION_STEPS,
+        EndpointName.SVL: SVL_VALIDATION_STEPS,
+        EndpointName.SUNLIGHT_HOURS: SUNLIGHT_HOURS_VALIDATION_STEPS,
         EndpointName.STATUS: []  # Status endpoint needs no validation
     }
     _default:list[Type[ValidationStep]] = OBSTRUCTION_VALIDATION_STEPS
