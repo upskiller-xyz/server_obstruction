@@ -25,9 +25,7 @@ class TestGapVerificationService:
     def obstructing_triangle(self):
         """Create a triangle that obstructs certain elevation angles"""
         return Triangle(
-            Point3D(0.0, -10.0, 3.0),
-            Point3D(10.0, 0.0, 3.0),
-            Point3D(0.0, 10.0, 3.0)
+            Point3D(0.0, -10.0, 3.0), Point3D(10.0, 0.0, 3.0), Point3D(0.0, 10.0, 3.0)
         )
 
     @pytest.fixture
@@ -56,7 +54,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=direction_angle,
             tri_arrays=tri_arrays,
-            precision=1.0
+            precision=1.0,
         )
 
         assert result.status == GapVerificationStatus.SKY_FOUND
@@ -83,7 +81,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=direction_angle,
             tri_arrays=tri_arrays,
-            precision=1.0
+            precision=1.0,
         )
 
         assert result.status == GapVerificationStatus.OBSTRUCTED
@@ -103,7 +101,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=direction_angle,
             tri_arrays=empty_arrays,
-            precision=1.0
+            precision=1.0,
         )
 
         assert result.status == GapVerificationStatus.SKY_FOUND
@@ -121,7 +119,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=direction_angle,
             tri_arrays=tri_arrays,
-            precision=1.0
+            precision=1.0,
         )
 
         if result.status == GapVerificationStatus.SKY_FOUND:
@@ -146,7 +144,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=direction_angle,
             tri_arrays=empty_arrays,
-            precision=0.1
+            precision=0.1,
         )
 
         # Should still work and find sky
@@ -164,7 +162,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=direction_angle,
             tri_arrays=tri_arrays,
-            precision=0.1
+            precision=0.1,
         )
 
         # Low precision
@@ -174,7 +172,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=direction_angle,
             tri_arrays=tri_arrays,
-            precision=5.0
+            precision=5.0,
         )
 
         # Higher precision should cast more rays
@@ -191,7 +189,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=0.0,
             tri_arrays=tri_arrays,
-            precision=1.0
+            precision=1.0,
         )
 
         result2 = service.verify_gap(
@@ -200,7 +198,7 @@ class TestGapVerificationService:
             origin=origin,
             direction_angle=np.pi / 2,  # 90 degrees
             tri_arrays=tri_arrays,
-            precision=1.0
+            precision=1.0,
         )
 
         # Results may differ based on direction

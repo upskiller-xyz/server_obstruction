@@ -14,7 +14,9 @@ In the JSON samples (incorrect order):
 - Position 1: Z (should be Y)
 - Position 2: Y (should be Z)
 """
-from typing import List, Dict, Any
+
+from typing import Any, Dict, List
+
 import numpy as np
 
 
@@ -100,15 +102,15 @@ class CoordinateConverter:
 
         # Convert window position
         # Assuming the data has x, z as second coord, y as third coord
-        if 'x' in data and 'y' in data and 'z' in data:
+        if "x" in data and "y" in data and "z" in data:
             # The keys are named correctly, but values are in wrong order
             # We need to swap y and z values
-            converted['y'] = data['z']  # What was called 'z' is actually Y
-            converted['z'] = data['y']  # What was called 'y' is actually Z
+            converted["y"] = data["z"]  # What was called 'z' is actually Y
+            converted["z"] = data["y"]  # What was called 'y' is actually Z
 
         # Convert mesh
-        if 'mesh' in data:
-            converted['mesh'] = cls.convert_mesh_xzy_to_xyz(data['mesh'])
+        if "mesh" in data:
+            converted["mesh"] = cls.convert_mesh_xzy_to_xyz(data["mesh"])
 
         return converted
 
@@ -123,32 +125,34 @@ class CoordinateConverter:
         Returns:
             Analysis results
         """
-        mesh = np.array(data['mesh'])
+        mesh = np.array(data["mesh"])
 
         # Calculate ranges for each coordinate
         ranges = {
-            'coord_0': (mesh[:, 0].min(), mesh[:, 0].max()),
-            'coord_1': (mesh[:, 1].min(), mesh[:, 1].max()),
-            'coord_2': (mesh[:, 2].min(), mesh[:, 2].max())
+            "coord_0": (mesh[:, 0].min(), mesh[:, 0].max()),
+            "coord_1": (mesh[:, 1].min(), mesh[:, 1].max()),
+            "coord_2": (mesh[:, 2].min(), mesh[:, 2].max()),
         }
 
         # Window position
-        window = [data.get('x', 0), data.get('y', 0), data.get('z', 0)]
+        window = [data.get("x", 0), data.get("y", 0), data.get("z", 0)]
 
         # Heuristic: vertical axis typically has smaller range
         # In correct XYZ system, Z (index 2) should be vertical
-        coord_1_range = ranges['coord_1'][1] - ranges['coord_1'][0]
-        coord_2_range = ranges['coord_2'][1] - ranges['coord_2'][0]
+        coord_1_range = ranges["coord_1"][1] - ranges["coord_1"][0]
+        coord_2_range = ranges["coord_2"][1] - ranges["coord_2"][0]
 
         likely_swapped = coord_1_range > coord_2_range
 
         return {
-            'ranges': ranges,
-            'window_position': window,
-            'likely_xzy_format': likely_swapped,
-            'recommendation': 'Use convert_request_data_xzy_to_xyz()' if likely_swapped else 'Coordinates appear correct',
-            'coord_1_range': coord_1_range,
-            'coord_2_range': coord_2_range
+            "ranges": ranges,
+            "window_position": window,
+            "likely_xzy_format": likely_swapped,
+            "recommendation": "Use convert_request_data_xzy_to_xyz()"
+            if likely_swapped
+            else "Coordinates appear correct",
+            "coord_1_range": coord_1_range,
+            "coord_2_range": coord_2_range,
         }
 
 
@@ -176,16 +180,20 @@ def analyze_coordinates(data: Dict[str, Any]) -> None:
     analysis = CoordinateConverter.analyze_coordinate_system(data)
 
     print("📊 Coordinate System Analysis:")
-    print(f"   Window position: ({analysis['window_position'][0]:.2f}, "
-          f"{analysis['window_position'][1]:.2f}, {analysis['window_position'][2]:.2f})")
+    print(
+        f"   Window position: ({analysis['window_position'][0]:.2f}, "
+        f"{analysis['window_position'][1]:.2f}, {analysis['window_position'][2]:.2f})"
+    )
     print(f"\n   Coordinate ranges:")
-    for coord, (min_val, max_val) in analysis['ranges'].items():
-        print(f"   {coord}: [{min_val:.2f}, {max_val:.2f}] (range: {max_val - min_val:.2f})")
+    for coord, (min_val, max_val) in analysis["ranges"].items():
+        print(
+            f"   {coord}: [{min_val:.2f}, {max_val:.2f}] (range: {max_val - min_val:.2f})"
+        )
 
     print(f"\n   Coord 1 range: {analysis['coord_1_range']:.2f}")
     print(f"   Coord 2 range: {analysis['coord_2_range']:.2f}")
 
-    if analysis['likely_xzy_format']:
+    if analysis["likely_xzy_format"]:
         print(f"\n   ⚠️  Data appears to be in XZY format!")
         print(f"   📝 {analysis['recommendation']}")
     else:

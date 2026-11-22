@@ -1,7 +1,8 @@
 import pytest
+
 from src.components.geometry import Point3D
 from src.components.models import ObstructionResult
-from src.server.base.constants import ResponseField, RequestField
+from src.server.base.constants import RequestField, ResponseField
 
 
 class TestObstructionResult:
@@ -14,7 +15,7 @@ class TestObstructionResult:
         result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=0.785,
-            highest_point=point
+            highest_point=point,
         )
 
         assert result.obstruction_angle_degrees == 45.0
@@ -27,7 +28,7 @@ class TestObstructionResult:
         result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=0.785,
-            highest_point=point
+            highest_point=point,
         )
 
         with pytest.raises(Exception):  # FrozenInstanceError or AttributeError
@@ -56,7 +57,7 @@ class TestObstructionResult:
         result = ObstructionResult(
             obstruction_angle_degrees=45.0,
             obstruction_angle_radians=0.785,
-            highest_point=point
+            highest_point=point,
         )
 
         result_dict = result.to_dict()
@@ -64,16 +65,22 @@ class TestObstructionResult:
         assert result_dict[ResponseField.OBSTRUCTION_ANGLE_DEGREES.value] == 45.0
         assert result_dict[ResponseField.OBSTRUCTION_ANGLE_RADIANS.value] == 0.785
         assert result_dict[ResponseField.HIGHEST_POINT.value] is not None
-        assert result_dict[ResponseField.HIGHEST_POINT.value][RequestField.X.value] == 1.0
-        assert result_dict[ResponseField.HIGHEST_POINT.value][RequestField.Y.value] == 3.0
-        assert result_dict[ResponseField.HIGHEST_POINT.value][RequestField.Z.value] == 0.5
+        assert (
+            result_dict[ResponseField.HIGHEST_POINT.value][RequestField.X.value] == 1.0
+        )
+        assert (
+            result_dict[ResponseField.HIGHEST_POINT.value][RequestField.Y.value] == 3.0
+        )
+        assert (
+            result_dict[ResponseField.HIGHEST_POINT.value][RequestField.Z.value] == 0.5
+        )
 
     def test_to_dict_no_highest_point(self):
         """Test conversion to dictionary with no highest point"""
         result = ObstructionResult(
             obstruction_angle_degrees=0.0,
             obstruction_angle_radians=0.0,
-            highest_point=None
+            highest_point=None,
         )
 
         result_dict = result.to_dict()
@@ -88,7 +95,7 @@ class TestObstructionResult:
         result = ObstructionResult(
             obstruction_angle_degrees=89.5,
             obstruction_angle_radians=1.562,
-            highest_point=point
+            highest_point=point,
         )
 
         result_dict = result.to_dict()

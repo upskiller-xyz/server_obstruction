@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from src.components.calculators.distance_calculator import DistanceCalculator
 from src.components.geometry import Point3D, Vector3D
 from src.components.models import Window
@@ -14,7 +15,7 @@ class TestDistanceCalculator:
         intersections = [
             Point3D(x=1.0, y=2.0, z=5.0),
             Point3D(x=2.0, y=3.0, z=10.0),
-            Point3D(x=3.0, y=4.0, z=3.0)
+            Point3D(x=3.0, y=4.0, z=3.0),
         ]
 
         vertical_distances = DistanceCalculator._get_vertical(intersections)
@@ -25,8 +26,7 @@ class TestDistanceCalculator:
     def test_get_horizontal_distances(self):
         """Test extraction of horizontal distances"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         intersections = [
             Point3D(x=5.0, y=0.0, z=1.0),
@@ -41,13 +41,9 @@ class TestDistanceCalculator:
     def test_call_with_horizon_angle(self):
         """Test call method with HORIZON angle type returns vertical distances"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
-        intersections = [
-            Point3D(x=1.0, y=2.0, z=5.0),
-            Point3D(x=2.0, y=3.0, z=10.0)
-        ]
+        intersections = [Point3D(x=1.0, y=2.0, z=5.0), Point3D(x=2.0, y=3.0, z=10.0)]
 
         result = DistanceCalculator.call(intersections, ANGLES.HORIZON, window)
 
@@ -57,8 +53,7 @@ class TestDistanceCalculator:
     def test_call_with_zenith_angle(self):
         """Test call method with ZENITH angle type returns horizontal distances"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         intersections = [
             Point3D(x=5.0, y=0.0, z=1.0),
@@ -73,8 +68,7 @@ class TestDistanceCalculator:
     def test_adjust_horizontal_filters_points_below_window(self):
         """Test that points below window are filtered out"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=5.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=5.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         point_below = Point3D(x=10.0, y=0.0, z=2.0)
 
@@ -85,8 +79,7 @@ class TestDistanceCalculator:
     def test_adjust_horizontal_accepts_points_above_window(self):
         """Test that points above window are accepted"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         point_above = Point3D(x=10.0, y=0.0, z=5.0)
 

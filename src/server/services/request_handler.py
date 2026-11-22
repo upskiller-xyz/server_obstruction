@@ -77,10 +77,9 @@ class RequestHandler:
             return jsonify(result), HTTPStatus.OK.value
 
         except BadRequest as e:
-            return jsonify({
-                "status": ResponseStatus.ERROR.value,
-                "error": str(e)
-            }), HTTPStatus.BAD_REQUEST.value
+            return jsonify(
+                {"status": ResponseStatus.ERROR.value, "error": str(e)}
+            ), HTTPStatus.BAD_REQUEST.value
 
         except HTTPException:
             # Other Werkzeug HTTP errors (e.g. 413 body too large) keep their status.
@@ -90,10 +89,9 @@ class RequestHandler:
             # Log full traceback server-side; return a generic message so internal
             # details are not leaked to the client.
             logger.error(f"{endpoint_str} endpoint failed", exc_info=True)
-            return jsonify({
-                "status": ResponseStatus.ERROR.value,
-                "error": "Internal server error"
-            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
+            return jsonify(
+                {"status": ResponseStatus.ERROR.value, "error": "Internal server error"}
+            ), HTTPStatus.INTERNAL_SERVER_ERROR.value
 
     @staticmethod
     def handle_json_post(endpoint_str: str) -> Tuple[Response, int]:
@@ -141,10 +139,9 @@ class RequestHandler:
             return jsonify(result), HTTPStatus.OK.value
 
         except BadRequest as e:
-            return jsonify({
-                "status": ResponseStatus.ERROR.value,
-                "error": str(e)
-            }), HTTPStatus.BAD_REQUEST.value
+            return jsonify(
+                {"status": ResponseStatus.ERROR.value, "error": str(e)}
+            ), HTTPStatus.BAD_REQUEST.value
 
         except HTTPException:
             # Other Werkzeug HTTP errors (e.g. 413 body too large) keep their status.
@@ -154,7 +151,6 @@ class RequestHandler:
             # Log full traceback server-side; return a generic message so internal
             # details are not leaked to the client.
             logger.error(f"{endpoint_str} endpoint failed", exc_info=True)
-            return jsonify({
-                "status": ResponseStatus.ERROR.value,
-                "error": "Internal server error"
-            }), HTTPStatus.INTERNAL_SERVER_ERROR.value
+            return jsonify(
+                {"status": ResponseStatus.ERROR.value, "error": "Internal server error"}
+            ), HTTPStatus.INTERNAL_SERVER_ERROR.value

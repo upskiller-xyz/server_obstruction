@@ -29,7 +29,7 @@ class VerticalSurfaceFilter(TriangleFilter):
         triangles: Tuple[Triangle, ...],
         window: Window,
         angle_type: ANGLES = ANGLES.HORIZON,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Triangle, ...]:
         """
         Filter triangles to only include vertical/near-vertical surfaces

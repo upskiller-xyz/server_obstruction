@@ -13,6 +13,7 @@ from src.server.base.constants import GapVerificationStatus
 @dataclass(frozen=True)
 class GapVerificationResult:
     """Result of gap verification with ray casting."""
+
     status: GapVerificationStatus
     horizon_deg: Optional[float] = None
     zenith_deg: Optional[float] = None

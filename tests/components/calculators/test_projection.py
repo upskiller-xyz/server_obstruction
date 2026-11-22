@@ -1,8 +1,9 @@
-import pytest
 import numpy as np
-from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.models import Window
+import pytest
+
 from src.components.calculators import OrthographicProjectionCalculator
+from src.components.geometry import Mesh, Point3D, Vector3D
+from src.components.models import Window
 
 
 class TestOrthographicProjectionCalculator:
@@ -16,7 +17,7 @@ class TestOrthographicProjectionCalculator:
         """Test plane creation for forward-facing window"""
         window = Window(
             center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)  # Viewing direction +X
+            normal=Vector3D(x=1.0, y=0.0, z=0.0),  # Viewing direction +X
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -44,8 +45,7 @@ class TestOrthographicProjectionCalculator:
         """Test plane creation for upward-facing window"""
         # Window normal pointing up (parallel to world up which is +Z)
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=0.0, y=0.0, z=1.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=0.0, y=0.0, z=1.0)
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -58,7 +58,7 @@ class TestOrthographicProjectionCalculator:
         """Test that plane axes are orthogonal"""
         window = Window(
             center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=1.0, z=0.0).normalize()
+            normal=Vector3D(x=1.0, y=1.0, z=0.0).normalize(),
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -79,7 +79,7 @@ class TestOrthographicProjectionCalculator:
         """Test that all plane axes are unit vectors"""
         window = Window(
             center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.5, z=0.0).normalize()
+            normal=Vector3D(x=1.0, y=0.5, z=0.0).normalize(),
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -91,7 +91,7 @@ class TestOrthographicProjectionCalculator:
         """Test projecting a point that lies on the plane"""
         window = Window(
             center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)  # Viewing direction +X
+            normal=Vector3D(x=1.0, y=0.0, z=0.0),  # Viewing direction +X
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -110,8 +110,7 @@ class TestOrthographicProjectionCalculator:
     def test_project_point_origin(self):
         """Test projecting the plane origin itself"""
         window = Window(
-            center=Point3D(x=5.0, y=10.0, z=15.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=5.0, y=10.0, z=15.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -125,8 +124,7 @@ class TestOrthographicProjectionCalculator:
     def test_project_point_above_plane(self):
         """Test projecting a point above plane center"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         plane = self.calculator.create_projection_plane(window)
 
@@ -140,34 +138,34 @@ class TestOrthographicProjectionCalculator:
     def test_project_mesh_single_triangle(self):
         """Test projecting a mesh with single triangle"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=0.0, y=0.0, z=1.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=0.0, y=0.0, z=1.0)
         )
         plane = self.calculator.create_projection_plane(window)
 
-        mesh = Mesh.from_vertices([
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0]
-        ])
+        mesh = Mesh.from_vertices([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
 
         projected_points = self.calculator.project_mesh(mesh, plane)
 
         assert len(projected_points) == 3
-        assert all(hasattr(p, 'u') and hasattr(p, 'v') for p in projected_points)
+        assert all(hasattr(p, "u") and hasattr(p, "v") for p in projected_points)
 
     def test_project_mesh_multiple_triangles(self):
         """Test projecting a mesh with multiple triangles"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         plane = self.calculator.create_projection_plane(window)
 
-        mesh = Mesh.from_vertices([
-            [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0, 1.0],
-            [2.0, 0.0, 0.0], [2.0, 2.0, 0.0], [2.0, 0.0, 2.0]
-        ])
+        mesh = Mesh.from_vertices(
+            [
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [1.0, 0.0, 1.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 2.0, 0.0],
+                [2.0, 0.0, 2.0],
+            ]
+        )
 
         projected_points = self.calculator.project_mesh(mesh, plane)
 
@@ -176,16 +174,11 @@ class TestOrthographicProjectionCalculator:
     def test_project_mesh_preserves_original_points(self):
         """Test that projection preserves reference to original points"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
         plane = self.calculator.create_projection_plane(window)
 
-        vertices = [
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0]
-        ]
+        vertices = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
         mesh = Mesh.from_vertices(vertices)
 
         projected_points = self.calculator.project_mesh(mesh, plane)
@@ -198,8 +191,7 @@ class TestOrthographicProjectionCalculator:
     def test_orthographic_projection_parallel_lines_stay_parallel(self):
         """Test orthographic property: parallel lines stay parallel"""
         window = Window(
-            center=Point3D(x=0.0, y=0.0, z=0.0),
-            normal=Vector3D(x=0.0, y=0.0, z=1.0)
+            center=Point3D(x=0.0, y=0.0, z=0.0), normal=Vector3D(x=0.0, y=0.0, z=1.0)
         )
         plane = self.calculator.create_projection_plane(window)
 

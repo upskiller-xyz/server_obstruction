@@ -2,6 +2,7 @@
 
 from enum import Enum
 from typing import List
+
 from ...utils.extended_enum import ExtendedEnumMixin
 
 
@@ -12,18 +13,21 @@ class ANGLES(ExtendedEnumMixin, Enum):
 
 class BoundaryDirection(ExtendedEnumMixin, Enum):
     """Direction for binary boundary search"""
+
     LOWER = "lower"  # Search for lower boundary (horizon)
     UPPER = "upper"  # Search for upper boundary (zenith)
 
 
 class GapVerificationStatus(ExtendedEnumMixin, Enum):
     """Status of gap verification"""
+
     SKY_FOUND = "sky_found"
     OBSTRUCTED = "obstructed"
 
 
 class ObstructionStatus(ExtendedEnumMixin, Enum):
     """Overall obstruction status"""
+
     FULLY_OBSTRUCTED = "fully_obstructed"
     PARTIALLY_OBSTRUCTED = "partially_obstructed"
     NO_OBSTRUCTION = "no_obstruction"
@@ -31,12 +35,15 @@ class ObstructionStatus(ExtendedEnumMixin, Enum):
 
 class TriangleOrientation(ExtendedEnumMixin, Enum):
     """Triangle surface orientation types"""
+
     VERTICAL = "vertical"  # Walls, vertical surfaces
     HORIZONTAL = "horizontal"  # Roofs, floors
     SLANTED = "slanted"  # Neither vertical nor horizontal
 
+
 class HTTPMethod(ExtendedEnumMixin, Enum):
     """HTTP methods"""
+
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -48,6 +55,7 @@ class HTTPMethod(ExtendedEnumMixin, Enum):
 
 class HTTPStatus(ExtendedEnumMixin, Enum):
     """HTTP status codes"""
+
     OK = 200
     CREATED = 201
     ACCEPTED = 202
@@ -63,6 +71,7 @@ class HTTPStatus(ExtendedEnumMixin, Enum):
 
 class ContentType(ExtendedEnumMixin, Enum):
     """Content type values"""
+
     JSON = "application/json"
     TEXT = "text/plain"
     HTML = "text/html"
@@ -71,6 +80,7 @@ class ContentType(ExtendedEnumMixin, Enum):
 
 class HTTPHeader(ExtendedEnumMixin, Enum):
     """HTTP header names"""
+
     CONTENT_TYPE = "Content-Type"
     AUTHORIZATION = "Authorization"
     ACCEPT = "Accept"
@@ -79,12 +89,14 @@ class HTTPHeader(ExtendedEnumMixin, Enum):
 
 class AuthScheme(ExtendedEnumMixin, Enum):
     """Authentication scheme prefixes"""
+
     BEARER = "Bearer"
     BASIC = "Basic"
 
 
 class EndpointName(ExtendedEnumMixin, Enum):
     """API endpoint names"""
+
     STATUS = "get_status"
     ROUTES = "routes"
     HORIZON = "horizon"
@@ -102,16 +114,19 @@ class BinaryEndpointName(ExtendedEnumMixin, Enum):
     maps to a logical ``EndpointName`` (see ``BinaryEndpointLogicalMap``) so all
     downstream validation/service/response logic is reused unchanged.
     """
+
     OBSTRUCTION_PARALLEL_BIN = "obstruction_parallel_bin"
 
 
 class MathConstants(ExtendedEnumMixin, Enum):
     """Mathematical constants for calculations"""
+
     EPSILON = 1e-6  # Minimum distance threshold to avoid division by zero
 
 
 class ThresholdConstants(ExtendedEnumMixin, Enum):
     """Threshold values for various calculations"""
+
     PLANE_THRESHOLD_TIGHT = 0.1  # Tight threshold for horizon calculations
     PLANE_THRESHOLD_WIDE = 2.5  # Wide threshold for zenith/worst-case calculations
     VERTICAL_SURFACE_THRESHOLD = 0.3  # Threshold for detecting vertical surfaces
@@ -120,6 +135,7 @@ class ThresholdConstants(ExtendedEnumMixin, Enum):
 
 class AllDirectionDefaults(ExtendedEnumMixin, Enum):
     """Default values for all-direction obstruction calculations"""
+
     NUM_DIRECTIONS = 64  # Default number of directions to sample
     START_ANGLE_DEGREES = 17.5  # Start angle in degrees (relative to window normal)
     END_ANGLE_DEGREES = 162.5  # End angle in degrees (relative to window normal)
@@ -127,18 +143,21 @@ class AllDirectionDefaults(ExtendedEnumMixin, Enum):
 
 class ResponseStatus(ExtendedEnumMixin, Enum):
     """Response status values for API responses"""
+
     SUCCESS = "success"
     ERROR = "error"
 
 
 class ControllerStatus(ExtendedEnumMixin, Enum):
     """Controller status values"""
+
     READY = "ready"
     ERROR = "error"
 
 
 class RequestField(ExtendedEnumMixin, Enum):
     """Required and optional field names for requests"""
+
     # Center position fields (legacy format)
     X = "x"
     Y = "y"
@@ -161,25 +180,31 @@ class RequestField(ExtendedEnumMixin, Enum):
     # Mesh (single combined mesh with all geometry)
     MESH = "mesh"
 
-CENTER_WINDOW_FIELDS= frozenset([
-    RequestField.X.value,
-    RequestField.Y.value,
-    RequestField.Z.value,
-])
 
-ENDPOINT_WINDOW_FIELDS = frozenset([
-    RequestField.X1.value,
-    RequestField.Y1.value,
-    RequestField.Z1.value,
-    RequestField.X2.value,
-    RequestField.Y2.value,
-    RequestField.Z2.value,
-    RequestField.ROOM_POLYGON.value,
-])
+CENTER_WINDOW_FIELDS = frozenset(
+    [
+        RequestField.X.value,
+        RequestField.Y.value,
+        RequestField.Z.value,
+    ]
+)
+
+ENDPOINT_WINDOW_FIELDS = frozenset(
+    [
+        RequestField.X1.value,
+        RequestField.Y1.value,
+        RequestField.Z1.value,
+        RequestField.X2.value,
+        RequestField.Y2.value,
+        RequestField.Z2.value,
+        RequestField.ROOM_POLYGON.value,
+    ]
+)
 
 
 class OptionalRequestField(ExtendedEnumMixin, Enum):
     """Optional field names for multi-direction requests"""
+
     NUM_DIRECTIONS = "num_directions"
     START_ANGLE_DEGREES = "start_angle_degrees"
     END_ANGLE_DEGREES = "end_angle_degrees"
@@ -187,6 +212,7 @@ class OptionalRequestField(ExtendedEnumMixin, Enum):
 
 class ResponseField(ExtendedEnumMixin, Enum):
     """Field names for responses"""
+
     STATUS = "status"
     DATA = "data"
     ERROR = "error"

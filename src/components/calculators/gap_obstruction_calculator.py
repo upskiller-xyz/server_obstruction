@@ -31,6 +31,7 @@ from src.components.models import GapObstructionResult, Window
 @dataclass(frozen=True)
 class GapObstructionConfig:
     """Configuration for gap-based obstruction calculation"""
+
     MIN_GAP_DEG: float = 4.0
     BINARY_SEARCH_PRECISION_DEG: float = 1.0
 
@@ -54,7 +55,7 @@ class GapObstructionCalculator:
         window: Window,
         direction_angle: float,
         config: GapObstructionConfig = GapObstructionConfig(),
-        tri_arrays: Optional[TriangleArrays] = None
+        tri_arrays: Optional[TriangleArrays] = None,
     ) -> GapObstructionResult:
         """
         Calculate obstruction using gap detection for a single direction.
@@ -85,11 +86,13 @@ class GapObstructionCalculator:
             gap_verifier=gap_verifier,
             result_factory=result_factory,
             min_gap_deg=config.MIN_GAP_DEG,
-            precision_deg=config.BINARY_SEARCH_PRECISION_DEG
+            precision_deg=config.BINARY_SEARCH_PRECISION_DEG,
         )
 
         # Delegate to orchestrator (pre-packed tri_arrays reused across directions)
-        return orchestrator.calculate(mesh, window, direction_angle, tri_arrays=tri_arrays)
+        return orchestrator.calculate(
+            mesh, window, direction_angle, tri_arrays=tri_arrays
+        )
 
     @classmethod
     def calculate_from_arrays(
@@ -105,4 +108,6 @@ class GapObstructionCalculator:
         across directions, so no Triangle objects are ever built and there is no
         ``mesh=None`` contract violation.
         """
-        return cls.calculate(None, window, direction_angle, config, tri_arrays=tri_arrays)
+        return cls.calculate(
+            None, window, direction_angle, config, tri_arrays=tri_arrays
+        )

@@ -1,5 +1,5 @@
-from typing import Dict, Any, Optional
 import logging
+from typing import Any, Dict, Optional
 
 from src.server.enums import ServerStatus
 
@@ -7,10 +7,7 @@ from src.server.enums import ServerStatus
 class ServerController:
     """Generic server controller"""
 
-    def __init__(
-        self,
-        services: Optional[Dict[str, Any]] = None
-    ):
+    def __init__(self, services: Optional[Dict[str, Any]] = None):
         """
         Initialize the controller with dependencies
 
@@ -26,7 +23,7 @@ class ServerController:
         try:
             # Initialize all registered services
             for service_name, service in self._services.items():
-                if hasattr(service, 'initialize'):
+                if hasattr(service, "initialize"):
                     logging.debug(f"Initializing service: {service_name}")
                     service.initialize()
 
@@ -46,12 +43,9 @@ class ServerController:
         """
         components = {}
         for service_name, service in self._services.items():
-            if hasattr(service, 'get_status'):
+            if hasattr(service, "get_status"):
                 components[service_name] = service.get_status()
             else:
                 components[service_name] = "ready"
 
-        return {
-            "status": self._status.value,
-            "services": components
-        }
+        return {"status": self._status.value, "services": components}

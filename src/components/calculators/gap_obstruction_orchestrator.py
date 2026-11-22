@@ -33,7 +33,7 @@ class GapObstructionOrchestrator:
         gap_verifier: GapVerificationService,
         result_factory: ObstructionResultFactory,
         min_gap_deg: float,
-        precision_deg: float
+        precision_deg: float,
     ):
         self._gap_detector = gap_detector
         self._gap_verifier = gap_verifier
@@ -46,7 +46,7 @@ class GapObstructionOrchestrator:
         mesh: Optional[Mesh],
         window: Window,
         direction_angle: float,
-        tri_arrays: Optional[TriangleArrays] = None
+        tri_arrays: Optional[TriangleArrays] = None,
     ) -> GapObstructionResult:
         """
         Calculate obstruction using gap detection for a single direction.
@@ -75,15 +75,14 @@ class GapObstructionOrchestrator:
             tri_arrays = RayTriangleIntersector.prepare_arrays(mesh.triangles)
 
         # Step 1: Collect elevation angles using pre-packed arrays
-        elevation_angles = IntersectionCalculator.collect_all_elevation_angles_from_arrays(
-            tri_arrays, window
+        elevation_angles = (
+            IntersectionCalculator.collect_all_elevation_angles_from_arrays(
+                tri_arrays, window
+            )
         )
 
         # Step 2: Find gaps
-        gaps = self._gap_detector.find_gaps(
-            elevation_angles,
-            self._min_gap_deg
-        )
+        gaps = self._gap_detector.find_gaps(elevation_angles, self._min_gap_deg)
 
         if tri_arrays.count == 0:
             # Nothing ahead of/above the window survived the pre-filter — full sky
@@ -91,7 +90,7 @@ class GapObstructionOrchestrator:
                 elapsed_ms=(time.time() - start) * 1000,
                 rays_cast=0,
                 gaps_tested=0,
-                intersection_points=0
+                intersection_points=0,
             )
             metrics.log_summary(ObstructionStatus.NO_OBSTRUCTION)
             return self._result_factory.create_unobstructed()
@@ -102,7 +101,7 @@ class GapObstructionOrchestrator:
                 elapsed_ms=(time.time() - start) * 1000,
                 rays_cast=0,
                 gaps_tested=0,
-                intersection_points=len(elevation_angles)
+                intersection_points=len(elevation_angles),
             )
             metrics.log_summary(ObstructionStatus.FULLY_OBSTRUCTED)
             return self._result_factory.create_fully_obstructed()
@@ -112,8 +111,12 @@ class GapObstructionOrchestrator:
         # Step 3: Test gaps largest-first
         for gap_index, (gap_low, gap_high, _) in enumerate(gaps):
             verification = self._gap_verifier.verify_gap(
-                gap_low, gap_high, origin, direction_angle,
-                tri_arrays, self._precision_deg
+                gap_low,
+                gap_high,
+                origin,
+                direction_angle,
+                tri_arrays,
+                self._precision_deg,
             )
             rays_cast += verification.rays_cast
 
@@ -122,13 +125,12 @@ class GapObstructionOrchestrator:
                     elapsed_ms=(time.time() - start) * 1000,
                     rays_cast=rays_cast,
                     gaps_tested=gap_index + 1,
-                    intersection_points=len(elevation_angles)
+                    intersection_points=len(elevation_angles),
                 )
                 metrics.log_summary(ObstructionStatus.PARTIALLY_OBSTRUCTED)
 
                 return self._result_factory.create_from_gap(
-                    verification.horizon_deg,
-                    verification.zenith_deg
+                    verification.horizon_deg, verification.zenith_deg
                 )
 
         # All gaps obstructed
@@ -136,7 +138,7 @@ class GapObstructionOrchestrator:
             elapsed_ms=(time.time() - start) * 1000,
             rays_cast=rays_cast,
             gaps_tested=len(gaps),
-            intersection_points=len(elevation_angles)
+            intersection_points=len(elevation_angles),
         )
         metrics.log_summary(ObstructionStatus.FULLY_OBSTRUCTED)
 

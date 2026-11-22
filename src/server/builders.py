@@ -4,9 +4,16 @@ Builder classes for constructing API responses following Builder Pattern
 These classes use classmethods to build responses, following the principle:
 "Use classmethods for functionality that operates on the class"
 """
-from typing import Dict, Any, Optional
-from src.server.base.constants import ControllerStatus, ResponseStatus, ResponseField, RequestField
+
+from typing import Any, Dict, Optional
+
 from src.components.models import ObstructionResult
+from src.server.base.constants import (
+    ControllerStatus,
+    RequestField,
+    ResponseField,
+    ResponseStatus,
+)
 from src.server.base.errors import PointOnTriangleError
 
 
@@ -18,11 +25,11 @@ class ResponseBuilder:
     """
 
     @classmethod
-    def status(cls, data:Any)->Dict[str, Any]:
+    def status(cls, data: Any) -> Dict[str, Any]:
         return {
-                ResponseField.CONTROLLER.value: ControllerStatus.READY.value,
-                ResponseField.SERVICE.value: data
-            }
+            ResponseField.CONTROLLER.value: ControllerStatus.READY.value,
+            ResponseField.SERVICE.value: data,
+        }
 
     @classmethod
     def success(cls, data: Any) -> Dict[str, Any]:
@@ -37,7 +44,7 @@ class ResponseBuilder:
         """
         return {
             ResponseField.STATUS.value: ResponseStatus.SUCCESS.value,
-            ResponseField.DATA.value: data
+            ResponseField.DATA.value: data,
         }
 
     @classmethod
@@ -56,7 +63,8 @@ class ResponseBuilder:
     @classmethod
     def success_with_both_angles(
         cls,
-        result: Dict[str, ObstructionResult] | tuple[ObstructionResult, ObstructionResult]
+        result: Dict[str, ObstructionResult]
+        | tuple[ObstructionResult, ObstructionResult],
     ) -> Dict[str, Any]:
         """
         Build a success response with both horizon and zenith results
@@ -70,16 +78,18 @@ class ResponseBuilder:
         """
         # Handle dict format
         if isinstance(result, dict):
-            horizon_result = result['horizon']
-            zenith_result = result['zenith']
+            horizon_result = result["horizon"]
+            zenith_result = result["zenith"]
         else:
             # Handle tuple format
             horizon_result, zenith_result = result
 
-        return cls.success({
-            ResponseField.HORIZON.value: horizon_result.to_dict(),
-            ResponseField.ZENITH.value: zenith_result.to_dict()
-        })
+        return cls.success(
+            {
+                ResponseField.HORIZON.value: horizon_result.to_dict(),
+                ResponseField.ZENITH.value: zenith_result.to_dict(),
+            }
+        )
 
     @classmethod
     def success_with_multi_direction(cls, results: Dict[str, Any]) -> Dict[str, Any]:
@@ -115,7 +125,7 @@ class ErrorResponseBuilder:
         """
         return {
             ResponseField.STATUS.value: ResponseStatus.ERROR.value,
-            ResponseField.ERROR.value: error_message
+            ResponseField.ERROR.value: error_message,
         }
 
     @classmethod
@@ -162,34 +172,32 @@ class ErrorResponseBuilder:
             ResponseField.WINDOW_CENTER.value: {
                 RequestField.X.value: error.point.x,
                 RequestField.Y.value: error.point.y,
-                RequestField.Z.value: error.point.z
+                RequestField.Z.value: error.point.z,
             },
             ResponseField.TRIANGLE.value: {
                 ResponseField.VERTICES.value: [
                     {
                         RequestField.X.value: error.triangle.v1.x,
                         RequestField.Y.value: error.triangle.v1.y,
-                        RequestField.Z.value: error.triangle.v1.z
+                        RequestField.Z.value: error.triangle.v1.z,
                     },
                     {
                         RequestField.X.value: error.triangle.v2.x,
                         RequestField.Y.value: error.triangle.v2.y,
-                        RequestField.Z.value: error.triangle.v2.z
+                        RequestField.Z.value: error.triangle.v2.z,
                     },
                     {
                         RequestField.X.value: error.triangle.v3.x,
                         RequestField.Y.value: error.triangle.v3.y,
-                        RequestField.Z.value: error.triangle.v3.z
-                    }
+                        RequestField.Z.value: error.triangle.v3.z,
+                    },
                 ]
-            }
+            },
         }
 
     @classmethod
     def from_exception(
-        cls,
-        exception: Exception,
-        operation: Optional[str] = None
+        cls, exception: Exception, operation: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Build error response from exception using Strategy Pattern

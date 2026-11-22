@@ -27,7 +27,7 @@ class AsyncDirectionCalculator:
         tri_arrays: TriangleArrays,
         window_orig: Window,
         direction_angle: float,
-        pool_manager: ThreadPoolManager
+        pool_manager: ThreadPoolManager,
     ) -> Dict[str, Any]:
         """
         Calculate obstruction for a single direction using gap-based approach
@@ -55,8 +55,10 @@ class AsyncDirectionCalculator:
             executor,
             partial(
                 GapObstructionCalculator.calculate_from_arrays,
-                tri_arrays, window, direction_angle
-            )
+                tri_arrays,
+                window,
+                direction_angle,
+            ),
         )
 
         # Build backward-compatible response with horizon/zenith

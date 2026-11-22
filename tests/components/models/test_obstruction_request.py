@@ -1,6 +1,7 @@
 import pytest
-from src.components.geometry import Point3D, Vector3D, Mesh
-from src.components.models import Window, ObstructionRequest
+
+from src.components.geometry import Mesh, Point3D, Vector3D
+from src.components.models import ObstructionRequest, Window
 from src.server.base.constants import RequestField
 
 
@@ -10,19 +11,11 @@ class TestObstructionRequest:
     def test_obstruction_request_creation(self):
         """Test basic obstruction request creation"""
         window = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
-        mesh = Mesh.from_vertices([
-            [1.0, 0.0, 0.0],
-            [1.0, 3.0, 0.0],
-            [1.0, 1.5, 1.0]
-        ])
+        mesh = Mesh.from_vertices([[1.0, 0.0, 0.0], [1.0, 3.0, 0.0], [1.0, 1.5, 1.0]])
 
-        request = ObstructionRequest(
-            window=window,
-            mesh=mesh
-        )
+        request = ObstructionRequest(window=window, mesh=mesh)
 
         assert request.window == window
         assert request.mesh == mesh
@@ -30,13 +23,9 @@ class TestObstructionRequest:
     def test_obstruction_request_immutability(self):
         """Test that obstruction request is immutable"""
         window = Window(
-            center=Point3D(x=0.0, y=1.5, z=0.0),
-            normal=Vector3D(x=1.0, y=0.0, z=0.0)
+            center=Point3D(x=0.0, y=1.5, z=0.0), normal=Vector3D(x=1.0, y=0.0, z=0.0)
         )
-        request = ObstructionRequest(
-            window=window,
-            mesh=None
-        )
+        request = ObstructionRequest(window=window, mesh=None)
 
         with pytest.raises(Exception):  # FrozenInstanceError or AttributeError
             request.window = window
@@ -51,8 +40,8 @@ class TestObstructionRequest:
             RequestField.MESH.value: [
                 [1.0, 0.0, 0.0],
                 [1.0, 3.0, 0.0],
-                [1.0, 1.5, 1.0]
-            ]
+                [1.0, 1.5, 1.0],
+            ],
         }
 
         request = ObstructionRequest.from_dict(data)
@@ -69,7 +58,7 @@ class TestObstructionRequest:
             RequestField.Y.value: 1.5,
             RequestField.Z.value: 0.0,
             RequestField.DIRECTION_ANGLE.value: 0.0,
-            RequestField.MESH.value: []
+            RequestField.MESH.value: [],
         }
 
         request = ObstructionRequest.from_dict(data)
@@ -90,8 +79,8 @@ class TestObstructionRequest:
                 [1.0, 1.5, 1.0],
                 [2.0, 0.0, 0.0],
                 [2.0, 3.0, 0.0],
-                [2.0, 1.5, 1.0]
-            ]
+                [2.0, 1.5, 1.0],
+            ],
         }
 
         request = ObstructionRequest.from_dict(data)
@@ -105,7 +94,7 @@ class TestObstructionRequest:
             RequestField.X.value: 0.0,
             RequestField.Y.value: 1.5,
             RequestField.Z.value: 0.0,
-            RequestField.DIRECTION_ANGLE.value: 0.0
+            RequestField.DIRECTION_ANGLE.value: 0.0,
         }
 
         request = ObstructionRequest.from_dict(data)

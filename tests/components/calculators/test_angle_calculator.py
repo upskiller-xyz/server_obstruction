@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from src.components.calculators.angle_calculator import AngleCalculator
 from src.server.base.constants import ANGLES
 
@@ -12,7 +13,9 @@ class TestAngleCalculator:
         vertical_distance = 0.0
         horizontal_distance = 10.0
 
-        angle_rad = AngleCalculator.horizon_angle(vertical_distance, horizontal_distance)
+        angle_rad = AngleCalculator.horizon_angle(
+            vertical_distance, horizontal_distance
+        )
         angle_deg = AngleCalculator.radians_to_degrees(angle_rad)
 
         assert abs(angle_deg) < 0.01
@@ -22,7 +25,9 @@ class TestAngleCalculator:
         vertical_distance = 10.0
         horizontal_distance = 10.0
 
-        angle_rad = AngleCalculator.horizon_angle(vertical_distance, horizontal_distance)
+        angle_rad = AngleCalculator.horizon_angle(
+            vertical_distance, horizontal_distance
+        )
         angle_deg = AngleCalculator.radians_to_degrees(angle_rad)
 
         assert abs(angle_deg - 45.0) < 0.01
@@ -32,7 +37,9 @@ class TestAngleCalculator:
         vertical_distance = -10.0
         horizontal_distance = 10.0
 
-        angle_rad = AngleCalculator.horizon_angle(vertical_distance, horizontal_distance)
+        angle_rad = AngleCalculator.horizon_angle(
+            vertical_distance, horizontal_distance
+        )
         angle_deg = AngleCalculator.radians_to_degrees(angle_rad)
 
         assert abs(angle_deg + 45.0) < 0.01
@@ -62,7 +69,9 @@ class TestAngleCalculator:
         vertical_distance = 10.0
         horizontal_distance = 10.0
 
-        angle_rad = AngleCalculator.call(vertical_distance, horizontal_distance, ANGLES.HORIZON)
+        angle_rad = AngleCalculator.call(
+            vertical_distance, horizontal_distance, ANGLES.HORIZON
+        )
         angle_deg = AngleCalculator.radians_to_degrees(angle_rad)
 
         assert abs(angle_deg - 45.0) < 0.01
@@ -72,7 +81,9 @@ class TestAngleCalculator:
         vertical_distance = 0.0
         horizontal_distance = 10.0
 
-        angle_rad = AngleCalculator.call(vertical_distance, horizontal_distance, ANGLES.ZENITH)
+        angle_rad = AngleCalculator.call(
+            vertical_distance, horizontal_distance, ANGLES.ZENITH
+        )
         angle_deg = AngleCalculator.radians_to_degrees(angle_rad)
 
         assert abs(angle_deg - 90.0) < 0.01

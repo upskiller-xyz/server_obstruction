@@ -5,11 +5,12 @@ Vertical plane in 3D space for projecting points onto.
 """
 
 from dataclasses import dataclass
+
 import numpy as np
 
+from src.components.geometry.coordinate_system import CoordinateSystem
 from src.components.geometry.point import Point3D
 from src.components.geometry.vector import Vector3D
-from src.components.geometry.coordinate_system import CoordinateSystem
 from src.server.base.constants import MathConstants
 
 
@@ -22,6 +23,7 @@ class ProjectionPlane:
     - u_axis: horizontal direction vector
     - v_axis: vertical direction vector (always points up in world coordinates)
     """
+
     origin: Point3D
     u_axis: Vector3D  # Horizontal axis (perpendicular to normal and vertical)
     v_axis: Vector3D  # Vertical axis (always pointing up)

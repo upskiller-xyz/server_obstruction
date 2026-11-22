@@ -22,11 +22,12 @@ from src.server.base.constants import RequestField
 @dataclass(frozen=True)
 class ObstructionRequest:
     """Input request for obstruction calculation"""
+
     window: Window
     mesh: Optional[Mesh]
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'ObstructionRequest':
+    def from_dict(cls, data: dict) -> "ObstructionRequest":
         """
         Create ObstructionRequest from dictionary.
 
@@ -74,5 +75,3 @@ class ObstructionRequest:
             f"Unsupported mesh format: expected a list or (N,3) array of vertices, "
             f"got {type(mesh_data).__name__}."
         )
-    
-    

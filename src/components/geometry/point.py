@@ -5,6 +5,7 @@ Immutable dataclass for 3D points with coordinate system utilities.
 """
 
 from dataclasses import dataclass
+
 import numpy as np
 
 from src.components.geometry.coordinate_system import CoordinateSystem
@@ -13,6 +14,7 @@ from src.components.geometry.coordinate_system import CoordinateSystem
 @dataclass(frozen=True)
 class Point3D:
     """Immutable 3D point representation"""
+
     x: float
     y: float
     z: float
@@ -22,7 +24,7 @@ class Point3D:
         return np.array([self.x, self.y, self.z])
 
     @classmethod
-    def from_array(cls, arr: np.ndarray) -> 'Point3D':
+    def from_array(cls, arr: np.ndarray) -> "Point3D":
         """Create Point3D from numpy array"""
         return cls(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
 

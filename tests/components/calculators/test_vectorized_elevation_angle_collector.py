@@ -1,9 +1,11 @@
-import pytest
 import numpy as np
+import pytest
 
 from src.components.calculators.elevation_angle_collector import ElevationAngleCollector
 from src.components.calculators.ray_triangle_intersector import RayTriangleIntersector
-from src.components.calculators.vectorized_elevation_angle_collector import VectorizedElevationAngleCollector
+from src.components.calculators.vectorized_elevation_angle_collector import (
+    VectorizedElevationAngleCollector,
+)
 from src.components.geometry import Mesh, Point3D, Triangle, Vector3D
 from src.components.models import Window
 
@@ -18,33 +20,24 @@ class TestVectorizedElevationAngleCollector:
     @pytest.fixture
     def window_x(self):
         """Window at origin looking in +X direction"""
-        return Window(
-            center=Point3D(0.0, 0.0, 0.0),
-            normal=Vector3D(1.0, 0.0, 0.0)
-        )
+        return Window(center=Point3D(0.0, 0.0, 0.0), normal=Vector3D(1.0, 0.0, 0.0))
 
     @pytest.fixture
     def window_elevated(self):
         """Window at z=1.5 looking in +X direction"""
-        return Window(
-            center=Point3D(0.0, 0.0, 1.5),
-            normal=Vector3D(1.0, 0.0, 0.0)
-        )
+        return Window(center=Point3D(0.0, 0.0, 1.5), normal=Vector3D(1.0, 0.0, 0.0))
 
     @pytest.fixture
     def window_y(self):
         """Window at origin looking in +Y direction"""
-        return Window(
-            center=Point3D(0.0, 0.0, 0.0),
-            normal=Vector3D(0.0, 1.0, 0.0)
-        )
+        return Window(center=Point3D(0.0, 0.0, 0.0), normal=Vector3D(0.0, 1.0, 0.0))
 
     @pytest.fixture
     def window_diagonal(self):
         """Window at origin looking in diagonal XY direction"""
         return Window(
             center=Point3D(0.0, 0.0, 0.0),
-            normal=Vector3D.from_horizontal_angle(np.pi / 4)
+            normal=Vector3D.from_horizontal_angle(np.pi / 4),
         )
 
     # --- Empty / trivial cases ---
@@ -57,9 +50,7 @@ class TestVectorizedElevationAngleCollector:
     def test_single_triangle_no_intersection(self, window_x):
         """Triangle entirely on one side of the plane produces no angles"""
         triangle = Triangle(
-            Point3D(5.0, 5.0, 3.0),
-            Point3D(6.0, 5.0, 3.0),
-            Point3D(5.5, 5.0, 4.0)
+            Point3D(5.0, 5.0, 3.0), Point3D(6.0, 5.0, 3.0), Point3D(5.5, 5.0, 4.0)
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
             (triangle,), window_x
@@ -69,9 +60,7 @@ class TestVectorizedElevationAngleCollector:
     def test_triangle_below_window(self, window_elevated):
         """Triangle with all intersection points below window height produces no angles"""
         triangle = Triangle(
-            Point3D(5.0, -1.0, 0.0),
-            Point3D(5.0, 1.0, 0.0),
-            Point3D(5.0, 0.0, 1.0)
+            Point3D(5.0, -1.0, 0.0), Point3D(5.0, 1.0, 0.0), Point3D(5.0, 0.0, 1.0)
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
             (triangle,), window_elevated
@@ -81,9 +70,7 @@ class TestVectorizedElevationAngleCollector:
     def test_triangle_behind_window(self, window_x):
         """Triangle behind window (negative horizontal distance) produces no angles"""
         triangle = Triangle(
-            Point3D(-5.0, -1.0, 0.0),
-            Point3D(-5.0, 1.0, 0.0),
-            Point3D(-5.0, 0.0, 5.0)
+            Point3D(-5.0, -1.0, 0.0), Point3D(-5.0, 1.0, 0.0), Point3D(-5.0, 0.0, 5.0)
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
             (triangle,), window_x
@@ -95,9 +82,7 @@ class TestVectorizedElevationAngleCollector:
     def test_single_triangle_crossing_plane(self, window_x):
         """Triangle crossing the vertical plane produces elevation angles"""
         triangle = Triangle(
-            Point3D(5.0, -2.0, 1.0),
-            Point3D(5.0, 2.0, 1.0),
-            Point3D(5.0, 0.0, 5.0)
+            Point3D(5.0, -2.0, 1.0), Point3D(5.0, 2.0, 1.0), Point3D(5.0, 0.0, 5.0)
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
             (triangle,), window_x
@@ -108,9 +93,7 @@ class TestVectorizedElevationAngleCollector:
     def test_known_45_degree_angle(self, window_x):
         """Triangle at equal horizontal and vertical distance gives ~45 degrees"""
         triangle = Triangle(
-            Point3D(10.0, -1.0, 0.0),
-            Point3D(10.0, 1.0, 0.0),
-            Point3D(10.0, 0.0, 10.0)
+            Point3D(10.0, -1.0, 0.0), Point3D(10.0, 1.0, 0.0), Point3D(10.0, 0.0, 10.0)
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
             (triangle,), window_x
@@ -123,14 +106,10 @@ class TestVectorizedElevationAngleCollector:
     def test_multiple_triangles(self, window_x):
         """Multiple triangles produce combined sorted angles"""
         tri1 = Triangle(
-            Point3D(5.0, -1.0, 0.0),
-            Point3D(5.0, 1.0, 0.0),
-            Point3D(5.0, 0.0, 3.0)
+            Point3D(5.0, -1.0, 0.0), Point3D(5.0, 1.0, 0.0), Point3D(5.0, 0.0, 3.0)
         )
         tri2 = Triangle(
-            Point3D(5.0, -1.0, 4.0),
-            Point3D(5.0, 1.0, 4.0),
-            Point3D(5.0, 0.0, 8.0)
+            Point3D(5.0, -1.0, 4.0), Point3D(5.0, 1.0, 4.0), Point3D(5.0, 0.0, 8.0)
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
             (tri1, tri2), window_x
@@ -143,9 +122,7 @@ class TestVectorizedElevationAngleCollector:
     def test_vertex_on_plane(self, window_x):
         """Triangle with one vertex exactly on the plane"""
         triangle = Triangle(
-            Point3D(5.0, 0.0, 3.0),
-            Point3D(5.0, 2.0, 1.0),
-            Point3D(5.0, -2.0, 1.0)
+            Point3D(5.0, 0.0, 3.0), Point3D(5.0, 2.0, 1.0), Point3D(5.0, -2.0, 1.0)
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
             (triangle,), window_x
@@ -155,9 +132,7 @@ class TestVectorizedElevationAngleCollector:
     def test_edge_on_plane(self, window_x):
         """Triangle with one edge lying on the plane is excluded"""
         triangle = Triangle(
-            Point3D(5.0, 0.0, 1.0),
-            Point3D(5.0, 0.0, 5.0),
-            Point3D(5.0, 3.0, 3.0)
+            Point3D(5.0, 0.0, 1.0), Point3D(5.0, 0.0, 5.0), Point3D(5.0, 3.0, 3.0)
         )
         result_vec = VectorizedElevationAngleCollector.collect_all_angles(
             (triangle,), window_x
@@ -170,9 +145,7 @@ class TestVectorizedElevationAngleCollector:
     def test_different_window_directions(self, window_x, window_y, window_diagonal):
         """Results change with different window directions"""
         triangle = Triangle(
-            Point3D(5.0, -2.0, 0.0),
-            Point3D(5.0, 2.0, 0.0),
-            Point3D(5.0, 0.0, 5.0)
+            Point3D(5.0, -2.0, 0.0), Point3D(5.0, 2.0, 0.0), Point3D(5.0, 0.0, 5.0)
         )
         triangles = (triangle,)
 
@@ -192,9 +165,7 @@ class TestVectorizedElevationAngleCollector:
     def test_equivalence_single_triangle(self, window_x):
         """Vectorized matches scalar for single triangle"""
         triangle = Triangle(
-            Point3D(5.0, -2.0, 0.0),
-            Point3D(5.0, 2.0, 0.0),
-            Point3D(5.0, 0.0, 5.0)
+            Point3D(5.0, -2.0, 0.0), Point3D(5.0, 2.0, 0.0), Point3D(5.0, 0.0, 5.0)
         )
         triangles = (triangle,)
 
@@ -209,19 +180,13 @@ class TestVectorizedElevationAngleCollector:
         """Vectorized matches scalar for multiple triangles"""
         triangles = (
             Triangle(
-                Point3D(5.0, -1.0, 0.0),
-                Point3D(5.0, 1.0, 0.0),
-                Point3D(5.0, 0.0, 5.0)
+                Point3D(5.0, -1.0, 0.0), Point3D(5.0, 1.0, 0.0), Point3D(5.0, 0.0, 5.0)
             ),
             Triangle(
-                Point3D(8.0, -2.0, 0.0),
-                Point3D(8.0, 2.0, 0.0),
-                Point3D(8.0, 0.0, 10.0)
+                Point3D(8.0, -2.0, 0.0), Point3D(8.0, 2.0, 0.0), Point3D(8.0, 0.0, 10.0)
             ),
             Triangle(
-                Point3D(3.0, -1.0, 2.0),
-                Point3D(3.0, 1.0, 2.0),
-                Point3D(3.0, 0.0, 4.0)
+                Point3D(3.0, -1.0, 2.0), Point3D(3.0, 1.0, 2.0), Point3D(3.0, 0.0, 4.0)
             ),
         )
 
@@ -236,20 +201,14 @@ class TestVectorizedElevationAngleCollector:
         """Vectorized matches scalar for non-axis-aligned window direction"""
         triangles = (
             Triangle(
-                Point3D(5.0, 5.0, 0.0),
-                Point3D(5.0, 5.0, 6.0),
-                Point3D(5.0, -1.0, 3.0)
+                Point3D(5.0, 5.0, 0.0), Point3D(5.0, 5.0, 6.0), Point3D(5.0, -1.0, 3.0)
             ),
             Triangle(
-                Point3D(3.0, 3.0, 1.0),
-                Point3D(3.0, 3.0, 7.0),
-                Point3D(3.0, -3.0, 4.0)
+                Point3D(3.0, 3.0, 1.0), Point3D(3.0, 3.0, 7.0), Point3D(3.0, -3.0, 4.0)
             ),
         )
 
-        scalar = ElevationAngleCollector.collect_all_angles(
-            triangles, window_diagonal
-        )
+        scalar = ElevationAngleCollector.collect_all_angles(triangles, window_diagonal)
         vectorized = VectorizedElevationAngleCollector.collect_all_angles(
             triangles, window_diagonal
         )
@@ -261,39 +220,31 @@ class TestVectorizedElevationAngleCollector:
         triangles = (
             # Intersects plane, above window
             Triangle(
-                Point3D(5.0, -2.0, 0.0),
-                Point3D(5.0, 2.0, 0.0),
-                Point3D(5.0, 0.0, 8.0)
+                Point3D(5.0, -2.0, 0.0), Point3D(5.0, 2.0, 0.0), Point3D(5.0, 0.0, 8.0)
             ),
             # Entirely on one side of plane (no intersection)
             Triangle(
-                Point3D(5.0, 3.0, 3.0),
-                Point3D(6.0, 3.0, 3.0),
-                Point3D(5.5, 3.0, 4.0)
+                Point3D(5.0, 3.0, 3.0), Point3D(6.0, 3.0, 3.0), Point3D(5.5, 3.0, 4.0)
             ),
             # Below window height
             Triangle(
-                Point3D(5.0, -1.0, 0.0),
-                Point3D(5.0, 1.0, 0.0),
-                Point3D(5.0, 0.0, 1.0)
+                Point3D(5.0, -1.0, 0.0), Point3D(5.0, 1.0, 0.0), Point3D(5.0, 0.0, 1.0)
             ),
             # Behind window
             Triangle(
                 Point3D(-5.0, -1.0, 2.0),
                 Point3D(-5.0, 1.0, 2.0),
-                Point3D(-5.0, 0.0, 5.0)
+                Point3D(-5.0, 0.0, 5.0),
             ),
             # Another valid intersection
             Triangle(
                 Point3D(10.0, -3.0, 0.0),
                 Point3D(10.0, 3.0, 0.0),
-                Point3D(10.0, 0.0, 12.0)
+                Point3D(10.0, 0.0, 12.0),
             ),
         )
 
-        scalar = ElevationAngleCollector.collect_all_angles(
-            triangles, window_elevated
-        )
+        scalar = ElevationAngleCollector.collect_all_angles(triangles, window_elevated)
         vectorized = VectorizedElevationAngleCollector.collect_all_angles(
             triangles, window_elevated
         )
@@ -311,11 +262,13 @@ class TestVectorizedElevationAngleCollector:
             z_top = np.random.uniform(3.0, 15.0)
             width = np.random.uniform(0.5, 3.0)
 
-            triangles.append(Triangle(
-                Point3D(x, y_center - width, z_base),
-                Point3D(x, y_center + width, z_base),
-                Point3D(x, y_center, z_top)
-            ))
+            triangles.append(
+                Triangle(
+                    Point3D(x, y_center - width, z_base),
+                    Point3D(x, y_center + width, z_base),
+                    Point3D(x, y_center, z_top),
+                )
+            )
 
         triangles = tuple(triangles)
 
@@ -333,14 +286,10 @@ class TestVectorizedElevationAngleCollector:
         """Result is a sorted list of floats"""
         triangles = (
             Triangle(
-                Point3D(5.0, -1.0, 0.0),
-                Point3D(5.0, 1.0, 0.0),
-                Point3D(5.0, 0.0, 5.0)
+                Point3D(5.0, -1.0, 0.0), Point3D(5.0, 1.0, 0.0), Point3D(5.0, 0.0, 5.0)
             ),
             Triangle(
-                Point3D(3.0, -1.0, 0.0),
-                Point3D(3.0, 1.0, 0.0),
-                Point3D(3.0, 0.0, 10.0)
+                Point3D(3.0, -1.0, 0.0), Point3D(3.0, 1.0, 0.0), Point3D(3.0, 0.0, 10.0)
             ),
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
@@ -354,14 +303,12 @@ class TestVectorizedElevationAngleCollector:
         """All returned angles are between 0 and 90 degrees"""
         triangles = (
             Triangle(
-                Point3D(5.0, -2.0, 0.0),
-                Point3D(5.0, 2.0, 0.0),
-                Point3D(5.0, 0.0, 5.0)
+                Point3D(5.0, -2.0, 0.0), Point3D(5.0, 2.0, 0.0), Point3D(5.0, 0.0, 5.0)
             ),
             Triangle(
                 Point3D(1.0, -1.0, 0.0),
                 Point3D(1.0, 1.0, 0.0),
-                Point3D(1.0, 0.0, 100.0)
+                Point3D(1.0, 0.0, 100.0),
             ),
         )
         result = VectorizedElevationAngleCollector.collect_all_angles(
@@ -375,14 +322,10 @@ class TestVectorizedElevationAngleCollector:
         """collect_all_angles_from_arrays produces same results as collect_all_angles"""
         triangles = (
             Triangle(
-                Point3D(5.0, -2.0, 0.0),
-                Point3D(5.0, 2.0, 0.0),
-                Point3D(5.0, 0.0, 5.0)
+                Point3D(5.0, -2.0, 0.0), Point3D(5.0, 2.0, 0.0), Point3D(5.0, 0.0, 5.0)
             ),
             Triangle(
-                Point3D(8.0, -1.0, 1.0),
-                Point3D(8.0, 1.0, 1.0),
-                Point3D(8.0, 0.0, 10.0)
+                Point3D(8.0, -1.0, 1.0), Point3D(8.0, 1.0, 1.0), Point3D(8.0, 0.0, 10.0)
             ),
         )
 
@@ -409,9 +352,21 @@ class TestVectorizedElevationAngleCollector:
         np.random.seed(99)
         triangles = tuple(
             Triangle(
-                Point3D(np.random.uniform(3, 20), np.random.uniform(-5, 5), np.random.uniform(-1, 2)),
-                Point3D(np.random.uniform(3, 20), np.random.uniform(-5, 5), np.random.uniform(-1, 2)),
-                Point3D(np.random.uniform(3, 20), np.random.uniform(-5, 5), np.random.uniform(3, 15))
+                Point3D(
+                    np.random.uniform(3, 20),
+                    np.random.uniform(-5, 5),
+                    np.random.uniform(-1, 2),
+                ),
+                Point3D(
+                    np.random.uniform(3, 20),
+                    np.random.uniform(-5, 5),
+                    np.random.uniform(-1, 2),
+                ),
+                Point3D(
+                    np.random.uniform(3, 20),
+                    np.random.uniform(-5, 5),
+                    np.random.uniform(3, 15),
+                ),
             )
             for _ in range(200)
         )

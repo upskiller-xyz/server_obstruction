@@ -17,6 +17,7 @@ from src.server.base.constants import MathConstants
 @dataclass(frozen=True)
 class TriangleArrays:
     """Pre-packed triangle vertex arrays for vectorized intersection testing"""
+
     v0: np.ndarray  # (N, 3)
     v1: np.ndarray  # (N, 3)
     v2: np.ndarray  # (N, 3)
@@ -99,7 +100,7 @@ class RayTriangleIntersector:
         origin: np.ndarray,
         directions: np.ndarray,
         tri_arrays: TriangleArrays,
-        min_distance: float = 0.5
+        min_distance: float = 0.5,
     ) -> np.ndarray:
         """
         Test M rays (same origin) against N triangles using vectorized Moller-Trumbore.
@@ -117,8 +118,8 @@ class RayTriangleIntersector:
             Boolean array of shape (M,) — True if ray hits any triangle
         """
         # Expand dims for broadcasting: rays (M,1,3), triangles (1,N,3)
-        rd = directions[:, np.newaxis, :]           # (M, 1, 3)
-        v0 = tri_arrays.v0[np.newaxis, :, :]        # (1, N, 3)
+        rd = directions[:, np.newaxis, :]  # (M, 1, 3)
+        v0 = tri_arrays.v0[np.newaxis, :, :]  # (1, N, 3)
 
         edge1 = tri_arrays.v1[np.newaxis, :, :] - v0  # (1, N, 3)
         edge2 = tri_arrays.v2[np.newaxis, :, :] - v0  # (1, N, 3)
@@ -153,7 +154,7 @@ class RayTriangleIntersector:
         # t = f * dot(edge2, q) -> (M, N)
         edge2_dot_q = np.sum(edge2 * q, axis=2)  # (1, N)
         t = f * edge2_dot_q
-        valid &= (t > min_distance)
+        valid &= t > min_distance
 
         # For each ray: did it hit ANY triangle?
         return np.any(valid, axis=1)

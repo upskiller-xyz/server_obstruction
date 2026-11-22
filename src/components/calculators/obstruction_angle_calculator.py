@@ -5,7 +5,9 @@ from typing import Optional
 import numpy as np
 
 from src.components.calculators import AngleCalculator
-from src.components.calculators.geometric_distance_calculator import GeometricDistanceCalculator
+from src.components.calculators.geometric_distance_calculator import (
+    GeometricDistanceCalculator,
+)
 from src.components.geometry import Point3D
 from src.components.models import Window
 from src.server.base.constants import ANGLES
@@ -24,10 +26,7 @@ class ObstructionAngleCalculator:
 
     @classmethod
     def calculate(
-        cls,
-        point: Point3D,
-        window: Window,
-        angle_type: ANGLES = ANGLES.HORIZON
+        cls, point: Point3D, window: Window, angle_type: ANGLES = ANGLES.HORIZON
     ) -> Optional[float]:
         """
         Calculate obstruction angle from window to point with filtering
@@ -57,9 +56,7 @@ class ObstructionAngleCalculator:
             return None
 
         # Calculate angle using appropriate method
-        angle = AngleCalculator.call(
-            vertical_distance, horizontal_distance, angle_type
-        )
+        angle = AngleCalculator.call(vertical_distance, horizontal_distance, angle_type)
 
         if angle is None:
             return None

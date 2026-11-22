@@ -1,20 +1,20 @@
 """Server-side decorators for endpoint handlers"""
-from functools import wraps
-from typing import Callable, Any, Type, Optional
-from flask import request, jsonify
-from werkzeug.exceptions import BadRequest, UnsupportedMediaType
-from pydantic import BaseModel, ValidationError
-import traceback
-import logging
 
-from src.server.base.constants import ResponseField, HTTPStatus
+import logging
+import traceback
+from functools import wraps
+from typing import Any, Callable, Optional, Type
+
+from flask import jsonify, request
+from pydantic import BaseModel, ValidationError
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
+
+from src.server.base.constants import HTTPStatus, ResponseField
 from src.server.enums import EndpointType
 
 
-
 def endpoint_error_handler(
-    endpoint: EndpointType,
-    request_model: Optional[Type[BaseModel]] = None
+    endpoint: EndpointType, request_model: Optional[Type[BaseModel]] = None
 ) -> Callable:
     """
     Decorator for endpoint handlers to provide unified error handling and JSON extraction.
@@ -44,6 +44,7 @@ def endpoint_error_handler(
     Returns:
         Decorated function with JSON extraction, validation, and error handling
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -64,13 +65,17 @@ def endpoint_error_handler(
                         data = request_model(**raw_data)
                     except ValidationError as e:
                         # Format validation errors
-                        error_msgs = "; ".join([
-                            f"{error['loc'][0]}: {error['msg']}"
-                            for error in e.errors()
-                        ])
-                        return jsonify({
-                            ResponseField.ERROR.value: f"Validation error: {error_msgs}"
-                        }), HTTPStatus.BAD_REQUEST.value
+                        error_msgs = "; ".join(
+                            [
+                                f"{error['loc'][0]}: {error['msg']}"
+                                for error in e.errors()
+                            ]
+                        )
+                        return jsonify(
+                            {
+                                ResponseField.ERROR.value: f"Validation error: {error_msgs}"
+                            }
+                        ), HTTPStatus.BAD_REQUEST.value
                 else:
                     data = raw_data
 
@@ -79,25 +84,24 @@ def endpoint_error_handler(
             except BadRequest as e:
                 # Log bad request error
                 logging.error(f"{endpoint.value} bad request: {str(e)}")
-                return jsonify({
-                    ResponseField.ERROR.value: str(e)
-                }), HTTPStatus.BAD_REQUEST.value
+                return jsonify(
+                    {ResponseField.ERROR.value: str(e)}
+                ), HTTPStatus.BAD_REQUEST.value
             except ValidationError as e:
                 # Log validation error
-                error_msgs = "; ".join([
-                    f"{error['loc'][0]}: {error['msg']}"
-                    for error in e.errors()
-                ])
+                error_msgs = "; ".join(
+                    [f"{error['loc'][0]}: {error['msg']}" for error in e.errors()]
+                )
                 logging.error(f"{endpoint.value} validation error: {error_msgs}")
-                return jsonify({
-                    ResponseField.ERROR.value: f"Validation error: {error_msgs}"
-                }), HTTPStatus.BAD_REQUEST.value
+                return jsonify(
+                    {ResponseField.ERROR.value: f"Validation error: {error_msgs}"}
+                ), HTTPStatus.BAD_REQUEST.value
             except ValueError as e:
                 # Log validation error
                 logging.error(f"{endpoint.value} error: {str(e)}")
-                return jsonify({
-                    ResponseField.ERROR.value: str(e)
-                }), HTTPStatus.BAD_REQUEST.value
+                return jsonify(
+                    {ResponseField.ERROR.value: str(e)}
+                ), HTTPStatus.BAD_REQUEST.value
             except Exception as e:
                 # Log unexpected error with traceback
                 error_trace = traceback.format_exc()
@@ -106,10 +110,12 @@ def endpoint_error_handler(
                     f"Error type: {type(e).__name__}\n"
                     f"Traceback:\n{error_trace}"
                 )
-                return jsonify({
-                    ResponseField.ERROR.value: f"{endpoint.value} failed: {str(e)}",
-                    "error_type": type(e).__name__
-                }), HTTPStatus.INTERNAL_SERVER_ERROR.value
+                return jsonify(
+                    {
+                        ResponseField.ERROR.value: f"{endpoint.value} failed: {str(e)}",
+                        "error_type": type(e).__name__,
+                    }
+                ), HTTPStatus.INTERNAL_SERVER_ERROR.value
 
         return wrapper
 

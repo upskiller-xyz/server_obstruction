@@ -13,6 +13,7 @@ from src.components.geometry.point import Point3D
 @dataclass(frozen=True)
 class Triangle:
     """Triangle defined by three vertices"""
+
     v1: Point3D
     v2: Point3D
     v3: Point3D

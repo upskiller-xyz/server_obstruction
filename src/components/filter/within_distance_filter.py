@@ -6,9 +6,9 @@ Handles distance-based filtering for both horizontal and vertical scenarios.
 
 import numpy as np
 
-from src.server.base.constants import ANGLES, MathConstants
-from src.components.models import Window
 from src.components.filter.base_filter import TriangleFilter
+from src.components.models import Window
+from src.server.base.constants import ANGLES, MathConstants
 from src.utils.settings import Settings
 
 
@@ -22,11 +22,7 @@ class WithinDistanceFilter:
 
     @classmethod
     def run(
-        cls,
-        window: Window,
-        vecs: np.ndarray,
-        angle_type: ANGLES,
-        param: float | None
+        cls, window: Window, vecs: np.ndarray, angle_type: ANGLES, param: float | None
     ) -> np.ndarray:
         """
         Run distance filtering based on window orientation
@@ -58,11 +54,7 @@ class WithinDistanceFilter:
 
     @classmethod
     def _small_magnitude(
-        cls,
-        vecs: np.ndarray,
-        angle_type: ANGLES,
-        param: float | None,
-        window: Window
+        cls, vecs: np.ndarray, angle_type: ANGLES, param: float | None, window: Window
     ) -> np.ndarray:
         """
         Handle filtering when window normal has small horizontal component
@@ -78,7 +70,7 @@ class WithinDistanceFilter:
         """
         _sm_map = {
             ANGLES.HORIZON: cls._horizontal_s_condition,
-            ANGLES.ZENITH: cls._vertical_s_condition
+            ANGLES.ZENITH: cls._vertical_s_condition,
         }
         if not param:
             param = Settings().max_horizontal_distance
@@ -102,11 +94,7 @@ class WithinDistanceFilter:
 
     @classmethod
     def _large_magnitude(
-        cls,
-        vecs: np.ndarray,
-        angle_type: ANGLES,
-        param: float | None,
-        window: Window
+        cls, vecs: np.ndarray, angle_type: ANGLES, param: float | None, window: Window
     ) -> np.ndarray:
         """
         Handle filtering when window normal has large horizontal component
@@ -122,14 +110,16 @@ class WithinDistanceFilter:
         """
         _sm_map = {
             ANGLES.HORIZON: cls._horizontal_l_condition,
-            ANGLES.ZENITH: cls._vertical_l_condition
+            ANGLES.ZENITH: cls._vertical_l_condition,
         }
         if not param:
             param = Settings().max_horizontal_distance
 
-        normal_horizontal, magnitude = TriangleFilter._compute_horizontal_normal(window.normal)
+        normal_horizontal, magnitude = TriangleFilter._compute_horizontal_normal(
+            window.normal
+        )
         # Normalize horizontal component
         normal_horizontal = normal_horizontal / magnitude
         dists = np.dot(vecs, normal_horizontal)
-        
+
         return _sm_map.get(angle_type, cls._horizontal_l_condition)(dists, param)

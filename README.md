@@ -170,14 +170,14 @@ payload = {
     "y": 3.0,
     "z": 0.0,
     "direction_angle": 0.0,  # Horizontal viewing direction in radians
-    "mesh": [                # Triangle mesh vertices (groups of 3)
+    "mesh": [  # Triangle mesh vertices (groups of 3)
         [10.0, 0.0, -5.0],
         [10.0, 5.0, -5.0],
         [10.0, 0.0, 5.0],
         [10.0, 0.0, 5.0],
         [10.0, 5.0, -5.0],
-        [10.0, 5.0, 5.0]
-    ]
+        [10.0, 5.0, 5.0],
+    ],
 }
 
 response = requests.post("http://localhost:8081/obstruction", json=payload)
@@ -196,31 +196,30 @@ payload = {
     "x": 0.0,
     "y": 0.0,
     "z": 1.5,
-    "mesh": [                # Triangle mesh vertices (groups of 3)
+    "mesh": [  # Triangle mesh vertices (groups of 3)
         [5.0, -5.0, 0.0],
         [5.0, 5.0, 0.0],
         [5.0, -5.0, 3.0],
         # ... more vertices
     ],
-
     # Microservice URL to call in parallel
     "microservice_url": "http://your-service.run.app/obstruction",
-
     # Optional: GCP authentication token
     "auth_token": "your-gcp-bearer-token",
-
     # Optional: Customize direction sampling (defaults shown)
     "num_directions": 64,
     "start_angle_degrees": 17.5,
-    "end_angle_degrees": 162.5
+    "end_angle_degrees": 162.5,
 }
 
 response = requests.post("http://localhost:8081/obstruction_parallel", json=payload)
 result = response.json()
 
-if result['status'] == 'success':
-    data = result['data']
-    print(f"Calculated {data['num_directions']} directions in {data['total_time_seconds']:.2f}s")
+if result["status"] == "success":
+    data = result["data"]
+    print(
+        f"Calculated {data['num_directions']} directions in {data['total_time_seconds']:.2f}s"
+    )
     print(f"Horizon angles: {data['horizon_angles']}")
     print(f"Zenith angles: {data['zenith_angles']}")
 ```

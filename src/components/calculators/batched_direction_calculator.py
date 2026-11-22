@@ -129,7 +129,7 @@ class BatchedDirectionCalculator:
         window: Window,
         azimuths: np.ndarray,
         config: GapObstructionConfig = GapObstructionConfig(),
-        chunk_size: int | None = None
+        chunk_size: int | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Calculate obstruction for every direction, batched over directions.
@@ -153,16 +153,20 @@ class BatchedDirectionCalculator:
 
         results: List[Dict[str, Any]] = []
         for chunk_start in range(0, azimuths.shape[0], chunk_size):
-            chunk = azimuths[chunk_start:chunk_start + chunk_size]
+            chunk = azimuths[chunk_start : chunk_start + chunk_size]
             horizon, zenith = cls._solve_chunk(tri_arrays, origin, chunk, config)
             for i in range(chunk.shape[0]):
                 results.append(
-                    cls._build_entry(float(chunk[i]), float(horizon[i]), float(zenith[i]))
+                    cls._build_entry(
+                        float(chunk[i]), float(horizon[i]), float(zenith[i])
+                    )
                 )
 
         logger.debug(
             "[BATCHED] %d directions, %d triangles in %.0fms",
-            azimuths.shape[0], tri_arrays.count, (time.time() - start) * 1000
+            azimuths.shape[0],
+            tri_arrays.count,
+            (time.time() - start) * 1000,
         )
         return results
 
@@ -172,7 +176,7 @@ class BatchedDirectionCalculator:
         tri_arrays: TriangleArrays,
         origin: np.ndarray,
         azimuths: np.ndarray,
-        config: GapObstructionConfig
+        config: GapObstructionConfig,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Resolve horizon/zenith for one chunk of directions.
@@ -190,7 +194,9 @@ class BatchedDirectionCalculator:
             # can block the sky in any direction (full sky, 0°/0°).
             return np.zeros(num), np.zeros(num)
 
-        angle_lists = BatchedElevationAngleCollector.collect(tri_arrays, origin, azimuths)
+        angle_lists = BatchedElevationAngleCollector.collect(
+            tri_arrays, origin, azimuths
+        )
         gaps_per_dir = [
             GapDetectionStrategy.find_gaps(angles.tolist(), config.MIN_GAP_DEG)
             for angles in angle_lists
@@ -202,8 +208,7 @@ class BatchedDirectionCalculator:
         rank = 0
         while not resolved.all():
             active = [
-                d for d in range(num)
-                if not resolved[d] and rank < len(gaps_per_dir[d])
+                d for d in range(num) if not resolved[d] and rank < len(gaps_per_dir[d])
             ]
             # Directions with no gap left are fully obstructed (keep 45/45 default).
             for d in range(num):
@@ -232,12 +237,22 @@ class BatchedDirectionCalculator:
                 s_test = test_elev[sky]
 
                 horizon_deg = cls._search_boundary(
-                    origin, s_az, tri_arrays, s_low, s_test,
-                    config.BINARY_SEARCH_PRECISION_DEG, BoundaryDirection.LOWER
+                    origin,
+                    s_az,
+                    tri_arrays,
+                    s_low,
+                    s_test,
+                    config.BINARY_SEARCH_PRECISION_DEG,
+                    BoundaryDirection.LOWER,
                 )
                 upper = cls._search_boundary(
-                    origin, s_az, tri_arrays, s_test, s_high,
-                    config.BINARY_SEARCH_PRECISION_DEG, BoundaryDirection.UPPER
+                    origin,
+                    s_az,
+                    tri_arrays,
+                    s_test,
+                    s_high,
+                    config.BINARY_SEARCH_PRECISION_DEG,
+                    BoundaryDirection.UPPER,
                 )
                 for j, d in enumerate(sky_idx):
                     horizon[d] = horizon_deg[j]
@@ -258,7 +273,7 @@ class BatchedDirectionCalculator:
         low: np.ndarray,
         high: np.ndarray,
         precision: float,
-        boundary: BoundaryDirection
+        boundary: BoundaryDirection,
     ) -> np.ndarray:
         """
         Batched binary search for a gap boundary across directions.
@@ -301,9 +316,7 @@ class BatchedDirectionCalculator:
 
     @staticmethod
     def _build_entry(
-        direction_angle: float,
-        horizon_deg: float,
-        zenith_deg: float
+        direction_angle: float, horizon_deg: float, zenith_deg: float
     ) -> Dict[str, Any]:
         """Format one direction's response entry (same shape as the async path)."""
         horizon_result, zenith_result = ObstructionResult.from_gap(

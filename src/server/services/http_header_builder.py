@@ -15,8 +15,7 @@ class HTTPHeaderBuilder:
 
     @staticmethod
     def build_headers(
-        auth_token: Optional[str] = None,
-        content_type: str = ContentType.JSON.value
+        auth_token: Optional[str] = None, content_type: str = ContentType.JSON.value
     ) -> Dict[str, str]:
         """
         Build HTTP headers with optional authentication

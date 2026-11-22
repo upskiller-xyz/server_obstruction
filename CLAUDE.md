@@ -48,6 +48,7 @@ class ModelLoader(ABC):
     def load(self) -> Model:
         pass
 
+
 class CheckpointModelLoader(ModelLoader):
     def __init__(self, checkpoint_url: str):
         self.checkpoint_url = checkpoint_url
@@ -62,19 +63,23 @@ class CheckpointModelLoader(ModelLoader):
 # Good Example - Define enums for all string constants
 from enum import Enum
 
+
 class HTTPMethod(Enum):
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
+
 
 class EndpointPath(Enum):
     ROOT = "/"
     USERS = "/users"
     LOGIN = "/login"
 
+
 class ResponseStatus(Enum):
     SUCCESS = "success"
     ERROR = "error"
+
 
 # Use enum values instead of strings
 method = HTTPMethod.POST.value
@@ -114,14 +119,14 @@ elif status == "ready":
 ### Available Enumerators in constants.py
 ```python
 from src.components.constants import (
-    HTTPMethod,      # GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD
-    HTTPStatus,      # OK=200, BAD_REQUEST=400, INTERNAL_SERVER_ERROR=500, etc.
-    ContentType,     # JSON, TEXT, HTML, XML
-    EndpointName,    # Endpoint function names (get_status, horizon_angle, etc.)
-    EndpointPath,    # Endpoint URL paths ("/", "/horizon_angle", etc.)
+    HTTPMethod,  # GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD
+    HTTPStatus,  # OK=200, BAD_REQUEST=400, INTERNAL_SERVER_ERROR=500, etc.
+    ContentType,  # JSON, TEXT, HTML, XML
+    EndpointName,  # Endpoint function names (get_status, horizon_angle, etc.)
+    EndpointPath,  # Endpoint URL paths ("/", "/horizon_angle", etc.)
     ResponseStatus,  # SUCCESS, ERROR
-    ResponseField,   # STATUS, DATA, ERROR, etc.
-    RequestField     # X, Y, Z, MESH, DIRECTION_ANGLE
+    ResponseField,  # STATUS, DATA, ERROR, etc.
+    RequestField,  # X, Y, Z, MESH, DIRECTION_ANGLE
 )
 ```
 

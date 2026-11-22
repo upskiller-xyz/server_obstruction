@@ -5,6 +5,7 @@ Immutable dataclass for 3D vectors with vector operations.
 """
 
 from dataclasses import dataclass
+
 import numpy as np
 
 from src.components.geometry.coordinate_system import CoordinateSystem
@@ -13,6 +14,7 @@ from src.components.geometry.coordinate_system import CoordinateSystem
 @dataclass(frozen=True)
 class Vector3D:
     """Immutable 3D vector representation"""
+
     x: float
     y: float
     z: float
@@ -25,7 +27,7 @@ class Vector3D:
         """Calculate vector magnitude"""
         return float(np.linalg.norm(self.to_array()))
 
-    def normalize(self) -> 'Vector3D':
+    def normalize(self) -> "Vector3D":
         """Return normalized vector"""
         mag = self.magnitude()
         if mag == 0:
@@ -34,7 +36,7 @@ class Vector3D:
         return Vector3D(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
 
     @classmethod
-    def from_array(cls, arr: np.ndarray) -> 'Vector3D':
+    def from_array(cls, arr: np.ndarray) -> "Vector3D":
         """Create Vector3D from numpy array"""
         return cls(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
 
@@ -50,7 +52,7 @@ class Vector3D:
         """
         return coord_system.get_vertical_component(self.to_array())
 
-    def get_horizontal(self, coord_system: type = CoordinateSystem) -> 'Vector3D':
+    def get_horizontal(self, coord_system: type = CoordinateSystem) -> "Vector3D":
         """
         Get horizontal components only (vertical removed)
 
@@ -64,7 +66,7 @@ class Vector3D:
         return Vector3D.from_array(arr)
 
     @classmethod
-    def from_horizontal_angle(cls, angle: float) -> 'Vector3D':
+    def from_horizontal_angle(cls, angle: float) -> "Vector3D":
         """
         Create horizontal direction vector from single angle
 
@@ -86,7 +88,9 @@ class Vector3D:
         return cls(x=float(x), y=float(y), z=float(z))
 
     @classmethod
-    def from_azimuth_elevation(cls, azimuth_rad: float, elevation_deg: float) -> 'Vector3D':
+    def from_azimuth_elevation(
+        cls, azimuth_rad: float, elevation_deg: float
+    ) -> "Vector3D":
         """
         Create a unit direction vector from azimuth and elevation angles.
 
@@ -99,15 +103,16 @@ class Vector3D:
         """
         horizontal = np.array([np.cos(azimuth_rad), np.sin(azimuth_rad), 0.0])
         elev_rad = np.radians(elevation_deg)
-        direction = np.cos(elev_rad) * horizontal + np.sin(elev_rad) * CoordinateSystem.UP
+        direction = (
+            np.cos(elev_rad) * horizontal + np.sin(elev_rad) * CoordinateSystem.UP
+        )
         norm = np.linalg.norm(direction)
         normalized = direction / norm
         return cls.from_array(normalized)
 
     @staticmethod
     def directions_from_azimuth_elevation(
-        azimuths_rad: np.ndarray,
-        elevations_deg: np.ndarray
+        azimuths_rad: np.ndarray, elevations_deg: np.ndarray
     ) -> np.ndarray:
         """
         Batched form of ``from_azimuth_elevation`` — build M unit direction vectors.
@@ -129,7 +134,7 @@ class Vector3D:
 
         horizontal = np.stack(
             [np.cos(azimuths_rad), np.sin(azimuths_rad), np.zeros_like(azimuths_rad)],
-            axis=-1
+            axis=-1,
         )  # (M, 3)
         elev_rad = np.radians(elevations_deg)
         directions = (
