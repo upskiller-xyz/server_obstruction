@@ -8,7 +8,7 @@
 #
 # Every dependency installs from a wheel; no OS packages are needed.
 
-FROM registry.access.redhat.com/hi/python:3.15-builder@sha256:f0f26eaca78fb6e4a489640ab7578ea1022120ed044f31f575961f9935d102a9 AS build
+FROM registry.access.redhat.com/hi/python:3.15-builder@sha256:23946f7165034bad4723463340035f11ed3d2a3fa135a783dd81b02dba03982f AS build
 
 # The builder image runs as 65532 too; installing into /opt needs root.
 USER 0
@@ -20,7 +20,7 @@ COPY requirements-prod.txt /tmp/requirements-prod.txt
 RUN /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-prod.txt \
     && /opt/venv/bin/pip uninstall -y pip
 
-FROM registry.access.redhat.com/hi/python:3.15@sha256:0766d2d64024695dc2cb90d251c247b834d5ea8b3dec28134f09e47ff6ad68a0
+FROM registry.access.redhat.com/hi/python:3.15@sha256:1dfb8bdd9b05a2cdb009bedba35d511442abbf162efd7dfce75530b6f0c903cc
 
 COPY --from=build /opt/venv /opt/venv
 # Copied as root-owned files, so the runtime user cannot modify them; the
