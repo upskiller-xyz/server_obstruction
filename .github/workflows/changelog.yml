@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           # Check out the exact commit the tag points at (the default for a
           # tag-push) so the generated changelog matches the release being
